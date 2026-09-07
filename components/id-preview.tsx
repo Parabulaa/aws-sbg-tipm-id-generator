@@ -38,7 +38,7 @@ export function IDPreview({ member }: IdPreviewProps) {
 
       <div className="grid min-h-[610px] place-items-center bg-slate-100 p-6 sm:p-10">
         <div className="aspect-[1200/1950] h-auto w-full max-w-[350px] overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-xl shadow-slate-900/10">
-          {side === 'front' ? <IDFront member={member} /> : <IDBack />}
+          {side === 'front' ? <IDFront member={member} /> : <IDBack member={member} />}
         </div>
       </div>
     </SurfaceCard>
