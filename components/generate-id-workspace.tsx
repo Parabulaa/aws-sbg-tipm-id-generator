@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { IDPreview } from '@/components/id-preview';
 import { MemberSelector } from '@/components/member-selector';
 import { MemberInformation } from '@/components/member-information';
 import { SurfaceCard } from '@/components/surface-card';
@@ -21,15 +22,7 @@ export function GenerateIdWorkspace() {
         </SurfaceCard>
       </section>
 
-      <SurfaceCard className="min-h-[680px] overflow-hidden" aria-label="ID preview">
-        <div className="border-b border-slate-200 px-5 py-4 sm:px-6">
-          <h2 className="font-semibold text-slate-950">ID Preview</h2>
-          <p className="mt-1 text-sm text-slate-500">Preview workspace</p>
-        </div>
-        <div className="grid min-h-[610px] place-items-center bg-slate-100 p-8 text-sm text-slate-400">
-          Select a member to preview an ID
-        </div>
-      </SurfaceCard>
+      <IDPreview member={selectedMember} />
     </div>
   );
 }
