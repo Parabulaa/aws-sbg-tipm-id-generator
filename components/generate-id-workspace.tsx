@@ -2,11 +2,13 @@
 
 import { useState } from 'react';
 import { MemberSelector } from '@/components/member-selector';
+import { MemberInformation } from '@/components/member-information';
 import { SurfaceCard } from '@/components/surface-card';
 import { members } from '@/lib/mock-data';
 
 export function GenerateIdWorkspace() {
   const [selectedId, setSelectedId] = useState(members[0].id);
+  const selectedMember = members.find((member) => member.id === selectedId) ?? members[0];
 
   return (
     <div className="mt-8 grid items-start gap-6 xl:grid-cols-[minmax(0,0.92fr)_minmax(420px,1.08fr)]">
@@ -14,8 +16,8 @@ export function GenerateIdWorkspace() {
         <SurfaceCard className="p-5 sm:p-6">
           <MemberSelector members={members} selectedId={selectedId} onSelect={setSelectedId} />
         </SurfaceCard>
-        <SurfaceCard className="min-h-80 p-5 sm:p-6">
-          <h2 className="font-semibold text-slate-950">Personal information</h2>
+        <SurfaceCard className="p-5 sm:p-6">
+          <MemberInformation member={selectedMember} />
         </SurfaceCard>
       </section>
 
