@@ -1,3 +1,7 @@
+'use client';
+
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import {
   BadgeCheck,
   FileBadge2,
@@ -9,14 +13,16 @@ import {
 } from 'lucide-react';
 
 const navigation = [
-  { label: 'Dashboard', icon: LayoutDashboard },
-  { label: 'Generate ID', icon: Sparkles },
-  { label: 'Members', icon: Users },
-  { label: 'Templates', icon: FolderCog },
-  { label: 'Generated IDs', icon: FileBadge2 },
+  { label: 'Dashboard', href: '/', icon: LayoutDashboard },
+  { label: 'Generate ID', href: '/generate-id', icon: Sparkles },
+  { label: 'Members', href: '/members', icon: Users },
+  { label: 'Templates', href: '/templates', icon: FolderCog },
+  { label: 'Generated IDs', href: '/generated-ids', icon: FileBadge2 },
 ];
 
 export function Sidebar() {
+  const pathname = usePathname();
+
   return (
     <aside className="flex border-b border-slate-200 bg-white p-4 lg:fixed lg:inset-y-0 lg:left-0 lg:w-[260px] lg:flex-col lg:border-b-0 lg:border-r lg:p-5">
       <div className="flex min-w-0 items-center gap-3 lg:mb-8">
@@ -30,20 +36,25 @@ export function Sidebar() {
       </div>
 
       <nav className="hidden space-y-1 lg:block" aria-label="Main navigation">
-        {navigation.map(({ label, icon: Icon }, index) => (
-          <a
+        {navigation.map(({ label, href, icon: Icon }) => {
+          const isActive = pathname === href;
+
+          return (
+          <Link
             key={label}
-            href="#"
+            href={href}
+            aria-current={isActive ? 'page' : undefined}
             className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
-              index === 0
+              isActive
                 ? 'bg-amber-50 text-amber-800'
                 : 'text-slate-600 hover:bg-slate-50 hover:text-slate-950'
             }`}
           >
             <Icon className="size-[18px]" />
             {label}
-          </a>
-        ))}
+          </Link>
+          );
+        })}
       </nav>
 
       <div className="mt-auto hidden border-t border-slate-200 pt-4 lg:block">
