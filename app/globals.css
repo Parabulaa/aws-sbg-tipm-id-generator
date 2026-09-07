@@ -131,5 +131,22 @@ body {
   }
   html {
     @apply font-sans;
+    scroll-behavior: smooth;
+  }
+
+  button,
+  a,
+  input {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
   }
 }
