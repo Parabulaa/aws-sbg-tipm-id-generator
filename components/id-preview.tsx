@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { IDFront } from '@/components/id-front';
 import { SurfaceCard } from '@/components/surface-card';
 import type { Member } from '@/lib/types';
 
@@ -36,13 +37,14 @@ export function IDPreview({ member }: IdPreviewProps) {
 
       <div className="grid min-h-[610px] place-items-center bg-slate-100 p-6 sm:p-10">
         <div className="aspect-[1200/1950] h-auto w-full max-w-[350px] overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-xl shadow-slate-900/10">
-          <div className="grid h-full place-items-center p-8 text-center">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">{side} preview</p>
-              <p className="mt-3 text-lg font-bold text-slate-900">{member.fullName}</p>
-              <p className="mt-1 text-sm text-slate-500">{member.id}</p>
+          {side === 'front' ? <IDFront member={member} /> : (
+            <div className="grid h-full place-items-center p-8 text-center">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Back preview</p>
+                <p className="mt-3 text-lg font-bold text-slate-900">Attendance layout coming next</p>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </SurfaceCard>
