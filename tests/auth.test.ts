@@ -39,13 +39,11 @@ void test('allowlisted officer login, signed session, tamper and invalid passwor
     AUTH_USERS: JSON.stringify({
       'officer@example.org': {
         salt: 'test-salt',
-        hash: Array.from(pbkdf2Sync(
-          'test-password',
-          'test-salt',
-          100000,
-          32,
-          'sha256',
-        )).map(byte => byte.toString(16).padStart(2, '0')).join(''),
+        hash: Array.from(
+          pbkdf2Sync('test-password', 'test-salt', 100000, 32, 'sha256'),
+        )
+          .map((byte) => byte.toString(16).padStart(2, '0'))
+          .join(''),
       },
     }),
   } as Bindings;

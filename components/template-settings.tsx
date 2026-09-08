@@ -103,7 +103,7 @@ export function TemplateSettings() {
         >
           <label className="field">
             Membership
-            <select name="category">
+            <select name="category" aria-label="Membership">
               {categories.map((category) => (
                 <option key={category}>{category}</option>
               ))}
@@ -111,7 +111,7 @@ export function TemplateSettings() {
           </label>
           <label className="field">
             Side
-            <select name="side">
+            <select name="side" aria-label="Side">
               <option value="front">Front</option>
               <option value="back">Back</option>
             </select>
@@ -142,6 +142,7 @@ export function TemplateSettings() {
         <label className="field">
           Officer Color Mode
           <select
+            aria-label="Officer Color Mode"
             value={settings.mode}
             onChange={(event) =>
               setSettings({

@@ -16,15 +16,24 @@ const tones = {
   rose: 'bg-rose-100 text-rose-700',
 };
 
-export function MetricCard({ label, value, icon: Icon, tone = 'slate' }: MetricCardProps) {
+export function MetricCard({
+  label,
+  value,
+  icon: Icon,
+  tone = 'slate',
+}: MetricCardProps) {
   return (
     <SurfaceCard className="p-5">
       <div className="flex items-center justify-between gap-4">
         <div>
           <p className="text-sm font-medium text-slate-500">{label}</p>
-          <p className="mt-2 text-3xl font-bold tracking-tight text-slate-950">{value}</p>
+          <p className="mt-2 text-3xl font-bold tracking-tight text-slate-950">
+            {value}
+          </p>
         </div>
-        <span className={`grid size-11 place-items-center rounded-2xl ${tones[tone]}`}>
+        <span
+          className={`grid size-11 place-items-center rounded-2xl ${tones[tone]}`}
+        >
           <Icon className="size-5" />
         </span>
       </div>

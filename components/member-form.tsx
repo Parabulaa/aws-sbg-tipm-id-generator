@@ -28,6 +28,7 @@ export function MemberForm({
           {labels[key]}
           {key === 'membership_type' ? (
             <select
+              aria-label={labels[key]}
               value={value[key]}
               onChange={(event) =>
                 onChange({

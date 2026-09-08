@@ -32,6 +32,7 @@ export function GeneratedHistory() {
         <label className="field">
           Membership
           <select
+            aria-label="Membership"
             value={category}
             onChange={(event) => setCategory(event.target.value)}
           >

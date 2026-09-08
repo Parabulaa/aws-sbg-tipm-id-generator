@@ -94,6 +94,7 @@ export function MemberDirectory() {
           <label className="field">
             Membership
             <select
+              aria-label="Membership"
               value={category}
               onChange={(event) => setCategory(event.target.value)}
             >
@@ -106,6 +107,7 @@ export function MemberDirectory() {
           <label className="field">
             Team
             <select
+              aria-label="Team"
               value={team}
               onChange={(event) => setTeam(event.target.value)}
             >
@@ -122,6 +124,7 @@ export function MemberDirectory() {
           <label className="field">
             Status
             <select
+              aria-label="Status"
               value={status}
               onChange={(event) => setStatus(event.target.value)}
             >

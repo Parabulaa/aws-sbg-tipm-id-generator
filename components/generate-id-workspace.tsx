@@ -44,6 +44,7 @@ export function GenerateIdWorkspace() {
         <label className="field mt-3">
           Select member
           <select
+            aria-label="Select member"
             value={member.id}
             onChange={(event) => {
               if (

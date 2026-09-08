@@ -6,7 +6,11 @@ type EmptyStateProps = {
   description: string;
 };
 
-export function EmptyState({ icon: Icon, title, description }: EmptyStateProps) {
+export function EmptyState({
+  icon: Icon,
+  title,
+  description,
+}: EmptyStateProps) {
   return (
     <div className="grid min-h-56 place-items-center px-6 py-10 text-center">
       <div>

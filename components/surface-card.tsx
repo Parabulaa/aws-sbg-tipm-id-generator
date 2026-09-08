@@ -1,6 +1,17 @@
 import type { HTMLAttributes } from 'react';
 import { cn } from '@/lib/utils';
 
-export function SurfaceCard({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('rounded-2xl border border-slate-200 bg-white shadow-sm', className)} {...props} />;
+export function SurfaceCard({
+  className,
+  ...props
+}: HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div
+      className={cn(
+        'rounded-2xl border border-slate-200 bg-white shadow-sm',
+        className,
+      )}
+      {...props}
+    />
+  );
 }
