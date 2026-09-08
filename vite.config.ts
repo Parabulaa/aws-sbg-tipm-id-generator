@@ -45,6 +45,7 @@ export default defineConfig(async ({ command }) => {
   const { cloudflare } = await import('@cloudflare/vite-plugin');
 
   return {
+    optimizeDeps: { include: ['exceljs', 'pdf-lib', 'jszip'] },
     css: { postcss: { plugins: [tailwindcss()] } },
     server: isCodexSeatbeltSandbox
       ? { watch: { useFsEvents: false, usePolling: true } }
@@ -53,8 +54,15 @@ export default defineConfig(async ({ command }) => {
       vinext(),
       sites(),
       cloudflare({
+        persistState: process.env.ID_TEST_STATE
+          ? { path: process.env.ID_TEST_STATE }
+          : true,
+        inspectorPort: false,
         viteEnvironment: { name: 'rsc', childEnvironments: ['ssr'] },
-        config: { ...localBindingConfig, vars: command === 'serve' ? { DEV_LOCAL_ONLY: 'true' } : {} },
+        config: {
+          ...localBindingConfig,
+          vars: command === 'serve' ? { DEV_LOCAL_ONLY: 'true' } : {},
+        },
       }),
     ],
   };
