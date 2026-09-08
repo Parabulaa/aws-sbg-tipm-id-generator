@@ -15,7 +15,9 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: 'AWS SBG TIP Manila ID Generator',
-  description: 'Frontend prototype for the AWS Student Builder Group TIP Manila ID workflow.',
+  icons: { icon: '/favicon.svg' },
+  description:
+    'Frontend prototype for the AWS Student Builder Group TIP Manila ID workflow.',
 };
 
 export default function RootLayout({

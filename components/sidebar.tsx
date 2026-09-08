@@ -1,10 +1,8 @@
 'use client';
-
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import {
-  BadgeCheck,
   FileBadge2,
   FolderCog,
   LayoutDashboard,
@@ -12,9 +10,15 @@ import {
   Settings,
   Sparkles,
   Users,
-  X,
 } from 'lucide-react';
-
+import {
+  Sheet,
+  SheetContent,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/sheet';
+import { useData } from './data-provider';
+import { api, errorText } from '@/lib/client';
 const navigation = [
   { label: 'Dashboard', href: '/', icon: LayoutDashboard },
   { label: 'Generate ID', href: '/generate-id', icon: Sparkles },
@@ -22,83 +26,101 @@ const navigation = [
   { label: 'Templates', href: '/templates', icon: FolderCog },
   { label: 'Generated IDs', href: '/generated-ids', icon: FileBadge2 },
 ];
-
 export function Sidebar() {
   const pathname = usePathname();
-  const [mobileOpen, setMobileOpen] = useState(false);
-
+  const { user } = useData();
+  const [open, setOpen] = useState(false);
+  const [error, setError] = useState('');
+  function content() {
+    return (
+      <>
+        <Brand />
+        <nav className="mt-8 space-y-1" aria-label="Main navigation">
+          {navigation.map(({ label, href, icon: Icon }) => (
+            <Link
+              key={href}
+              href={href}
+              onClick={() => setOpen(false)}
+              aria-current={pathname === href ? 'page' : undefined}
+              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${pathname === href ? 'bg-amber-50 text-amber-800' : 'text-slate-600 hover:bg-slate-50'}`}
+            >
+              <Icon className="size-[18px]" />
+              {label}
+            </Link>
+          ))}
+        </nav>
+        <div className="mt-auto border-t border-slate-200 pt-4">
+          <Link
+            href="/templates#colors"
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-600"
+          >
+            <Settings className="size-[18px]" />
+            Team color settings
+          </Link>
+          <div className="mt-3 rounded-2xl bg-slate-50 p-3">
+            <p className="break-words text-sm font-semibold">{user}</p>
+            {user !== 'Local officer' && (
+              <button
+                className="btn mt-2"
+                onClick={async () => {
+                  try {
+                    await api('logout', { method: 'POST' });
+                    window.location.reload();
+                  } catch (error) {
+                    setError(errorText(error));
+                  }
+                }}
+              >
+                Sign out
+              </button>
+            )}
+          </div>
+          {error && (
+            <p role="alert" className="notice-error">
+              {error}
+            </p>
+          )}
+        </div>
+      </>
+    );
+  }
   return (
     <>
-      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-slate-200 bg-white/95 p-4 backdrop-blur lg:hidden">
+      <header className="sticky top-0 z-30 flex items-center justify-between gap-2 border-b border-slate-200 bg-white p-4 lg:hidden">
         <Brand />
         <button
           type="button"
-          onClick={() => setMobileOpen(true)}
+          className="btn"
           aria-label="Open navigation"
-          className="grid size-11 place-items-center rounded-xl border border-slate-200 text-slate-700 transition hover:bg-slate-50"
+          onClick={() => setOpen(true)}
         >
           <Menu className="size-5" />
         </button>
       </header>
-
-      {mobileOpen ? <button type="button" aria-label="Close navigation" onClick={() => setMobileOpen(false)} className="fixed inset-0 z-40 bg-slate-950/30 backdrop-blur-[2px] lg:hidden" /> : null}
-
-      <aside className={`fixed inset-y-0 left-0 z-50 flex w-[280px] flex-col border-r border-slate-200 bg-white p-5 shadow-2xl shadow-slate-900/10 transition-transform duration-200 lg:z-20 lg:w-[260px] lg:translate-x-0 lg:shadow-none ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="mb-8 flex items-center justify-between gap-3">
-          <Brand />
-          <button type="button" onClick={() => setMobileOpen(false)} aria-label="Close navigation" className="grid size-10 place-items-center rounded-xl text-slate-500 hover:bg-slate-100 lg:hidden">
-            <X className="size-5" />
-          </button>
-        </div>
-
-      <nav className="space-y-1" aria-label="Main navigation">
-        {navigation.map(({ label, href, icon: Icon }) => {
-          const isActive = pathname === href;
-
-          return (
-          <Link
-            key={label}
-            href={href}
-            onClick={() => setMobileOpen(false)}
-            aria-current={isActive ? 'page' : undefined}
-            className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
-              isActive
-                ? 'bg-amber-50 text-amber-800'
-                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-950'
-            }`}
-          >
-            <Icon className="size-[18px]" />
-            {label}
-          </Link>
-          );
-        })}
-      </nav>
-
-      <div className="mt-auto border-t border-slate-200 pt-4">
-        <button type="button" title="Settings are not available in this prototype" className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50">
-          <Settings className="size-[18px]" />
-          Settings
-        </button>
-        <div className="mt-3 flex items-center gap-3 rounded-2xl bg-slate-50 p-3">
-          <span className="grid size-10 place-items-center rounded-full bg-slate-200 text-sm font-bold text-slate-700">AD</span>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-slate-900">Admin User</p>
-            <p className="truncate text-xs text-slate-500">Organization admin</p>
-          </div>
-          <BadgeCheck className="size-4 text-amber-600" />
-        </div>
-      </div>
-    </aside>
+      <aside className="fixed inset-y-0 left-0 z-20 hidden w-[260px] flex-col overflow-y-auto border-r border-slate-200 bg-white p-5 lg:flex">
+        {content()}
+      </aside>
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetContent side="left" className="max-w-[290px] p-5">
+          <SheetTitle className="sr-only">Organization navigation</SheetTitle>
+          <SheetDescription className="sr-only">
+            Choose a page in the ID generator.
+          </SheetDescription>
+          {content()}
+        </SheetContent>
+      </Sheet>
     </>
   );
 }
-
 function Brand() {
   return (
     <div className="flex min-w-0 items-center gap-3">
-      <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-amber-500 text-lg font-black text-white">AWS</span>
+      <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-amber-500 text-lg font-black text-white">
+        AWS
+      </span>
       <div className="min-w-0">
-        <p className="truncate text-sm font-bold text-slate-900">AWS SBG TIP Manila</p>
+        <p className="truncate text-sm font-bold">AWS SBG TIP Manila</p>
         <p className="text-sm text-slate-500">ID Generator</p>
       </div>
     </div>
