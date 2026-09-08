@@ -1,46 +1,98 @@
-import { useState } from 'react';
-import { IDFront } from '@/components/id-front';
-import { IDBack } from '@/components/id-back';
-import { SurfaceCard } from '@/components/surface-card';
-import type { Member } from '@/lib/types';
-
-type IdPreviewProps = {
-  member: Member;
-};
-
-export function IDPreview({ member }: IdPreviewProps) {
-  const [side, setSide] = useState<'front' | 'back'>('front');
-
+'use client';
+import { useEffect, useRef, useState } from 'react';
+import type { MemberRecord, ColorSettings } from '@/lib/domain';
+import type { Template, Side } from '@/lib/templates';
+import { renderID } from '@/lib/render-id';
+import { errorText } from '@/lib/client';
+export function IDPreview({
+  member,
+  templates,
+  colors,
+  photoOverride,
+}: {
+  member: MemberRecord;
+  templates: Template[];
+  colors: ColorSettings;
+  photoOverride?: string;
+}) {
+  const [side, setSide] = useState<Side>('front');
+  const canvas = useRef<HTMLCanvasElement>(null);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const template = templates.find(
+    (item) => item.category === member.membership_type && item.side === side,
+  );
+  useEffect(() => {
+    let cancelled = false;
+    if (!template || !canvas.current) return;
+    setLoading(true);
+    setError('');
+    const scratch = document.createElement('canvas');
+    void renderID(scratch, member, template, colors, photoOverride)
+      .then(() => {
+        if (!cancelled && canvas.current) {
+          canvas.current.width = 1200;
+          canvas.current.height = 1950;
+          canvas.current.getContext('2d')!.drawImage(scratch, 0, 0);
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) setError(errorText(error));
+      })
+      .finally(() => {
+        scratch.width = 0;
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [member, template, colors, photoOverride]);
   return (
-    <SurfaceCard className="overflow-hidden" aria-label="ID preview">
-      <div className="flex items-center justify-between gap-4 border-b border-slate-200 px-5 py-4 sm:px-6">
-        <div>
-          <h2 className="font-semibold text-slate-950">ID Preview</h2>
-          <p className="mt-1 text-sm text-slate-500">1200 × 1950 px</p>
-        </div>
-        <div className="inline-flex rounded-xl bg-slate-100 p-1" role="tablist" aria-label="ID side">
-          {(['front', 'back'] as const).map((tab) => (
+    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+      <div className="flex flex-wrap items-center justify-between gap-3 p-4">
+        <h2 className="font-semibold">
+          ID Preview{' '}
+          <span className="text-sm font-normal text-slate-500">
+            1200 × 1950 px
+          </span>
+        </h2>
+        <div className="flex gap-2">
+          {(['front', 'back'] as const).map((value) => (
             <button
-              key={tab}
-              type="button"
-              role="tab"
-              aria-selected={side === tab}
-              onClick={() => setSide(tab)}
-              className={`rounded-lg px-4 py-2 text-xs font-bold uppercase tracking-wide transition ${
-                side === tab ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'
-              }`}
+              className={value === side ? 'btn-primary' : 'btn'}
+              aria-pressed={value === side}
+              key={value}
+              onClick={() => setSide(value)}
             >
-              {tab}
+              {value === 'front' ? 'Front' : 'Back'}
             </button>
           ))}
         </div>
       </div>
-
-      <div className="grid min-h-[610px] place-items-center bg-slate-100 p-6 sm:p-10">
-        <div className="aspect-[1200/1950] h-auto w-full max-w-[350px] overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-xl shadow-slate-900/10">
-          {side === 'front' ? <IDFront member={member} /> : <IDBack member={member} />}
-        </div>
+      <div className="bg-slate-100 p-4 sm:p-6">
+        {template ? (
+          <>
+            <canvas
+              ref={canvas}
+              width={1200}
+              height={1950}
+              aria-label={`${side} ID preview for ${member.aws_sbg_id}`}
+              className={`mx-auto block aspect-[1200/1950] w-full max-w-[400px] bg-white shadow-sm ${loading || error ? 'opacity-40' : ''}`}
+            />
+            {loading && <output className="block">Updating preview…</output>}
+            {error && (
+              <p className="notice-error" role="alert">
+                {error}
+              </p>
+            )}
+          </>
+        ) : (
+          <p className="notice">
+            Approved {member.membership_type} {side} template is not configured.
+            Add the approved PNG and field mapping in Templates.
+          </p>
+        )}
       </div>
-    </SurfaceCard>
+    </section>
   );
 }
