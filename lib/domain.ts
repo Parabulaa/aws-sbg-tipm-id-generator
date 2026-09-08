@@ -48,7 +48,7 @@ export function validateMember(member: MemberInput) {
   }
   for (const [key, value] of Object.entries(member)) {
     if (value.length > 240) errors.push(`${key} must be 240 characters or fewer`);
-    if (/[\u0000-\u001f\u007f]/.test(value)) errors.push(`${key} contains invalid characters`);
+    if (typeof value === 'string' && Array.from(value).some(char => char.charCodeAt(0) < 32 || char.charCodeAt(0) === 127)) errors.push(`${key} contains invalid characters`);
   }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(member.email)) errors.push('Invalid email');
   if (!/^[A-Z0-9][A-Z0-9._-]{2,79}$/.test(member.aws_sbg_id)) errors.push('Invalid AWS SBG ID (3–80 letters, numbers, dots, underscores or hyphens)');
