@@ -37,3 +37,7 @@ next-env.d.ts
 /outputs/
 /work/
 *.tsbuildinfo
+/test-results/
+/playwright-report/
+.dev.vars
+.dev.vars.*
