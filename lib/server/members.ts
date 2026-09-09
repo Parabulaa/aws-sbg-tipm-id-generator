@@ -15,7 +15,6 @@ import {
   json,
   logActivity,
 } from './database';
-import type { Bindings } from './database';
 
 export async function importMembers(
   client: SupabaseClient,
@@ -113,7 +112,6 @@ function addMonths(date: Date, months: number) {
 export async function confirmMember(
   client: SupabaseClient,
   actorId: string,
-  env: Bindings,
   id: string,
   request: Request,
 ) {
@@ -130,7 +128,11 @@ export async function confirmMember(
         ...(!previous.photo_path ? ['Upload and review a photo first.'] : []),
       ].join('; '),
     );
-  if (!(await env.FILES.head(previous.photo_path)))
+  const photoObject = previous.photo_path.replace(/^member-photos\//, '');
+  const photoCheck = await client.storage
+    .from('member-photos')
+    .download(photoObject);
+  if (photoCheck.error)
     throw new AppError('Photo is missing. Please upload it again.');
   const issue = previous.date_issued ?? new Date().toISOString().slice(0, 10);
   let validityMonths = 12;
@@ -174,7 +176,6 @@ export function pngDimensions(bytes: Uint8Array) {
 export async function photo(
   client: SupabaseClient,
   actorId: string,
-  env: Bindings,
   id: string,
   request: Request,
 ) {
@@ -227,10 +228,16 @@ export async function photo(
     size.height < 100
   )
     throw new AppError('Photo must be 100–4096 pixels on each side.');
-  const key = `photos/${id}/${crypto.randomUUID()}.png`;
-  await env.FILES.put(key, bytes, {
-    httpMetadata: { contentType: 'image/png' },
-  });
+  const objectPath = `${id}/${crypto.randomUUID()}.png`;
+  const key = `member-photos/${objectPath}`;
+  const uploaded = await client.storage
+    .from('member-photos')
+    .upload(objectPath, bytes, {
+      contentType: 'image/png',
+      upsert: false,
+    });
+  if (uploaded.error)
+    throw new AppError('The photo could not be saved to private storage.');
   try {
     const saved = await saveMember(client, actorId, previous, {
       ...previous,
@@ -247,7 +254,7 @@ export async function photo(
     );
     return json(saved);
   } catch (error) {
-    await env.FILES.delete(key);
+    await client.storage.from('member-photos').remove([objectPath]);
     throw error;
   }
 }

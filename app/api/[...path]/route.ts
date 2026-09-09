@@ -57,12 +57,11 @@ async function handle(request: Request) {
         );
       }
       if (path[2] === 'photo' && ['POST', 'DELETE'].includes(request.method))
-        return await photo(auth.client, auth.profile.id, env, path[1], request);
+        return await photo(auth.client, auth.profile.id, path[1], request);
       if (path[2] === 'confirm' && request.method === 'POST')
         return await confirmMember(
           auth.client,
           auth.profile.id,
-          env,
           path[1],
           request,
         );
@@ -159,6 +158,22 @@ async function handle(request: Request) {
     }
     if (path[0] === 'files' && request.method === 'GET') {
       const key = decodeURIComponent(path.slice(1).join('/'));
+      if (key.startsWith('member-photos/')) {
+        const objectPath = key.slice('member-photos/'.length);
+        if (!/^[a-zA-Z0-9_./-]+$/.test(objectPath) || objectPath.includes('..'))
+          throw new AppError('Invalid file path.');
+        const { data, error } = await auth.client.storage
+          .from('member-photos')
+          .download(objectPath);
+        if (error || !data) throw new AppError('File not found.', 404);
+        return new Response(data, {
+          headers: {
+            'Cache-Control': 'private, no-store',
+            'Content-Type': data.type || 'image/png',
+            'X-Content-Type-Options': 'nosniff',
+          },
+        });
+      }
       if (
         !/^(photos|templates|exports)\/[a-zA-Z0-9_./-]+$/.test(key) ||
         key.includes('..')
