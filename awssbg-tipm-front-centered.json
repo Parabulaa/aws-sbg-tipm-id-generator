@@ -1,0 +1,59 @@
+{
+  "photo": {
+    "x": 306,
+    "y": 450,
+    "width": 588,
+    "height": 654
+  },
+  "fields": [
+    {
+      "field": "full_name",
+      "x": 110,
+      "y": 1165,
+      "width": 980,
+      "height": 110,
+      "fontSize": 76,
+      "minFontSize": 36,
+      "color": "#071421",
+      "align": "center",
+      "weight": "bold"
+    },
+    {
+      "field": "role",
+      "x": 110,
+      "y": 1290,
+      "width": 980,
+      "height": 82,
+      "fontSize": 54,
+      "minFontSize": 28,
+      "color": "#00A85A",
+      "align": "center",
+      "weight": "bold"
+    },
+    {
+      "field": "aws_sbg_id",
+      "x": 90,
+      "y": 1410,
+      "width": 1020,
+      "height": 72,
+      "fontSize": 42,
+      "minFontSize": 22,
+      "color": "#071421",
+      "align": "center",
+      "weight": "bold"
+    },
+    {
+      "field": "tip_email",
+      "x": 90,
+      "y": 1505,
+      "width": 1020,
+      "height": 62,
+      "fontSize": 34,
+      "minFontSize": 18,
+      "color": "#071421",
+      "align": "center",
+      "weight": "normal"
+    }
+  ],
+  "accents": []
+}
