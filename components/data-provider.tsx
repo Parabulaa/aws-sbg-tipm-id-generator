@@ -23,6 +23,7 @@ interface Data {
   activity: Activity[];
   templates: Template[];
   user: string;
+  role: 'admin' | 'officer';
   refresh: () => Promise<void>;
 }
 const Context = createContext<Data | null>(null);
@@ -39,7 +40,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState('');
   const refresh = useCallback(async () => {
     try {
-      const session = await api<{ user: string }>('session');
+      const session = await api<{
+        user: string;
+        role: 'admin' | 'officer';
+      }>('session');
       const [members, colors, generations, activity, templates] =
         await Promise.all([
           api<MemberRecord[]>('members'),
@@ -55,6 +59,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         activity,
         templates,
         user: session.user,
+        role: session.role,
       });
       setError('');
     } catch (error) {

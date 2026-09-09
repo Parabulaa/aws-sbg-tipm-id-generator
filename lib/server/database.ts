@@ -8,6 +8,9 @@ export interface Bindings {
   DEV_LOCAL_ONLY?: string;
   AUTH_USERS?: string;
   SESSION_SECRET?: string;
+  SUPABASE_URL?: string;
+  SUPABASE_PUBLISHABLE_KEY?: string;
+  SUPABASE_SECRET_KEY?: string;
 }
 export function bindings(): Bindings {
   return env as unknown as Bindings;

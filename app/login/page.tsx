@@ -3,17 +3,25 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { api, errorText } from '@/lib/client';
+import { errorText } from '@/lib/client';
+import {
+  browserSupabaseConfig,
+  getSupabaseBrowserClient,
+} from '@/lib/supabase/client';
 
 export default function LoginPage() {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const configured = browserSupabaseConfig().configured;
   useEffect(() => {
-    void api('session')
-      .then(() => router.replace('/dashboard'))
-      .catch(() => {});
-  }, [router]);
+    if (!configured) return;
+    void getSupabaseBrowserClient()
+      .auth.getSession()
+      .then(({ data }) => {
+        if (data.session) router.replace('/dashboard');
+      });
+  }, [configured, router]);
   return (
     <main className="grid min-h-screen place-items-center bg-slate-50 px-5 py-12">
       <section className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-7 shadow-sm sm:p-9">
@@ -32,13 +40,19 @@ export default function LoginPage() {
             setError('');
             const form = new FormData(event.currentTarget);
             try {
-              await api('login', {
-                method: 'POST',
-                body: JSON.stringify({
-                  email: form.get('email'),
-                  password: form.get('password'),
-                }),
-              });
+              const email = form.get('email');
+              const password = form.get('password');
+              if (typeof email !== 'string' || typeof password !== 'string')
+                throw new Error('Enter your officer email and password.');
+              const { error } =
+                await getSupabaseBrowserClient().auth.signInWithPassword({
+                  email,
+                  password,
+                });
+              if (error)
+                throw new Error(
+                  'Email or password is incorrect, or this account is not available.',
+                );
               router.replace('/dashboard');
             } catch (error) {
               setError(errorText(error));
@@ -60,9 +74,15 @@ export default function LoginPage() {
               required
             />
           </label>
-          <button className="btn-primary w-full" disabled={busy}>
+          <button className="btn-primary w-full" disabled={busy || !configured}>
             {busy ? 'Signing in…' : 'Sign in'}
           </button>
+          {!configured && (
+            <p className="notice-error">
+              Supabase is not configured. Add the project URL and publishable
+              key to .env.local.
+            </p>
+          )}
           {error && (
             <p role="alert" className="notice-error">
               {error}

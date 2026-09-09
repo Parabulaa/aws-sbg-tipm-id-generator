@@ -18,7 +18,8 @@ import {
   SheetDescription,
 } from '@/components/ui/sheet';
 import { useData } from './data-provider';
-import { api, errorText } from '@/lib/client';
+import { errorText } from '@/lib/client';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 const navigation = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Generate ID', href: '/generate-id', icon: Sparkles },
@@ -60,21 +61,21 @@ export function Sidebar() {
           </Link>
           <div className="mt-3 rounded-2xl bg-slate-50 p-3">
             <p className="break-words text-sm font-semibold">{user}</p>
-            {user !== 'Local officer' && (
-              <button
-                className="btn mt-2"
-                onClick={async () => {
-                  try {
-                    await api('logout', { method: 'POST' });
-                    window.location.reload();
-                  } catch (error) {
-                    setError(errorText(error));
-                  }
-                }}
-              >
-                Sign out
-              </button>
-            )}
+            <button
+              className="btn mt-2"
+              onClick={async () => {
+                try {
+                  const { error } =
+                    await getSupabaseBrowserClient().auth.signOut();
+                  if (error) throw error;
+                  window.location.assign('/');
+                } catch (error) {
+                  setError(errorText(error));
+                }
+              }}
+            >
+              Sign out
+            </button>
           </div>
           {error && (
             <p role="alert" className="notice-error">

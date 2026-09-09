@@ -6,7 +6,8 @@ import {
   getColors,
   getActivity,
 } from '@/lib/server/database';
-import { authorize, login, sameOrigin } from '@/lib/server/auth';
+import { sameOrigin } from '@/lib/server/auth';
+import { requireOfficer } from '@/lib/server/supabase';
 import {
   importMembers,
   updateMember,
@@ -28,16 +29,14 @@ async function handle(request: Request) {
     const path = new URL(request.url).pathname
       .replace(/^\/api\//, '')
       .split('/');
-    if (path[0] === 'login' && request.method === 'POST')
-      return await login(request, env);
-    const actor = await authorize(request, env);
-    if (path[0] === 'session') return json({ user: actor });
-    if (path[0] === 'logout' && request.method === 'POST')
-      return new Response(null, {
-        headers: {
-          'Set-Cookie':
-            'sbg_session=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0',
-        },
+    const auth = await requireOfficer(request, env);
+    const actor = auth.actor;
+    if (path[0] === 'session')
+      return json({
+        user: actor,
+        email: auth.profile.email,
+        role: auth.profile.role,
+        id: auth.profile.id,
       });
     if (path[0] === 'members') {
       if (request.method === 'GET' && !path[1])

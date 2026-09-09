@@ -3,6 +3,9 @@ export async function api<T>(
   options: RequestInit = {},
 ): Promise<T> {
   const headers = new Headers(options.headers);
+  const { getAccessToken } = await import('./supabase/client');
+  const token = await getAccessToken();
+  if (token) headers.set('Authorization', `Bearer ${token}`);
   if (!(options.body instanceof FormData))
     headers.set('Content-Type', 'application/json');
   const response = await fetch(`/api/${path}`, { ...options, headers });

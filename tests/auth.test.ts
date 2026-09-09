@@ -1,27 +1,27 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { pbkdf2Sync } from 'node:crypto';
-import { authorize, login, sameOrigin } from '../lib/server/auth';
-import type { Bindings } from '../lib/server/database';
-void test('online access fails closed and local bypass is explicitly scoped', async () => {
-  await assert.rejects(
-    () =>
-      authorize(new Request('https://example.org/api/members'), {} as Bindings),
-    /configured/,
-  );
+import { sameOrigin } from '../lib/server/auth';
+import { assertOfficerRole, bearerToken } from '../lib/server/supabase';
+import type { OfficerProfile } from '../lib/server/supabase';
+
+const profile: OfficerProfile = {
+  id: '00000000-0000-4000-8000-000000000001',
+  email: 'officer@example.org',
+  display_name: 'Officer Test',
+  role: 'officer',
+  is_active: true,
+};
+
+void test('bearer authentication input and same-origin writes fail closed', () => {
   assert.equal(
-    await authorize(new Request('http://localhost/api/members'), {
-      DEV_LOCAL_ONLY: 'true',
-    } as Bindings),
-    'Local officer',
+    bearerToken(
+      new Request('https://example.org/api/members', {
+        headers: { Authorization: 'Bearer signed-access-token' },
+      }),
+    ),
+    'signed-access-token',
   );
-  await assert.rejects(
-    () =>
-      authorize(new Request('https://example.org/api/members'), {
-        DEV_LOCAL_ONLY: 'true',
-      } as Bindings),
-    /configured/,
-  );
+  assert.equal(bearerToken(new Request('https://example.org/api/members')), '');
   assert.throws(
     () =>
       sameOrigin(
@@ -33,47 +33,15 @@ void test('online access fails closed and local bypass is explicitly scoped', as
     /application/,
   );
 });
-void test('allowlisted officer login, signed session, tamper and invalid password', async () => {
-  const env = {
-    SESSION_SECRET: 'test-only-32-character-secret-value',
-    AUTH_USERS: JSON.stringify({
-      'officer@example.org': {
-        salt: 'test-salt',
-        hash: Array.from(
-          pbkdf2Sync('test-password', 'test-salt', 100000, 32, 'sha256'),
-        )
-          .map((byte) => byte.toString(16).padStart(2, '0'))
-          .join(''),
-      },
-    }),
-  } as Bindings;
-  const request = (password: string) =>
-    new Request('https://example.org/api/login', {
-      method: 'POST',
-      body: JSON.stringify({ email: 'officer@example.org', password }),
-    });
-  await assert.rejects(() => login(request('incorrect'), env), /incorrect/);
-  const response = await login(request('test-password'), env);
-  const cookie = response.headers.get('Set-Cookie')!;
-  assert.match(cookie, /HttpOnly/);
-  assert.match(cookie, /Secure/);
-  assert.equal(
-    await authorize(
-      new Request('https://example.org/api/members', {
-        headers: { Cookie: cookie.split(';')[0] },
-      }),
-      env,
-    ),
-    'officer@example.org',
+
+void test('active officer and administrator authorization is explicit', () => {
+  assert.doesNotThrow(() => assertOfficerRole(profile));
+  assert.throws(() => assertOfficerRole(profile, 'admin'), /Administrator/);
+  assert.doesNotThrow(() =>
+    assertOfficerRole({ ...profile, role: 'admin' }, 'admin'),
   );
-  await assert.rejects(
-    () =>
-      authorize(
-        new Request('https://example.org/api/members', {
-          headers: { Cookie: cookie.split(';')[0] + 'tampered' },
-        }),
-        env,
-      ),
-    /expired/,
+  assert.throws(
+    () => assertOfficerRole({ ...profile, is_active: false }),
+    /not active/,
   );
 });
