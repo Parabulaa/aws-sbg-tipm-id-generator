@@ -46,3 +46,6 @@ next-env.d.ts
 /playwright-report/
 .dev.vars
 .dev.vars.*
+
+.vercel
+.env*

@@ -2,6 +2,7 @@ import { sites } from '@openai/sites-vite-plugin';
 import tailwindcss from '@tailwindcss/postcss';
 import vinext from 'vinext';
 import { defineConfig } from 'vite';
+import path from 'node:path';
 
 // macOS Seatbelt blocks FSEvents, so Codex previews need polling for HMR.
 const isCodexSeatbeltSandbox = process.env.CODEX_SANDBOX === 'seatbelt';
@@ -18,19 +19,12 @@ export default defineConfig(async ({ command }) => {
   process.env.WRANGLER_LOG_PATH ??= '.wrangler/logs';
   process.env.MINIFLARE_REGISTRY_PATH ??= '.wrangler/registry';
 
-  // Wrangler snapshots its log path while the Cloudflare plugin is imported.
-  const { cloudflare } = await import('@cloudflare/vite-plugin');
-
-  return {
-    optimizeDeps: { include: ['exceljs', 'pdf-lib', 'jszip'] },
-    css: { postcss: { plugins: [tailwindcss()] } },
-    server: isCodexSeatbeltSandbox
-      ? { watch: { useFsEvents: false, usePolling: true } }
-      : undefined,
-    plugins: [
-      vinext(),
-      sites(),
-      cloudflare({
+  const isVercel = process.env.VERCEL === '1' || process.env.VERCEL === 'true';
+  // Use Nitro for Vercel deployments. Local development and the existing
+  // Cloudflare deployment keep the Cloudflare runtime and bindings.
+  const runtimePlugin = isVercel
+    ? (await import('nitro/vite')).nitro()
+    : (await import('@cloudflare/vite-plugin')).cloudflare({
         persistState: process.env.ID_TEST_STATE
           ? { path: process.env.ID_TEST_STATE }
           : true,
@@ -40,7 +34,21 @@ export default defineConfig(async ({ command }) => {
           ...localBindingConfig,
           vars: command === 'serve' ? { DEV_LOCAL_ONLY: 'true' } : {},
         },
-      }),
+      });
+
+  return {
+    resolve: isVercel
+      ? { alias: { 'cloudflare:workers': path.resolve('lib/server/vercel-cloudflare-env.ts') } }
+      : undefined,
+    optimizeDeps: { include: ['exceljs', 'pdf-lib', 'jszip'] },
+    css: { postcss: { plugins: [tailwindcss()] } },
+    server: isCodexSeatbeltSandbox
+      ? { watch: { useFsEvents: false, usePolling: true } }
+      : undefined,
+    plugins: [
+      vinext(),
+      sites(),
+      runtimePlugin,
     ],
   };
 });

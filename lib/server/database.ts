@@ -1,4 +1,3 @@
-import { env } from 'cloudflare:workers';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Activity, ColorSettings, MemberRecord } from '../domain';
 import { AppError } from './errors';
@@ -10,8 +9,14 @@ export interface Bindings {
   SUPABASE_SECRET_KEY?: string;
 }
 
-export function bindings(): Bindings {
-  return env as unknown as Bindings;
+export async function bindings(): Promise<Bindings> {
+  if (typeof process !== 'undefined' && process.env.SUPABASE_URL)
+    return process.env as unknown as Bindings;
+  const cloudflareModule = 'cloudflare:workers';
+  const { env } = (await import(/* @vite-ignore */ cloudflareModule)) as {
+    env: Record<string, unknown>;
+  };
+  return env as Bindings;
 }
 
 export const json = (data: unknown, status = 200) =>

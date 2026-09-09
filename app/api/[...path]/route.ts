@@ -27,7 +27,7 @@ async function handle(request: Request) {
     sameOrigin(request);
     if (Number(request.headers.get('Content-Length')) > 65 * 1024 * 1024)
       throw new AppError('Request too large.', 413);
-    const env = bindings();
+    const env = await bindings();
     const path = new URL(request.url).pathname
       .replace(/^\/api\//, '')
       .split('/');
