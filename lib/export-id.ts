@@ -87,8 +87,13 @@ export async function exportZip(
           ? 'Associates'
           : 'Members';
     const folder = `AWS-SBG-IDs/${category}/${safeFilename(record.member)}_${record.id.slice(0, 8)}`;
-    for (const name of ['front.png', 'back.png', 'ID.pdf']) {
-      const response = await fetch(fileUrl(`exports/${record.id}/${name}`));
+    for (const [name, path] of [
+      ['front.png', record.front_path],
+      ['back.png', record.back_path],
+      ['ID.pdf', record.pdf_path],
+    ] as const) {
+      if (!path) throw new Error('A generated file reference is missing.');
+      const response = await fetch(fileUrl(path));
       if (!response.ok)
         throw new Error(
           `Could not download ${record.member.aws_sbg_id}. Retry the ZIP download.`,

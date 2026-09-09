@@ -153,7 +153,7 @@ export function GeneratedHistory() {
                   <div className="flex min-w-60 flex-wrap gap-2">
                     <a
                       className="btn"
-                      href={fileUrl(`exports/${record.id}/front.png`)}
+                      href={fileUrl(record.front_path!)}
                       target="_blank"
                       rel="noreferrer"
                     >
@@ -161,13 +161,17 @@ export function GeneratedHistory() {
                     </a>
                     <a
                       className="btn"
-                      href={fileUrl(`exports/${record.id}/back.png`)}
+                      href={fileUrl(record.back_path!)}
                       target="_blank"
                       rel="noreferrer"
                     >
                       Preview back
                     </a>
-                    {['front.png', 'back.png', 'ID.pdf'].map((file) => (
+                    {[
+                      ['front.png', record.front_path],
+                      ['back.png', record.back_path],
+                      ['ID.pdf', record.pdf_path],
+                    ].map(([file, path]) => (
                       <button
                         className="btn"
                         key={file}
@@ -177,7 +181,7 @@ export function GeneratedHistory() {
                             const { downloadFile } =
                               await import('@/lib/export-id');
                             await downloadFile(
-                              `exports/${record.id}/${file}`,
+                              path!,
                               `${safeFilename(record.member)}_${file}`,
                             );
                           })

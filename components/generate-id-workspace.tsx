@@ -342,7 +342,13 @@ function ReviewEditor({
         </button>
         {generation && (
           <div className="flex flex-wrap gap-2">
-            {(['front.png', 'back.png', 'ID.pdf'] as const).map((file) => (
+            {(
+              [
+                ['front.png', generation.front_path],
+                ['back.png', generation.back_path],
+                ['ID.pdf', generation.pdf_path],
+              ] as const
+            ).map(([file, path]) => (
               <button
                 className="btn"
                 key={file}
@@ -350,10 +356,9 @@ function ReviewEditor({
                 onClick={() =>
                   void act('Preparing download…', async () => {
                     const { downloadFile } = await import('@/lib/export-id');
-                    await downloadFile(
-                      `exports/${generation.id}/${file}`,
-                      `${member.aws_sbg_id}_${file}`,
-                    );
+                    if (!path)
+                      throw new Error('Generated file reference is missing.');
+                    await downloadFile(path, `${member.aws_sbg_id}_${file}`);
                   })
                 }
               >

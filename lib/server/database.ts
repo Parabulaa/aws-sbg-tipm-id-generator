@@ -8,8 +8,6 @@ export interface Bindings {
   SUPABASE_URL?: string;
   SUPABASE_PUBLISHABLE_KEY?: string;
   SUPABASE_SECRET_KEY?: string;
-  /** Removed after the storage migration; retained only while old file routes are replaced. */
-  FILES: R2Bucket;
 }
 
 export function bindings(): Bindings {
@@ -125,7 +123,10 @@ export async function saveMember(
     .maybeSingle();
   if (error) {
     if (error.code === '23505')
-      throw new AppError('Email or student ID already belongs to a member.', 409);
+      throw new AppError(
+        'Email or student ID already belongs to a member.',
+        409,
+      );
     throw new AppError('The member could not be saved.');
   }
   if (!data)
@@ -150,5 +151,6 @@ export async function logActivity(
     action,
     metadata: { ...metadata, message },
   });
-  if (error) throw new AppError('The action was saved but could not be logged.');
+  if (error)
+    throw new AppError('The action was saved but could not be logged.');
 }

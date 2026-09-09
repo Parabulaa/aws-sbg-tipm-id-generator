@@ -4,7 +4,6 @@ import type { ColorSettings } from '../domain';
 import { validateLayout } from '../templates';
 import type { Template } from '../templates';
 import { AppError, json, getColors, logActivity } from './database';
-import type { Bindings } from './database';
 import { pngDimensions } from './members';
 
 function toTemplate(row: Record<string, unknown>): Template {
@@ -21,7 +20,9 @@ function toTemplate(row: Record<string, unknown>): Template {
   };
 }
 
-export async function getTemplates(client: SupabaseClient): Promise<Template[]> {
+export async function getTemplates(
+  client: SupabaseClient,
+): Promise<Template[]> {
   const { data, error } = await client
     .from('templates')
     .select('category,side,image_path,layout,version,approved')
@@ -32,7 +33,6 @@ export async function getTemplates(client: SupabaseClient): Promise<Template[]> 
 }
 
 export async function saveTemplate(
-  env: Bindings,
   client: SupabaseClient,
   actorId: string,
   request: Request,
@@ -75,10 +75,15 @@ export async function saveTemplate(
       'Confirm the template and field mapping have been approved.',
     );
   const version = crypto.randomUUID();
-  const image = `templates/${category.toLowerCase()}/${side}/${version}.png`;
-  await env.FILES.put(image, bytes, {
-    httpMetadata: { contentType: 'image/png' },
-  });
+  const objectPath = `${category.toLowerCase()}/${side}/${version}.png`;
+  const image = `id-templates/${objectPath}`;
+  const uploaded = await client.storage
+    .from('id-templates')
+    .upload(objectPath, bytes, { contentType: 'image/png', upsert: false });
+  if (uploaded.error)
+    throw new AppError(
+      'The approved template could not be saved to private storage.',
+    );
   const { data, error } = await client
     .from('templates')
     .upsert(
@@ -97,7 +102,7 @@ export async function saveTemplate(
     .select('category,side,image_path,layout,version,approved')
     .single();
   if (error) {
-    await env.FILES.delete(image);
+    await client.storage.from('id-templates').remove([objectPath]);
     throw new AppError('The approved template could not be saved.');
   }
   await logActivity(
@@ -157,5 +162,8 @@ export async function saveColors(
     'team_colors_changed',
     'Updated officer team-color configuration.',
   );
-  return json({ ...(saved.value as Omit<ColorSettings, 'revision'>), revision: saved.revision });
+  return json({
+    ...(saved.value as Omit<ColorSettings, 'revision'>),
+    revision: saved.revision,
+  });
 }

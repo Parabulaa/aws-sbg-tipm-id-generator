@@ -8,7 +8,6 @@ import {
   checkRevision,
   json,
 } from './database';
-import type { Bindings } from './database';
 import { getTemplates } from './configuration';
 import { pngDimensions } from './members';
 
@@ -49,7 +48,6 @@ export async function getGenerations(
 }
 
 export async function generate(
-  env: Bindings,
   client: SupabaseClient,
   actorId: string,
   actorName: string,
@@ -105,18 +103,28 @@ export async function generate(
   }
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
-  const base = `exports/${member.id}/${id}`;
-  const keys = [`${base}/front.png`, `${base}/back.png`, `${base}/ID.pdf`];
+  const base = `${member.id}/${id}`;
+  const objectPaths = [
+    `${base}/front.png`,
+    `${base}/back.png`,
+    `${base}/ID.pdf`,
+  ];
+  const keys = objectPaths.map((path) => `generated-ids/${path}`);
   try {
-    await Promise.all(
-      keys.map((key, index) =>
-        env.FILES.put(key, files[['front', 'back', 'pdf'][index]], {
-          httpMetadata: {
+    const uploads = await Promise.all(
+      objectPaths.map((objectPath, index) =>
+        client.storage
+          .from('generated-ids')
+          .upload(objectPath, files[['front', 'back', 'pdf'][index]], {
             contentType: index === 2 ? 'application/pdf' : 'image/png',
-          },
-        }),
+            upsert: false,
+          }),
       ),
     );
+    if (uploads.some((upload) => upload.error))
+      throw new AppError(
+        'Generated files could not be saved to private storage.',
+      );
     const accent = accentColor(member, colors);
     const { data, error } = await client.rpc('record_generation', {
       generation_id: id,
@@ -148,7 +156,7 @@ export async function generate(
     };
     return json(record, 201);
   } catch (error) {
-    await env.FILES.delete(keys);
+    await client.storage.from('generated-ids').remove(objectPaths);
     throw error;
   }
 }

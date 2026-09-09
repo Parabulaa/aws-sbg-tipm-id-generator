@@ -101,7 +101,7 @@ async function handle(request: Request) {
         ? json(await getTemplates(auth.client))
         : request.method === 'POST'
           ? (assertOfficerRole(auth.profile, 'admin'),
-            await saveTemplate(env, auth.client, auth.profile.id, request))
+            await saveTemplate(auth.client, auth.profile.id, request))
           : json({ error: 'Method not allowed' }, 405);
     if (path[0] === 'officers') {
       assertOfficerRole(auth.profile, 'admin');
@@ -146,47 +146,31 @@ async function handle(request: Request) {
       return json(await getActivity(auth.client));
     if (path[0] === 'generations') {
       if (request.method === 'POST')
-        return await generate(
-          env,
-          auth.client,
-          auth.profile.id,
-          actor,
-          request,
-        );
+        return await generate(auth.client, auth.profile.id, actor, request);
       if (request.method === 'GET')
         return json(await getGenerations(auth.client));
     }
     if (path[0] === 'files' && request.method === 'GET') {
       const key = decodeURIComponent(path.slice(1).join('/'));
-      if (key.startsWith('member-photos/')) {
-        const objectPath = key.slice('member-photos/'.length);
-        if (!/^[a-zA-Z0-9_./-]+$/.test(objectPath) || objectPath.includes('..'))
-          throw new AppError('Invalid file path.');
-        const { data, error } = await auth.client.storage
-          .from('member-photos')
-          .download(objectPath);
-        if (error || !data) throw new AppError('File not found.', 404);
-        return new Response(data, {
-          headers: {
-            'Cache-Control': 'private, no-store',
-            'Content-Type': data.type || 'image/png',
-            'X-Content-Type-Options': 'nosniff',
-          },
-        });
-      }
+      const [bucket, ...segments] = key.split('/');
+      const objectPath = segments.join('/');
       if (
-        !/^(photos|templates|exports)\/[a-zA-Z0-9_./-]+$/.test(key) ||
-        key.includes('..')
+        !['member-photos', 'id-templates', 'generated-ids'].includes(bucket) ||
+        !/^[a-zA-Z0-9_./+-]+$/.test(objectPath) ||
+        objectPath.includes('..')
       )
         throw new AppError('Invalid file path.');
-      const file = await env.FILES.get(key);
-      if (!file) throw new AppError('File not found.', 404);
-      const headers = new Headers({
-        'Cache-Control': 'private, no-store',
-        'X-Content-Type-Options': 'nosniff',
+      const { data, error } = await auth.client.storage
+        .from(bucket)
+        .download(objectPath);
+      if (error || !data) throw new AppError('File not found.', 404);
+      return new Response(data, {
+        headers: {
+          'Cache-Control': 'private, no-store',
+          'Content-Type': data.type || 'application/octet-stream',
+          'X-Content-Type-Options': 'nosniff',
+        },
       });
-      file.writeHttpMetadata(headers);
-      return new Response(file.body, { headers });
     }
     return json({ error: 'Not found.' }, 404);
   } catch (error) {
