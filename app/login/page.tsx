@@ -23,15 +23,15 @@ export default function LoginPage() {
       });
   }, [configured, router]);
   return (
-    <main className="grid min-h-screen place-items-center bg-slate-50 px-5 py-12">
-      <section className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-7 shadow-sm sm:p-9">
-        <Link href="/" className="text-sm font-semibold text-amber-700">
-          ← Public home
-        </Link>
-        <h1 className="mt-6 text-3xl font-bold">Officer Login</h1>
-        <p className="mt-2 text-slate-600">
-          Authorized AWS SBG TIP Manila officers only.
-        </p>
+    <main className="grid min-h-screen place-items-center bg-slate-950 px-5 py-12 text-white">
+      <section className="w-full max-w-md rounded-3xl border border-white/10 bg-white/[.06] p-7 shadow-2xl backdrop-blur sm:p-9">
+        <div className="mb-8 flex items-center justify-between">
+          <div className="grid size-11 place-items-center rounded-xl bg-amber-500 text-xs font-black text-slate-950">AWS</div>
+          <Link href="/" className="text-sm font-semibold text-amber-300 transition hover:text-amber-200">← Public home</Link>
+        </div>
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-300">SBG · TIP Manila</p>
+        <h1 className="mt-3 text-3xl font-bold">Officer Login</h1>
+        <p className="mt-2 text-slate-300">Sign in to manage member records and generate IDs.</p>
         <form
           className="mt-7 space-y-4"
           onSubmit={async (event) => {
@@ -62,12 +62,13 @@ export default function LoginPage() {
           }}
         >
           <label className="field">
-            T.I.P./Officer Email
-            <input name="email" type="email" autoComplete="username" required />
+            <span className="text-slate-200">T.I.P./Officer Email</span>
+            <input className="border-white/15 bg-slate-900/70 text-white placeholder:text-slate-500" name="email" type="email" autoComplete="username" required />
           </label>
           <label className="field">
-            Password
+            <span className="text-slate-200">Password</span>
             <input
+              className="border-white/15 bg-slate-900/70 text-white placeholder:text-slate-500"
               name="password"
               type="password"
               autoComplete="current-password"
