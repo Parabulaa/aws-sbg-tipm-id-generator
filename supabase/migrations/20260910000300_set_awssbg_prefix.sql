@@ -1,5 +1,5 @@
--- Normalize legacy/custom prefixes to the approved AWSSBG-TIPM format.
--- IDs already assigned remain immutable; this affects future allocations.
+-- Finalize the approved organization prefix as AWSSBG-TIPM.
+-- Existing IDs are immutable; this only controls future allocations.
 
 update public.app_settings
 set value = '"AWSSBG-TIPM"'::jsonb,

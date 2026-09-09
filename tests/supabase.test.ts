@@ -40,7 +40,7 @@ void test('member creation allocates IDs while holding the yearly counter lock',
     /from public\.id_counters where scope = year_scope for update/i,
   );
   assert.match(sql, /lpad\(\(first_value \+ offset_value\)::text, 3, '0'\)/i);
-  assert.match(sql, /AWSCC-TIPM/i);
+  assert.match(sql, /AWSSBG-TIPM/i);
   assert.match(sql, /jsonb_array_length\(member_rows\)/i);
   assert.match(sql, /aws_sbg_id text unique not null/i);
 });

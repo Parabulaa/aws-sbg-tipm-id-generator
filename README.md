@@ -20,7 +20,7 @@ Public Home → Officer Login → Dashboard → five-field XLSX import or manual
 The application supports Member, Associate, and Officer classifications; controlled officer positions; automatic team/office derivation; configurable administrator-managed officer colors; Draft, Needs Photo, Needs Attention, Ready, and Generated statuses; Save & Next; archive/administrator restore; actor-aware activity; and real shared dashboard metrics.
 
 It starts with no members, history, or mock application data. New IDs use the
-`AWSCC-TIPM-YY###` format (for example, `AWSCC-TIPM-26001` for the first ID
+`AWSSBG-TIPM-YY###` format (for example, `AWSSBG-TIPM-26001` for the first ID
 assigned in 2026). Sequence values are allocated in import order, so import
 the 19 officers first when officers must occupy `001`–`019`; member IDs then
 continue at `020`.
@@ -38,8 +38,9 @@ npm run dev
 Fill `.env.local`, apply the checked-in Supabase migrations, and create the first administrator as described in [Supabase setup](docs/SUPABASE_SETUP.md). Open http://localhost:3000.
 
 If upgrading an existing deployment, apply the latest migration
-(`20260910000100_awscc_id_format.sql`) before importing new members. Existing
-IDs are preserved; only newly allocated IDs use the AWSCC format.
+(`20260910000100_awscc_id_format.sql` and the later prefix-normalization
+migration) before importing new members. Existing IDs are preserved; only
+newly allocated IDs use the AWSSBG format.
 
 ## Required organization assets
 

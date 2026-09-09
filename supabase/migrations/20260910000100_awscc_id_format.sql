@@ -1,12 +1,12 @@
--- AWSCC-TIPM IDs use the school-year term and a three-digit sequence:
--- AWSCC-TIPM-26001 (26 = 2026 term, 001 = first assigned ID).
+-- AWSSBG-TIPM IDs use the school-year term and a three-digit sequence:
+-- AWSSBG-TIPM-26001 (26 = 2026 term, 001 = first assigned ID).
 -- Existing IDs are immutable; this affects IDs created after this migration.
 
 update public.app_settings
-set value = '"AWSCC-TIPM"'::jsonb,
+set value = '"AWSSBG-TIPM"'::jsonb,
     updated_at = now()
 where key = 'aws_sbg_id_prefix'
-  and value #>> '{}' = 'AWS-SBG-TIPM';
+  and value #>> '{}' in ('AWS-SBG-TIPM', 'AWSCC-TIPM');
 
 alter table public.generated_ids
   alter column back_path drop not null,
@@ -43,7 +43,7 @@ begin
   end if;
   select value #>> '{}' into prefix
   from public.app_settings where key = 'aws_sbg_id_prefix';
-  if prefix is null or btrim(prefix) = '' then prefix := 'AWSCC-TIPM'; end if;
+  if prefix is null or btrim(prefix) = '' then prefix := 'AWSSBG-TIPM'; end if;
 
   insert into public.id_counters (scope, last_value)
   values (year_scope, 0)
