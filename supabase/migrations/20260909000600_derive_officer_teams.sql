@@ -1,6 +1,6 @@
-create or replace function public.team_for_officer_position(position text)
+create or replace function public.team_for_officer_position(p_position text)
 returns text language sql immutable set search_path = '' as $$
-  select case position
+  select case p_position
     when 'LORSO REPRESENTATIVE' then 'LORSO'
     when 'CHIEF EXECUTIVE OFFICER/LEAD' then 'Executive'
     when 'EXECUTIVE SECRETARY' then 'Executive'
