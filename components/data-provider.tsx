@@ -27,6 +27,15 @@ interface Data {
   refresh: () => Promise<void>;
 }
 const Context = createContext<Data | null>(null);
+const emptyData: Omit<Data, 'refresh'> = {
+  members: [],
+  colors: { mode: 'default', teams: [], revision: 0 },
+  generations: [],
+  activity: [],
+  templates: [],
+  user: 'Officer',
+  role: 'officer',
+};
 export function useData() {
   const data = useContext(Context);
   if (!data) throw new Error('DataProvider is required');
@@ -36,7 +45,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const isPublic = pathname === '/' || pathname === '/login';
-  const [data, setData] = useState<Omit<Data, 'refresh'> | null>(null);
+  const [data, setData] = useState<Omit<Data, 'refresh'>>(emptyData);
   const [error, setError] = useState('');
   const refresh = useCallback(async () => {
     try {
@@ -44,28 +53,30 @@ export function DataProvider({ children }: { children: ReactNode }) {
         user: string;
         role: 'admin' | 'officer';
       }>('session');
-      const [members, colors, generations, activity, templates] =
-        await Promise.all([
-          api<MemberRecord[]>('members'),
-          api<ColorSettings>('colors'),
-          api<Generation[]>('generations'),
-          api<Activity[]>('activity'),
-          api<Template[]>('templates'),
-        ]);
+      const results = await Promise.allSettled([
+        api<MemberRecord[]>('members'),
+        api<ColorSettings>('colors'),
+        api<Generation[]>('generations'),
+        api<Activity[]>('activity'),
+        api<Template[]>('templates'),
+      ]);
+      const [membersResult, colorsResult, generationsResult, activityResult, templatesResult] = results;
+      const firstError = results.find(
+        (result): result is PromiseRejectedResult => result.status === 'rejected',
+      )?.reason;
       setData({
-        members,
-        colors,
-        generations,
-        activity,
-        templates,
+        members: membersResult.status === 'fulfilled' ? membersResult.value : [],
+        colors: colorsResult.status === 'fulfilled' ? colorsResult.value : emptyData.colors,
+        generations: generationsResult.status === 'fulfilled' ? generationsResult.value : [],
+        activity: activityResult.status === 'fulfilled' ? activityResult.value : [],
+        templates: templatesResult.status === 'fulfilled' ? templatesResult.value : [],
         user: session.user,
         role: session.role,
       });
-      setError('');
+      setError(firstError ? errorText(firstError) : '');
     } catch (error) {
       setError(errorText(error));
       if (error instanceof ApiError && error.status === 401) {
-        setData(null);
         router.replace('/login');
       }
       throw error;
@@ -78,27 +89,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
     });
   }, [isPublic, refresh]);
   if (isPublic) return children;
-  if (!data)
-    return (
-      <main className="mx-auto max-w-lg p-8">
-        <h1 className="text-2xl font-bold">AWS SBG TIP Manila</h1>
-        {!error ? (
-          <output className="mt-4 block">Loading records…</output>
-        ) : (
-          <button
-            className="btn mt-4"
-            onClick={() => void refresh().catch(() => {})}
-          >
-            Retry connection
-          </button>
-        )}
-        {error && (
-          <p role="alert" className="notice-error mt-4">
-            {error}
-          </p>
-        )}
-      </main>
-    );
   return (
     <Context.Provider value={{ ...data, refresh }}>
       {error && (

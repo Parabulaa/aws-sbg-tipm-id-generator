@@ -8,7 +8,25 @@ export async function api<T>(
   if (token) headers.set('Authorization', `Bearer ${token}`);
   if (!(options.body instanceof FormData))
     headers.set('Content-Type', 'application/json');
-  const response = await fetch(`/api/${path}`, { ...options, headers });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15_000);
+  let response: Response;
+  try {
+    response = await fetch(`/api/${path}`, {
+      ...options,
+      headers,
+      signal: options.signal ?? controller.signal,
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError')
+      throw new ApiError(
+        'The connection timed out. Check your Supabase project and try again.',
+        504,
+      );
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
   if (!response.ok) {
     const body = (await response.json().catch(() => ({}))) as {
       error?: string;
