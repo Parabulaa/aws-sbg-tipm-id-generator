@@ -15,7 +15,7 @@ export default function Home() {
         <section className="grid flex-1 items-center gap-14 py-16 lg:grid-cols-[1.15fr_.85fr] lg:py-24">
           <div>
             <p className="inline-flex rounded-full border border-amber-300/30 bg-amber-300/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-amber-300">Internal officer workspace</p>
-            <h1 className="mt-6 max-w-3xl text-5xl font-bold tracking-tight sm:text-7xl">Build once.<br /><span className="text-amber-400">Issue confidently.</span></h1>
+            <h1 aria-label="ID Generator" className="mt-6 max-w-3xl text-5xl font-bold tracking-tight sm:text-7xl">Build once.<br /><span className="text-amber-400">Issue confidently.</span></h1>
             <p className="mt-6 max-w-xl text-lg leading-8 text-slate-300">Create accurate, production-ready AWS Student Builder Group identification cards from one secure review workflow.</p>
             <Link className="btn-primary mt-9 inline-flex px-6" href="/login">Open officer workspace <span aria-hidden="true">→</span></Link>
           </div>

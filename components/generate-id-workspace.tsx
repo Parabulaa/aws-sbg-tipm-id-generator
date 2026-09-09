@@ -297,6 +297,7 @@ function ReviewEditor({
         />
         <button
           className="btn-primary"
+          aria-label={member.status === 'Generated' ? 'Regenerate ID' : 'Generate ID'}
           disabled={
             !!busy ||
             dirty ||
