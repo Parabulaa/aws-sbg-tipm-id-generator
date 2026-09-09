@@ -304,7 +304,7 @@ function ReviewEditor({
             !['Ready', 'Generated'].includes(member.status)
           }
           onClick={() =>
-            void act('Generating front, back and PDF…', async () => {
+            void act('Generating front PNG…', async () => {
               let current = member;
               if (current.status === 'Generated') {
                 if (
@@ -324,7 +324,12 @@ function ReviewEditor({
                 setSaved(current);
               }
               const { generateMember } = await import('@/lib/export-id');
-              const result = await generateMember(current, templates, colors);
+              const result = await generateMember(
+                current,
+                templates,
+                colors,
+                'front',
+              );
               setGeneration(result);
               const updated = {
                 ...current,
@@ -338,16 +343,14 @@ function ReviewEditor({
             })
           }
         >
-          {member.status === 'Generated' ? 'Regenerate ID' : 'Generate ID'}
+          {member.status === 'Generated'
+            ? 'Regenerate Front ID'
+            : 'Generate Front ID'}
         </button>
         {generation && (
           <div className="flex flex-wrap gap-2">
             {(
-              [
-                ['front.png', generation.front_path],
-                ['back.png', generation.back_path],
-                ['ID.pdf', generation.pdf_path],
-              ] as const
+              [['front.png', generation.front_path]] as const
             ).map(([file, path]) => (
               <button
                 className="btn"
@@ -363,11 +366,7 @@ function ReviewEditor({
                 }
               >
                 Download{' '}
-                {file === 'ID.pdf'
-                  ? 'PDF'
-                  : file === 'front.png'
-                    ? 'Front PNG'
-                    : 'Back PNG'}
+                Front PNG
               </button>
             ))}
           </div>

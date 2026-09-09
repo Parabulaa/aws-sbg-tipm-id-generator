@@ -9,10 +9,11 @@ export async function generateMember(
   member: MemberRecord,
   templates: Template[],
   colors: ColorSettings,
+  side: 'front' | 'both' = 'both',
 ) {
   if (member.status !== 'Ready')
     throw new Error('Only Ready members can be generated.');
-  const sides = ['front', 'back'] as const;
+  const sides = side === 'front' ? (['front'] as const) : (['front', 'back'] as const);
   const selected = sides.map((side) =>
     templates.find(
       (template) =>
@@ -23,7 +24,7 @@ export async function generateMember(
   );
   if (selected.some((template) => !template))
     throw new Error(
-      `Approved ${member.membership_type} front and back templates are required.`,
+      `Approved ${member.membership_type} ${side === 'front' ? 'front' : 'front and back'} templates are required.`,
     );
   const images: Blob[] = [];
   for (const template of selected) {
@@ -33,13 +34,6 @@ export async function generateMember(
     canvas.width = 0;
     canvas.height = 0;
   }
-  const pdfDocument = await PDFDocument.create();
-  for (const blob of images) {
-    const image = await pdfDocument.embedPng(await blob.arrayBuffer());
-    const page = pdfDocument.addPage([288, 468]);
-    page.drawImage(image, { x: 0, y: 0, width: 288, height: 468 });
-  }
-  const pdf = await pdfDocument.save();
   const form = new FormData();
   form.set('member_id', member.id);
   form.set('revision', String(member.revision));
@@ -49,12 +43,21 @@ export async function generateMember(
     selected.map((template) => template!.version).join(':'),
   );
   form.set('front', images[0], 'front.png');
-  form.set('back', images[1], 'back.png');
-  form.set(
-    'pdf',
-    new Blob([Uint8Array.from(pdf)], { type: 'application/pdf' }),
-    'ID.pdf',
-  );
+  if (side === 'both') {
+    const pdfDocument = await PDFDocument.create();
+    for (const blob of images) {
+      const image = await pdfDocument.embedPng(await blob.arrayBuffer());
+      const page = pdfDocument.addPage([288, 468]);
+      page.drawImage(image, { x: 0, y: 0, width: 288, height: 468 });
+    }
+    const pdf = await pdfDocument.save();
+    form.set('back', images[1], 'back.png');
+    form.set(
+      'pdf',
+      new Blob([Uint8Array.from(pdf)], { type: 'application/pdf' }),
+      'ID.pdf',
+    );
+  }
   return api<Generation>('generations', { method: 'POST', body: form });
 }
 export async function downloadFile(key: string, name: string) {
@@ -92,7 +95,7 @@ export async function exportZip(
       ['back.png', record.back_path],
       ['ID.pdf', record.pdf_path],
     ] as const) {
-      if (!path) throw new Error('A generated file reference is missing.');
+      if (!path) continue;
       const response = await fetch(fileUrl(path));
       if (!response.ok)
         throw new Error(
