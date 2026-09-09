@@ -17,14 +17,12 @@ export async function getGenerations(
   const { data, error } = await client
     .from('generated_ids')
     .select(
-      'id,member_id,member_snapshot,generated_at,generated_by,effective_accent,template_versions,front_path,back_path,pdf_path,officer_profiles:generated_by(display_name,email)',
+      'id,member_id,member_snapshot,generated_at,generated_by,effective_accent,template_versions,front_path,back_path,pdf_path,actor:officer_profiles!generated_ids_generated_by_fkey(display_name,email)',
     )
     .order('generated_at', { ascending: false });
   if (error) throw new AppError('Generation history could not be loaded.');
   return (data ?? []).map((row) => {
-    const profile = Array.isArray(row.officer_profiles)
-      ? row.officer_profiles[0]
-      : row.officer_profiles;
+    const profile = Array.isArray(row.actor) ? row.actor[0] : row.actor;
     return {
       id: row.id as string,
       member_id: row.member_id as string,

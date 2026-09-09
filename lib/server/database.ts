@@ -58,22 +58,33 @@ export async function getColors(
 export async function getActivity(client: SupabaseClient) {
   const { data, error } = await client
     .from('activities')
-    .select('id,member_id,action,metadata,created_at')
+    .select(
+      'id,member_id,action,metadata,created_at,actor:officer_profiles!activities_actor_id_fkey(display_name,email)',
+    )
     .order('created_at', { ascending: false })
     .limit(30);
   if (error) throw new AppError('Activity could not be loaded.');
-  return (data ?? []).map((row) => ({
-    id: row.id as string,
-    member_id: row.member_id as string | null,
-    message:
+  return (data ?? []).map((row) => {
+    const actor = Array.isArray(row.actor) ? row.actor[0] : row.actor;
+    const actorName =
+      (actor as { display_name?: string; email?: string } | null)
+        ?.display_name ||
+      (actor as { email?: string } | null)?.email ||
+      'System';
+    const action =
       typeof row.metadata === 'object' &&
       row.metadata &&
       'message' in row.metadata &&
       typeof row.metadata.message === 'string'
         ? row.metadata.message
-        : String(row.action),
-    created_at: row.created_at as string,
-  })) satisfies Activity[];
+        : String(row.action).replaceAll('_', ' ');
+    return {
+      id: row.id as string,
+      member_id: row.member_id as string | null,
+      message: `${actorName} — ${action}`,
+      created_at: row.created_at as string,
+    };
+  }) satisfies Activity[];
 }
 
 export function checkRevision(member: MemberRecord, revision: unknown) {
