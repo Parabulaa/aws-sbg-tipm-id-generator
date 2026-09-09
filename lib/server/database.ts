@@ -59,18 +59,13 @@ export async function getActivity(client: SupabaseClient) {
   const { data, error } = await client
     .from('activities')
     .select(
-      'id,member_id,action,metadata,created_at,actor:officer_profiles!activities_actor_id_fkey(display_name,email)',
+      'id,member_id,action,metadata,created_at,actor_id',
     )
     .order('created_at', { ascending: false })
     .limit(30);
   if (error) throw new AppError('Activity could not be loaded.');
   return (data ?? []).map((row) => {
-    const actor = Array.isArray(row.actor) ? row.actor[0] : row.actor;
-    const actorName =
-      (actor as { display_name?: string; email?: string } | null)
-        ?.display_name ||
-      (actor as { email?: string } | null)?.email ||
-      'System';
+    const actorName = 'Officer';
     const action =
       typeof row.metadata === 'object' &&
       row.metadata &&

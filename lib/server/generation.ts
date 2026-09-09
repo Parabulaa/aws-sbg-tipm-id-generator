@@ -17,22 +17,17 @@ export async function getGenerations(
   const { data, error } = await client
     .from('generated_ids')
     .select(
-      'id,member_id,member_snapshot,generated_at,generated_by,effective_accent,template_versions,front_path,back_path,pdf_path,actor:officer_profiles!generated_ids_generated_by_fkey(display_name,email)',
+      'id,member_id,member_snapshot,generated_at,generated_by,effective_accent,template_versions,front_path,back_path,pdf_path',
     )
     .order('generated_at', { ascending: false });
   if (error) throw new AppError('Generation history could not be loaded.');
   return (data ?? []).map((row) => {
-    const profile = Array.isArray(row.actor) ? row.actor[0] : row.actor;
     return {
       id: row.id as string,
       member_id: row.member_id as string,
       member: row.member_snapshot as MemberRecord,
       generated_at: row.generated_at as string,
-      generated_by:
-        (profile as { display_name?: string; email?: string } | null)
-          ?.display_name ||
-        (profile as { email?: string } | null)?.email ||
-        'Officer',
+      generated_by: 'Officer',
       accent: row.effective_accent as string,
       template_version: Object.values(
         row.template_versions as Record<string, string>,
