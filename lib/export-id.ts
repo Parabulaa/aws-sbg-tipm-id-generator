@@ -42,6 +42,10 @@ export async function generateMember(
     'template_version',
     selected.map((template) => template!.version).join(':'),
   );
+  // Tell the API which output is being requested. Without this explicit
+  // value, a front-only request is interpreted as a both-sides generation
+  // and incorrectly requires a back template and PDF.
+  form.set('side', side);
   form.set('front', images[0], 'front.png');
   if (side === 'both') {
     const pdfDocument = await PDFDocument.create();
