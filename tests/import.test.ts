@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import ExcelJS from 'exceljs';
+import JSZip from 'jszip';
 import { normalizeHeader, parseXlsx } from '../lib/import-xlsx';
 
 async function workbook(rows: unknown[][]) {
@@ -8,6 +9,24 @@ async function workbook(rows: unknown[][]) {
   wb.addWorksheet('Members').addRows(rows);
   const bytes = await wb.xlsx.writeBuffer();
   return Uint8Array.from(new Uint8Array(bytes)).buffer;
+}
+
+async function prefixedWorkbook(rows: unknown[][]) {
+  const source = await workbook(rows);
+  const zip = await JSZip.loadAsync(source);
+  for (const name of Object.keys(zip.files)) {
+    if (!name.endsWith('.xml')) continue;
+    const entry = zip.file(name);
+    if (!entry) continue;
+    let xml = await entry.async('string');
+    const namespace = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
+    if (xml.includes(namespace)) {
+      xml = xml.replace(`xmlns="${namespace}"`, `xmlns:x="${namespace}"`);
+      xml = xml.replace(/<(\/?)([a-zA-Z][\w.-]*)/g, '<$1x:$2');
+    }
+    zip.file(name, xml);
+  }
+  return zip.generateAsync({ type: 'arraybuffer' });
 }
 
 const headers = [
@@ -37,4 +56,10 @@ void test('header aliases, missing columns, and invalid workbooks are explicit',
   await assert.rejects(() => parseXlsx(new ArrayBuffer(20)), /Invalid XLSX/);
   const bytes = await workbook([['name'], ['Test']]);
   await assert.rejects(() => parseXlsx(bytes), /Missing required columns/);
+});
+
+void test('imports workbooks that use prefixed spreadsheet XML', async () => {
+  const parsed = await parseXlsx(await prefixedWorkbook([headers, row]), []);
+  assert.equal(parsed.length, 1);
+  assert.equal(parsed[0].member.tip_email, 'test@example.org');
 });

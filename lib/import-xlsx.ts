@@ -1,4 +1,5 @@
 import ExcelJS from 'exceljs';
+import JSZip from 'jszip';
 import { normalizeMember, validateMember } from './domain';
 import type { Category, MemberInput, MemberRecord } from './domain';
 
@@ -41,6 +42,41 @@ export function normalizeHeader(value: string) {
     .replace(/\s+/g, ' ');
 }
 
+/**
+ * Some spreadsheet writers emit OOXML with a prefixed `x:` namespace and
+ * absolute table relationship targets. Both are valid OOXML, but older
+ * ExcelJS parsers do not reconcile those variants. Normalize only the XML
+ * parts needed by ExcelJS and keep the original upload untouched.
+ */
+async function repairExcelJsCompatibility(bytes: ArrayBuffer): Promise<ArrayBuffer> {
+  const zip = await JSZip.loadAsync(bytes);
+  const xmlEntries = Object.keys(zip.files).filter(
+    (name) => name.endsWith('.xml') || name.endsWith('.rels'),
+  );
+
+  for (const name of xmlEntries) {
+    const entry = zip.file(name);
+    if (!entry) continue;
+    let xml = await entry.async('string');
+
+    // Normalize the spreadsheet namespace prefix used by this workbook.
+    if (xml.includes('xmlns:x=')) {
+      xml = xml.replace(/xmlns:x=/g, 'xmlns=');
+      xml = xml.replace(/<x:/g, '<').replace(/<\/x:/g, '</');
+    }
+
+    // Worksheet relationship targets are relative to xl/worksheets/.
+    if (/^xl\/worksheets\/_rels\/sheet\d+\.xml\.rels$/.test(name)) {
+      xml = xml.replace(new RegExp('Target="/xl/tables/', 'g'), 'Target="../tables/');
+    }
+
+    zip.file(name, xml);
+  }
+
+  const repaired = await zip.generateAsync({ type: 'arraybuffer' });
+  return repaired;
+}
+
 export async function parseXlsx(
   bytes: ArrayBuffer,
   existingMembers: Pick<MemberRecord, 'tip_email' | 'student_id_number'>[] = [],
@@ -62,14 +98,21 @@ export async function parseXlsx(
         view.getUint16(i + 28, true) +
         view.getUint16(i + 30, true) +
         view.getUint16(i + 32, true);
-    }
+  }
   const workbook = new ExcelJS.Workbook();
   try {
     await workbook.xlsx.load(bytes);
   } catch {
-    throw new Error(
-      'Invalid XLSX workbook. Save the spreadsheet as .xlsx and try again.',
-    );
+    // Retry once after normalizing OOXML variants that ExcelJS cannot parse.
+    // If this also fails, report the same user-facing validation message.
+    try {
+      const repaired = await repairExcelJsCompatibility(bytes);
+      await workbook.xlsx.load(repaired);
+    } catch {
+      throw new Error(
+        'Invalid XLSX workbook. Save the spreadsheet as .xlsx and try again.',
+      );
+    }
   }
   const sheet = workbook.worksheets[0];
   if (!sheet) throw new Error('The workbook has no worksheets.');
