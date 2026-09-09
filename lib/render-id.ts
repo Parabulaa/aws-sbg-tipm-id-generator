@@ -208,7 +208,10 @@ export async function normalizePhoto(file: File) {
     const canvas = document.createElement('canvas');
     const scale = Math.min(
       1,
-      2400 / Math.max(image.naturalWidth, image.naturalHeight),
+      // Keep the normalized PNG comfortably below the private storage and
+      // request limits while retaining more than enough detail for a photo
+      // rendered into a 1200 × 1950 ID.
+      1200 / Math.max(image.naturalWidth, image.naturalHeight),
     );
     canvas.width = Math.round(image.naturalWidth * scale);
     canvas.height = Math.round(image.naturalHeight * scale);
