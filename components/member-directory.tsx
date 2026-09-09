@@ -16,7 +16,7 @@ import {
 import { api, errorText, fileUrl } from '@/lib/client';
 import { GenerationControls } from './generation-controls';
 export function MemberDirectory() {
-  const { members, refresh } = useData();
+  const { members, refresh, role } = useData();
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('');
   const [team, setTeam] = useState('');
@@ -26,6 +26,10 @@ export function MemberDirectory() {
   const [draft, setDraft] = useState({ ...blankMember });
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [archived, setArchived] = useState<
+    import('@/lib/domain').MemberRecord[]
+  >([]);
+  const [showArchived, setShowArchived] = useState(false);
   const visible = members.filter(
     (member) =>
       (!category || member.membership_type === category) &&
@@ -48,6 +52,27 @@ export function MemberDirectory() {
       <button className="btn" onClick={() => setAdding(!adding)}>
         {adding ? 'Cancel adding' : 'Add member manually'}
       </button>
+      {role === 'admin' && (
+        <button
+          className="btn ml-2"
+          onClick={async () => {
+            const next = !showArchived;
+            setShowArchived(next);
+            if (next) {
+              try {
+                const rows = await api<import('@/lib/domain').MemberRecord[]>(
+                  'members?archived=true',
+                );
+                setArchived(rows.filter((member) => member.archived_at));
+              } catch (error) {
+                setError(errorText(error));
+              }
+            }
+          }}
+        >
+          {showArchived ? 'Hide archived members' : 'Show archived members'}
+        </button>
+      )}
       {adding && (
         <form
           className="rounded-2xl border bg-white p-5 space-y-4"
@@ -193,7 +218,7 @@ export function MemberDirectory() {
             <tbody>
               {visible.map((member) => (
                 <tr key={member.id}>
-                  <td>
+                  <td aria-label={`Selection for ${displayName(member)}`}>
                     <input
                       aria-label={`Select ${displayName(member)}`}
                       type="checkbox"
@@ -232,13 +257,42 @@ export function MemberDirectory() {
                     <StatusBadge status={member.status} />
                   </td>
                   <td>{member.valid_until ?? 'Not issued'}</td>
-                  <td>
-                    <Link
-                      className="btn whitespace-nowrap"
-                      href={`/generate-id?member=${member.id}`}
-                    >
-                      Review / Edit ID
-                    </Link>
+                  <td aria-label={`Actions for ${displayName(member)}`}>
+                    <div className="flex min-w-48 flex-wrap gap-2">
+                      <Link
+                        className="btn whitespace-nowrap"
+                        href={`/generate-id?member=${member.id}`}
+                      >
+                        Review / Edit ID
+                      </Link>
+                      <button
+                        className="btn"
+                        disabled={busy}
+                        onClick={async () => {
+                          if (
+                            !window.confirm(`Archive ${displayName(member)}?`)
+                          )
+                            return;
+                          setBusy(true);
+                          setError('');
+                          try {
+                            await api(`members/${member.id}/archive`, {
+                              method: 'POST',
+                              body: JSON.stringify({
+                                revision: member.revision,
+                              }),
+                            });
+                            await refresh();
+                          } catch (error) {
+                            setError(errorText(error));
+                          } finally {
+                            setBusy(false);
+                          }
+                        }}
+                      >
+                        Archive
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -256,6 +310,51 @@ export function MemberDirectory() {
           {visible.length} displayed · {selected.length} selected
         </p>
       </section>
+      {showArchived && role === 'admin' && (
+        <section className="rounded-2xl border bg-white p-5">
+          <h2 className="font-semibold">Archived members</h2>
+          <div className="mt-3 space-y-2">
+            {archived.map((member) => (
+              <div
+                key={member.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3"
+              >
+                <div>
+                  <p className="font-medium">{displayName(member)}</p>
+                  <p className="text-sm text-slate-500">{member.aws_sbg_id}</p>
+                </div>
+                <button
+                  className="btn"
+                  disabled={busy}
+                  onClick={async () => {
+                    setBusy(true);
+                    setError('');
+                    try {
+                      await api(`members/${member.id}/restore`, {
+                        method: 'POST',
+                        body: JSON.stringify({ revision: member.revision }),
+                      });
+                      await refresh();
+                      setArchived((items) =>
+                        items.filter((item) => item.id !== member.id),
+                      );
+                    } catch (error) {
+                      setError(errorText(error));
+                    } finally {
+                      setBusy(false);
+                    }
+                  }}
+                >
+                  Restore
+                </button>
+              </div>
+            ))}
+            {!archived.length && (
+              <p className="text-sm text-slate-500">No archived members.</p>
+            )}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

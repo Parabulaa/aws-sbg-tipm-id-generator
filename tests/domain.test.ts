@@ -12,6 +12,7 @@ import {
   formatAwsSbgId,
   officerPositions,
   teamForOfficerPosition,
+  isArchived,
 } from '../lib/domain';
 
 const input = {
@@ -95,4 +96,9 @@ void test('technology leads and CTO roles derive the Technology office', () => {
     'SOFTWARE ENGINEERING LEAD',
   ])
     assert.equal(teamForOfficerPosition(position), 'Technology / CTO Office');
+});
+
+void test('archive state is explicit and reversible', () => {
+  assert.equal(isArchived({ archived_at: null }), false);
+  assert.equal(isArchived({ archived_at: '2026-09-09T00:00:00Z' }), true);
 });

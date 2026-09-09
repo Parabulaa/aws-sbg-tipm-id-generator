@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { accentColor } from '../domain';
+import { accentColor, isArchived } from '../domain';
 import type { Generation, MemberRecord } from '../domain';
 import {
   AppError,
@@ -58,7 +58,7 @@ export async function generate(
   const form = await request.formData();
   const member = await getMember(client, form.get('member_id') as string);
   checkRevision(member, Number(form.get('revision')));
-  if (member.archived_at)
+  if (isArchived(member))
     throw new AppError('Archived members cannot generate IDs.');
   if (member.status !== 'Ready')
     throw new AppError(
@@ -85,7 +85,10 @@ export async function generate(
     form.get('template_version') !== version ||
     Number(form.get('color_revision')) !== colors.revision
   )
-    throw new AppError('Templates or colors changed. Refresh and regenerate.', 409);
+    throw new AppError(
+      'Templates or colors changed. Refresh and regenerate.',
+      409,
+    );
   const files: Record<string, Uint8Array> = {};
   for (const name of ['front', 'back', 'pdf']) {
     const file = form.get(name);
@@ -128,7 +131,8 @@ export async function generate(
       back_file_path: keys[1],
       pdf_file_path: keys[2],
     });
-    if (error) throw new AppError(error.message || 'Generation could not be recorded.');
+    if (error)
+      throw new AppError(error.message || 'Generation could not be recorded.');
     const record: Generation = {
       id,
       member_id: member.id,

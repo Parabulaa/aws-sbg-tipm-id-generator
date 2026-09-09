@@ -136,6 +136,10 @@ export const blankMember: MemberInput = {
 
 export const defaultCrop: Crop = { x: 0.5, y: 0.5, zoom: 1 };
 
+export function isArchived(member: Pick<MemberRecord, 'archived_at'>) {
+  return member.archived_at !== null;
+}
+
 export function formatAwsSbgId(prefix: string, year: number, value: number) {
   if (
     !/^\d{4}$/.test(String(year)) ||

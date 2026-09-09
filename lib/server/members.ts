@@ -146,7 +146,8 @@ export async function confirmMember(
   const saved = await saveMember(client, actorId, previous, {
     ...previous,
     date_issued: issue,
-    valid_until: previous.valid_until ??
+    valid_until:
+      previous.valid_until ??
       addMonths(new Date(`${issue}T00:00:00Z`), validityMonths),
     status: 'Ready',
   });
@@ -249,4 +250,56 @@ export async function photo(
     await env.FILES.delete(key);
     throw error;
   }
+}
+
+export async function archiveMember(
+  client: SupabaseClient,
+  actorId: string,
+  id: string,
+  request: Request,
+) {
+  const previous = await getMember(client, id);
+  checkRevision(
+    previous,
+    ((await request.json()) as { revision: number }).revision,
+  );
+  if (previous.archived_at) throw new AppError('Member is already archived.');
+  const saved = await saveMember(client, actorId, previous, {
+    ...previous,
+    archived_at: new Date().toISOString(),
+  });
+  await logActivity(
+    client,
+    actorId,
+    'member_archived',
+    `Member archived: ${displayName(saved)}`,
+    saved.id,
+  );
+  return json(saved);
+}
+
+export async function restoreMember(
+  client: SupabaseClient,
+  actorId: string,
+  id: string,
+  request: Request,
+) {
+  const previous = await getMember(client, id);
+  checkRevision(
+    previous,
+    ((await request.json()) as { revision: number }).revision,
+  );
+  if (!previous.archived_at) throw new AppError('Member is not archived.');
+  const saved = await saveMember(client, actorId, previous, {
+    ...previous,
+    archived_at: null,
+  });
+  await logActivity(
+    client,
+    actorId,
+    'member_restored',
+    `Member restored: ${displayName(saved)}`,
+    saved.id,
+  );
+  return json(saved);
 }

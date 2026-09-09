@@ -13,6 +13,8 @@ import {
   updateMember,
   confirmMember,
   photo,
+  archiveMember,
+  restoreMember,
 } from '@/lib/server/members';
 import {
   getTemplates,
@@ -39,8 +41,12 @@ async function handle(request: Request) {
         id: auth.profile.id,
       });
     if (path[0] === 'members') {
-      if (request.method === 'GET' && !path[1])
-        return json(await getMembers(auth.client));
+      if (request.method === 'GET' && !path[1]) {
+        const includeArchived =
+          new URL(request.url).searchParams.get('archived') === 'true';
+        if (includeArchived) assertOfficerRole(auth.profile, 'admin');
+        return json(await getMembers(auth.client, includeArchived));
+      }
       if (request.method === 'POST' && (!path[1] || path[1] === 'import')) {
         const data = (await request.json()) as { members: unknown };
         return await importMembers(
@@ -51,13 +57,7 @@ async function handle(request: Request) {
         );
       }
       if (path[2] === 'photo' && ['POST', 'DELETE'].includes(request.method))
-        return await photo(
-          auth.client,
-          auth.profile.id,
-          env,
-          path[1],
-          request,
-        );
+        return await photo(auth.client, auth.profile.id, env, path[1], request);
       if (path[2] === 'confirm' && request.method === 'POST')
         return await confirmMember(
           auth.client,
@@ -66,6 +66,22 @@ async function handle(request: Request) {
           path[1],
           request,
         );
+      if (path[2] === 'archive' && request.method === 'POST')
+        return await archiveMember(
+          auth.client,
+          auth.profile.id,
+          path[1],
+          request,
+        );
+      if (path[2] === 'restore' && request.method === 'POST') {
+        assertOfficerRole(auth.profile, 'admin');
+        return await restoreMember(
+          auth.client,
+          auth.profile.id,
+          path[1],
+          request,
+        );
+      }
       if (request.method === 'PUT' && path[1] && !path[2])
         return await updateMember(
           auth.client,
