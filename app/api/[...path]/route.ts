@@ -7,7 +7,7 @@ import {
   getActivity,
 } from '@/lib/server/database';
 import { sameOrigin } from '@/lib/server/auth';
-import { requireOfficer } from '@/lib/server/supabase';
+import { assertOfficerRole, requireOfficer } from '@/lib/server/supabase';
 import {
   importMembers,
   updateMember,
@@ -56,14 +56,55 @@ async function handle(request: Request) {
       return request.method === 'GET'
         ? json(await getColors(env.DB))
         : request.method === 'PUT'
-          ? await saveColors(env, request)
+          ? (assertOfficerRole(auth.profile, 'admin'),
+            await saveColors(env, request))
           : json({ error: 'Method not allowed' }, 405);
     if (path[0] === 'templates')
       return request.method === 'GET'
         ? json(await getTemplates(env))
         : request.method === 'POST'
-          ? await saveTemplate(env, request)
+          ? (assertOfficerRole(auth.profile, 'admin'),
+            await saveTemplate(env, request))
           : json({ error: 'Method not allowed' }, 405);
+    if (path[0] === 'officers') {
+      assertOfficerRole(auth.profile, 'admin');
+      if (request.method === 'GET') {
+        const { data, error } = await auth.client
+          .from('officer_profiles')
+          .select('id,email,display_name,role,is_active')
+          .order('email');
+        if (error) throw new AppError('Officer access could not be loaded.');
+        return json(data);
+      }
+      if (request.method === 'PUT' && path[1]) {
+        const body = (await request.json()) as {
+          display_name?: unknown;
+          role?: unknown;
+          is_active?: unknown;
+        };
+        if (
+          typeof body.display_name !== 'string' ||
+          body.display_name.trim().length > 120 ||
+          !['admin', 'officer'].includes(String(body.role)) ||
+          typeof body.is_active !== 'boolean'
+        )
+          throw new AppError('Invalid officer access settings.');
+        if (path[1] === auth.profile.id && !body.is_active)
+          throw new AppError('You cannot deactivate your own account.');
+        const { data, error } = await auth.client
+          .from('officer_profiles')
+          .update({
+            display_name: body.display_name.trim(),
+            role: body.role,
+            is_active: body.is_active,
+          })
+          .eq('id', path[1])
+          .select('id,email,display_name,role,is_active')
+          .single();
+        if (error) throw new AppError('Officer access could not be updated.');
+        return json(data);
+      }
+    }
     if (path[0] === 'activity' && request.method === 'GET')
       return json(await getActivity(env.DB));
     if (path[0] === 'generations') {

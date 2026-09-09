@@ -29,7 +29,7 @@ const navigation = [
 ];
 export function Sidebar() {
   const pathname = usePathname();
-  const { user } = useData();
+  const { user, role } = useData();
   const [open, setOpen] = useState(false);
   const [error, setError] = useState('');
   function content() {
@@ -61,6 +61,7 @@ export function Sidebar() {
           </Link>
           <div className="mt-3 rounded-2xl bg-slate-50 p-3">
             <p className="break-words text-sm font-semibold">{user}</p>
+            <p className="mt-0.5 text-xs capitalize text-slate-500">{role}</p>
             <button
               className="btn mt-2"
               onClick={async () => {
