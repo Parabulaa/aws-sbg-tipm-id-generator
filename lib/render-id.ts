@@ -5,13 +5,26 @@ import type { Template, TextBox } from './templates';
 import { fileUrl } from './client';
 export async function loadImage(src: string) {
   const image = new Image();
-  image.src = src;
+  let objectUrl = '';
+  if (src.startsWith('/api/files/')) {
+    const { getAccessToken } = await import('./supabase/client');
+    const token = await getAccessToken();
+    const response = await fetch(src, {
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    });
+    if (!response.ok)
+      throw new Error('The private template or photo could not be loaded.');
+    objectUrl = URL.createObjectURL(await response.blob());
+    image.src = objectUrl;
+  } else image.src = src;
   try {
     await image.decode();
   } catch {
     throw new Error(
       'Image could not be loaded. Check the photo and approved template files.',
     );
+  } finally {
+    if (objectUrl) URL.revokeObjectURL(objectUrl);
   }
   return image;
 }

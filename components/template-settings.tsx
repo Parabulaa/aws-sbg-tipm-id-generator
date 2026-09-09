@@ -5,6 +5,7 @@ import { useData } from './data-provider';
 import { api, errorText, fileUrl } from '@/lib/client';
 import { categories } from '@/lib/domain';
 import type { ColorSettings } from '@/lib/domain';
+import { getAccessToken } from '@/lib/supabase/client';
 export function TemplateSettings() {
   const { templates, colors, refresh, role } = useData();
   const [error, setError] = useState('');
@@ -25,6 +26,11 @@ export function TemplateSettings() {
         coordinates. No sample designs are supplied. Officer colors affect only
         explicitly mapped accent regions.
       </p>
+      <p className="notice">
+        After saving a template, open <strong>Generate ID</strong>, select a
+        member, and the composited front preview will use this background,
+        photo, ID number, and mapped fields before you generate the PNG.
+      </p>
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {categories.flatMap((category) =>
           (['front', 'back'] as const).map((side) => {
@@ -41,28 +47,17 @@ export function TemplateSettings() {
                 </h2>
                 {template ? (
                   <>
-                    <a
-                      href={fileUrl(template.image)}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      <img
-                        src={fileUrl(template.image)}
-                        alt={`${category} ${side} approved background`}
-                        className="mx-auto my-3 w-40"
-                      />
-                    </a>
+                    <AuthenticatedImage
+                      path={template.image}
+                      alt={`${category} ${side} approved background`}
+                      className="mx-auto my-3 w-40"
+                    />
                     <p className="text-sm text-emerald-800">
                       Approved · 1200 × 1950 px
                     </p>
-                    <a
-                      className="btn mt-3"
-                      href={fileUrl(template.image)}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      Preview background
-                    </a>
+                    <p className="mt-3 text-xs text-slate-500">
+                      This private preview is loaded with your officer session.
+                    </p>
                   </>
                 ) : (
                   <p className="my-6 text-slate-500">
@@ -395,4 +390,48 @@ interface OfficerAccess {
   display_name: string;
   role: 'admin' | 'officer';
   is_active: boolean;
+}
+
+function AuthenticatedImage({
+  path,
+  alt,
+  className,
+}: {
+  path: string;
+  alt: string;
+  className?: string;
+}) {
+  const [src, setSrc] = useState('');
+  const [error, setError] = useState('');
+  useEffect(() => {
+    let cancelled = false;
+    let objectUrl = '';
+    void getAccessToken()
+      .then((token) =>
+        fetch(fileUrl(path), {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        }),
+      )
+      .then(async (response) => {
+        if (!response.ok) throw new Error('Template preview could not be loaded.');
+        return response.blob();
+      })
+      .then((blob) => {
+        if (!cancelled) {
+          objectUrl = URL.createObjectURL(blob);
+          setSrc(objectUrl);
+        }
+      })
+      .catch((reason) => {
+        if (!cancelled) setError(errorText(reason));
+      });
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [path]);
+  if (error) return <p className="notice-error text-xs">{error}</p>;
+  if (!src)
+    return <div className="my-3 h-52 rounded-xl bg-slate-100" aria-label="Loading template preview" />;
+  return <img src={src} alt={alt} className={className} />;
 }
