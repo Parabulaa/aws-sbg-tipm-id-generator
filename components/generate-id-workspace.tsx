@@ -295,6 +295,19 @@ function ReviewEditor({
           colors={colors}
           photoOverride={preview}
         />
+        {member.status !== 'Ready' && member.status !== 'Generated' && (
+          <p className="notice">
+            Front ID generation unlocks after you save the member, apply a
+            photo, and click <strong>Confirm ID</strong>. Current status:{' '}
+            <strong>{member.status}</strong>.
+          </p>
+        )}
+        {!member.photo_path && (
+          <p className="notice">
+            Upload and apply a member photo to enable confirmation and ID
+            generation.
+          </p>
+        )}
         <button
           className="btn-primary"
           aria-label={member.status === 'Generated' ? 'Regenerate ID' : 'Generate ID'}
