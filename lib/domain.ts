@@ -89,6 +89,16 @@ export const blankMember: MemberInput = {
 
 export const defaultCrop: Crop = { x: 0.5, y: 0.5, zoom: 1 };
 
+export function formatAwsSbgId(prefix: string, year: number, value: number) {
+  if (
+    !/^\d{4}$/.test(String(year)) ||
+    !Number.isSafeInteger(value) ||
+    value < 1
+  )
+    throw new Error('Invalid AWS SBG ID sequence value.');
+  return `${prefix.trim()}-${year}-${String(value).padStart(4, '0')}`;
+}
+
 export function displayName(member: Pick<MemberInput, 'full_name'>) {
   return member.full_name.trim();
 }

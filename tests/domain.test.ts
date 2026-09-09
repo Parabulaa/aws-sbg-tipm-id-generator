@@ -9,6 +9,7 @@ import {
   reviewStatus,
   safeFilename,
   contrastText,
+  formatAwsSbgId,
 } from '../lib/domain';
 
 const input = {
@@ -55,4 +56,19 @@ void test('filenames and contrast are deterministic', () => {
   );
   assert.equal(contrastText('#000000'), '#ffffff');
   assert.equal(contrastText('#ffffff'), '#000000');
+});
+
+void test('AWS SBG IDs use the configured prefix and never collapse sequence values', () => {
+  assert.equal(
+    formatAwsSbgId('AWS-SBG-TIPM', 2026, 1),
+    'AWS-SBG-TIPM-2026-0001',
+  );
+  assert.equal(
+    formatAwsSbgId('AWS-SBG-TIPM', 2026, 10000),
+    'AWS-SBG-TIPM-2026-10000',
+  );
+  assert.notEqual(
+    formatAwsSbgId('AWS-SBG-TIPM', 2026, 10),
+    formatAwsSbgId('AWS-SBG-TIPM', 2026, 11),
+  );
 });
