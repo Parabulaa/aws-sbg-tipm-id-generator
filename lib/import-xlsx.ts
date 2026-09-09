@@ -61,7 +61,13 @@ async function repairExcelJsCompatibility(bytes: ArrayBuffer): Promise<ArrayBuff
 
     // Normalize the spreadsheet namespace prefix used by this workbook.
     if (xml.includes('xmlns:x=')) {
-      xml = xml.replace(/xmlns:x=/g, 'xmlns=');
+      if (xml.includes('xmlns=')) {
+        // If a default namespace is already present, remove the redundant
+        // prefix declaration instead of creating duplicate xmlns attributes.
+        xml = xml.replace(/\s+xmlns:x="[^"]*"/g, '');
+      } else {
+        xml = xml.replace(/xmlns:x=/g, 'xmlns=');
+      }
       xml = xml.replace(/<x:/g, '<').replace(/<\/x:/g, '</');
     }
 
