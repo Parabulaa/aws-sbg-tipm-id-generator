@@ -1,70 +1,40 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import ExcelJS from 'exceljs';
-import { parseXlsx } from '../lib/import-xlsx';
+import { normalizeHeader, parseXlsx } from '../lib/import-xlsx';
+
 async function workbook(rows: unknown[][]) {
   const wb = new ExcelJS.Workbook();
   wb.addWorksheet('Members').addRows(rows);
   const bytes = await wb.xlsx.writeBuffer();
   return Uint8Array.from(new Uint8Array(bytes)).buffer;
 }
+
 const headers = [
-  'first_name',
-  'last_name',
-  'email',
-  'membership_type',
-  'aws_sbg_id',
-  'date_issued',
-  'valid_until',
+  'Full Name',
+  'T.I.P. Email',
+  'Student ID number',
+  'Department/Program',
+  'Year Level',
 ];
-const row = [
-  'Test',
-  'Person',
-  'test@example.org',
-  'Member',
-  'TEST-001',
-  '2026-09-08',
-  '2027-09-08',
-];
-void test('80-row import, dates, duplicate protection, invalid email and category', async () => {
-  const rows = Array.from({ length: 80 }, (_, i) => [
-    ...row.slice(0, 4),
-    `TEST-${i}`,
-    ...row.slice(5),
+const row = ['Test Person', 'test@example.org', '001234', 'BSCS', '2'];
+
+void test('five-field member import preserves values and flags duplicates', async () => {
+  const parsed = await parseXlsx(await workbook([headers, row]), []);
+  assert.equal(parsed[0].member.full_name, 'Test Person');
+  assert.equal(parsed[0].member.student_id_number, '001234');
+  assert.equal(parsed[0].member.year_level, '2nd Year');
+  assert.deepEqual(parsed[0].errors, []);
+  const duplicate = await parseXlsx(await workbook([headers, row]), [
+    { tip_email: 'test@example.org', student_id_number: '001234' },
   ]);
-  assert.equal(
-    (await parseXlsx(await workbook([headers, ...rows]), [])).filter(
-      (row) => !row.errors.length,
-    ).length,
-    80,
-  );
-  const duplicate = await parseXlsx(await workbook([headers, row, row]), []);
-  assert.ok(
-    duplicate.every((row) =>
-      row.errors.some((error) => error.includes('Duplicate')),
-    ),
-  );
-  assert.ok(
-    (await parseXlsx(await workbook([headers, row]), ['TEST-001']))[0].errors
-      .length,
-  );
-  assert.ok(
-    (
-      await parseXlsx(
-        await workbook([
-          headers,
-          ['Test', 'Person', 'bad', 'Unknown', 'TEST-001', 1, 2],
-        ]),
-        [],
-      )
-    )[0].errors.length,
-  );
+  assert.equal(duplicate[0].duplicate, true);
+  assert.match(duplicate[0].errors.join(' '), /already exists/);
 });
-void test('missing columns and invalid workbook are actionable failures', async () => {
-  await assert.rejects(
-    () => parseXlsx(new ArrayBuffer(20), []),
-    /Invalid XLSX/,
-  );
+
+void test('header aliases, missing columns, and invalid workbooks are explicit', async () => {
+  assert.equal(normalizeHeader('  Student_ID_Number '), 'student id number');
+  await assert.rejects(() => parseXlsx(new ArrayBuffer(20)), /Invalid XLSX/);
   const bytes = await workbook([['name'], ['Test']]);
-  await assert.rejects(() => parseXlsx(bytes, []), /Missing required columns/);
+  await assert.rejects(() => parseXlsx(bytes), /Missing required columns/);
 });

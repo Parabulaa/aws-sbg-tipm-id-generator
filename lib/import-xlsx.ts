@@ -1,27 +1,53 @@
 import ExcelJS from 'exceljs';
-import { blankMember, normalizeMember, validateMember } from './domain';
-import type { MemberInput } from './domain';
+import { normalizeMember, validateMember } from './domain';
+import type { Category, MemberInput, MemberRecord } from './domain';
+
 export interface ImportRow {
   row: number;
   member: MemberInput;
   errors: string[];
+  duplicate: boolean;
 }
+
 const required = [
-  'first_name',
-  'last_name',
-  'email',
-  'membership_type',
-  'aws_sbg_id',
-  'date_issued',
-  'valid_until',
-];
+  'full_name',
+  'tip_email',
+  'student_id_number',
+  'program',
+  'year_level',
+] as const;
+
+const aliases = new Map([
+  ['full name', 'full_name'],
+  ['full_name', 'full_name'],
+  ['t.i.p. email', 'tip_email'],
+  ['tip email', 'tip_email'],
+  ['tip_email', 'tip_email'],
+  ['student id number', 'student_id_number'],
+  ['student_id_number', 'student_id_number'],
+  ['department/program', 'program'],
+  ['department program', 'program'],
+  ['program', 'program'],
+  ['year level', 'year_level'],
+  ['year_level', 'year_level'],
+] as const);
+
+export function normalizeHeader(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[_\s]+/g, ' ')
+    .replace(/\s*\/\s*/g, '/')
+    .replace(/\s+/g, ' ');
+}
+
 export async function parseXlsx(
   bytes: ArrayBuffer,
-  existingIds: string[],
+  existingMembers: Pick<MemberRecord, 'tip_email' | 'student_id_number'>[] = [],
+  classification: Category = 'Member',
 ): Promise<ImportRow[]> {
   if (bytes.byteLength > 10 * 1024 * 1024)
     throw new Error('XLSX must be smaller than 10 MB.');
-  // Inspect ZIP metadata before expanding the workbook to reject oversized archives.
   const view = new DataView(bytes);
   let expanded = 0;
   let entries = 0;
@@ -49,56 +75,86 @@ export async function parseXlsx(
   if (!sheet) throw new Error('The workbook has no worksheets.');
   if (sheet.rowCount > 501)
     throw new Error('Import up to 500 rows per workbook.');
-  const headers = new Map<string, number>();
+  const headers = new Map<(typeof required)[number], number>();
   sheet.getRow(1).eachCell((cell, index) => {
-    const name = cell.text.trim().toLowerCase().replace(/[ -]+/g, '_');
-    if (headers.has(name)) throw new Error(`Duplicate column: ${name}`);
-    headers.set(name, index);
+    const normalized = normalizeHeader(cell.text);
+    const key = aliases.get(normalized as never);
+    if (!key) return;
+    if (headers.has(key)) throw new Error(`Duplicate column: ${cell.text}`);
+    headers.set(key, index);
   });
   const missing = required.filter((key) => !headers.has(key));
   if (missing.length)
     throw new Error(`Missing required columns: ${missing.join(', ')}`);
+
+  const existingEmails = new Set(
+    existingMembers.map((member) => member.tip_email.trim().toLowerCase()),
+  );
+  const existingStudentIds = new Set(
+    existingMembers.map((member) => member.student_id_number.trim()),
+  );
   const rows: ImportRow[] = [];
-  const known = new Set(existingIds.map((id) => id.trim().toUpperCase()));
   for (let number = 2; number <= sheet.rowCount; number++) {
     const row = sheet.getRow(number);
     if (!row.hasValues) continue;
-    const raw: Record<string, string> = {};
+    const raw: Record<string, string> = {
+      membership_type: classification,
+      officer_position: '',
+      team: '',
+    };
     const cellErrors: string[] = [];
-    for (const key of Object.keys(blankMember)) {
-      const column = headers.get(key);
-      const cell = column ? row.getCell(column) : undefined;
+    for (const key of required) {
+      const cell = row.getCell(headers.get(key)!);
       if (
-        cell?.type === ExcelJS.ValueType.Formula ||
-        cell?.type === ExcelJS.ValueType.Error
+        cell.type === ExcelJS.ValueType.Formula ||
+        cell.type === ExcelJS.ValueType.Error
       )
         cellErrors.push(`${key}: replace formulas or errors with plain values`);
-      let value = cell?.value;
-      if (
-        ['date_issued', 'valid_until'].includes(key) &&
-        typeof value === 'number'
-      )
-        value = new Date(Date.UTC(1899, 11, 30) + value * 86400000);
-      raw[key] =
-        value instanceof Date
-          ? value.toISOString().slice(0, 10)
-          : cell?.text.trim() || '';
+      raw[key] = cell.text.trim();
     }
     const member = normalizeMember(raw);
-    const errors = [...cellErrors, ...validateMember(member)];
-    if (known.has(member.aws_sbg_id))
-      errors.push(`Duplicate ID: ${member.aws_sbg_id}`);
-    rows.push({ row: number, member, errors });
-  }
-  const counts = new Map<string, number>();
-  for (const row of rows)
-    counts.set(
-      row.member.aws_sbg_id,
-      (counts.get(row.member.aws_sbg_id) || 0) + 1,
+    const duplicateErrors: string[] = [];
+    if (existingEmails.has(member.tip_email))
+      duplicateErrors.push('T.I.P. email already exists');
+    if (existingStudentIds.has(member.student_id_number))
+      duplicateErrors.push('Student ID number already exists');
+    const validationErrors = validateMember(member).filter(
+      (error) =>
+        classification !== 'Officer' ||
+        !['Officer position is required', 'Officer team is required'].includes(
+          error,
+        ),
     );
-  for (const row of rows)
-    if ((counts.get(row.member.aws_sbg_id) || 0) > 1)
-      row.errors.push(`Duplicate ID within workbook: ${row.member.aws_sbg_id}`);
+    rows.push({
+      row: number,
+      member,
+      errors: [...cellErrors, ...validationErrors, ...duplicateErrors],
+      duplicate: duplicateErrors.length > 0,
+    });
+  }
+  const emailCounts = new Map<string, number>();
+  const studentCounts = new Map<string, number>();
+  for (const row of rows) {
+    emailCounts.set(
+      row.member.tip_email,
+      (emailCounts.get(row.member.tip_email) ?? 0) + 1,
+    );
+    studentCounts.set(
+      row.member.student_id_number,
+      (studentCounts.get(row.member.student_id_number) ?? 0) + 1,
+    );
+  }
+  for (const row of rows) {
+    if ((emailCounts.get(row.member.tip_email) ?? 0) > 1) {
+      row.errors.push('Duplicate T.I.P. email within workbook');
+      row.duplicate = true;
+    }
+    if ((studentCounts.get(row.member.student_id_number) ?? 0) > 1) {
+      row.errors.push('Duplicate Student ID number within workbook');
+      row.duplicate = true;
+    }
+    row.errors = [...new Set(row.errors)];
+  }
   if (!rows.length) throw new Error('The workbook has no member rows.');
   return rows;
 }
