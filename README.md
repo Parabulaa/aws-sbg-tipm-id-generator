@@ -1,55 +1,50 @@
 # AWS SBG TIP Manila ID Generator
 
-An internal member review and ID production application for the AWS Student Builder Group at the Technological Institute of the Philippines – Manila.
+Production-oriented member review and ID generation for the AWS Student Builder Group at the Technological Institute of the Philippines – Manila.
 
-## Technology
+## Tech stack
 
-- React 19, TypeScript, Tailwind CSS
-- Existing Vinext / Vite application and responsive navigation
-- Cloudflare D1 (SQLite) and R2, with persistent local development storage
-- ExcelJS for XLSX parsing and validation
-- Canvas for deterministic 1200 × 1950 PNG rendering
-- pdf-lib for two-page front/back PDFs; JSZip for grouped bulk downloads
-- Node test runner and Playwright browser tests
+- React 19 and TypeScript
+- Tailwind CSS and shadcn/ui components
+- Vinext on Vite, targeting the existing Cloudflare/Sites runtime
+- Supabase Auth, PostgreSQL, Row-Level Security, and private Storage
+- ExcelJS for XLSX parsing
+- Canvas for fixed 1200 × 1950 PNG rendering
+- pdf-lib for two-page PDFs and JSZip for bulk ZIP export
+- Node test runner and Playwright with Microsoft Edge
+
+## Implemented workflow
+
+Public Home → Officer Login → Dashboard → five-field XLSX import or manual member creation → automatic AWS SBG ID assignment → member review → manual photo upload/crop → front/back verification → confirmation → individual/selected/bulk generation → PNG/PDF/ZIP export → immutable generation history.
+
+The application supports Member, Associate, and Officer classifications; controlled officer positions; automatic team/office derivation; configurable administrator-managed officer colors; Draft, Needs Photo, Needs Attention, Ready, and Generated statuses; Save & Next; archive/administrator restore; actor-aware activity; and real shared dashboard metrics.
+
+It starts with no members, history, or mock application data.
 
 ## Local setup
 
-Requires Node.js 22.13 or newer.
+Requires Node.js 22.13 or newer and a Supabase project.
 
 ```sh
 npm install
-npm run db:migrate
+copy .env.example .env.local
 npm run dev
 ```
 
-Open http://localhost:3000. Records and files persist in `.wrangler/state`. The system begins empty and contains no sample members.
+Fill `.env.local`, apply the checked-in Supabase migrations, and create the first administrator as described in [Supabase setup](docs/SUPABASE_SETUP.md). Open http://localhost:3000.
 
-## Workflow
+## Required organization assets
 
-Import XLSX → inspect validation report → confirm valid rows → review/edit member → upload and position photo → verify front/back → confirm Ready → Save & Next → generate individually or in batches → download PNG, PDF, or ZIP.
-
-Members can also be added manually. The directory supports search, category/team/status filters, selection, and bulk generation. Dashboard metrics and activity come from saved data. Generated history retains immutable member snapshots and front/back/PDF outputs.
-
-## Template requirement
-
-The six approved Canva backgrounds and their field coordinates were not provided with the specification. Generation requires a configured approved front/back pair for the selected membership category. Add PNGs and coordinate mapping JSON through Templates when the assets are supplied. No replacement designs or fake member data are shipped.
-
-See [Template setup](docs/TEMPLATE_SETUP.md) for requirements.
-
-## Access and deployment preparation
-
-Local development runs as Local officer. An online production build requires allowlisted officer credentials and a session secret, plus deployed D1/R2 bindings and applied migrations; it fails closed if access is unconfigured.
-
-This development phase does not deploy the application or provision an external Supabase project. See [Development and operation](docs/DEVELOPMENT.md) for persistence, credential configuration, limits, and generation behavior.
+Generation requires approved front/back 1200 × 1950 PNGs for Member, Officer, and Associate plus their mapping JSON. These assets were not supplied and are intentionally not replaced with fabricated designs. See [Template setup](docs/TEMPLATE_SETUP.md).
 
 ## Verification
 
 ```sh
 npm test
+npm run test:e2e
 npm run typecheck
 npm run lint
-npm run test:e2e
 npm run build
 ```
 
-Stop the regular dev server before browser tests. They use Microsoft Edge and isolated D1/R2 storage on port 3100. Test-only records are never added to the regular member database.
+Browser tests use isolated in-process fixtures and never write to a linked Supabase project. See [Validation](docs/VALIDATION.md) and [Development](docs/DEVELOPMENT.md).

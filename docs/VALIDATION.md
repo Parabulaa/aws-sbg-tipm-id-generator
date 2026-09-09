@@ -1,29 +1,32 @@
-# Development verification — September 9, 2026
+# Development validation — September 9, 2026
 
-## Passed
+## Automated coverage
 
-- `npm test`: 11 unit tests covering names, required fields, dates, officer classification, status rules, filenames, contrast, 80-row XLSX parsing, invalid workbooks, duplicates, crop bounds, template mappings, team colors, and signed officer sessions.
-- `npm run test:e2e`: two Microsoft Edge browser/API tests, using isolated local D1/R2 storage.
-  - Empty system → XLSX validation report → confirmed valid-row import.
-  - Missing-template notice, rejected duplicate imports and cross-origin writes.
-  - Manual photo upload, crop application and persistence across refresh.
-  - Front/back preview and long-name, position, and email rendering.
-  - Confirmation, Save & Next, invalid edits → Needs Attention, corrected edits → Needs Photo.
-  - Stale-revision rejection, individual generation, selected generation, and all-ready generation.
-  - Exact 1200 × 1950 PNG dimensions, rendered officer accent pixel, and two-page PDF.
-  - Regeneration preserves earlier output bytes and creates separate history.
-  - ZIP contains all front/back/PDF files under category folders.
-  - All five routes fit a 390-pixel mobile viewport; no browser page errors.
-  - An 80-member database import persists atomically; a mixed new/duplicate batch inserts nothing.
-- `npm run typecheck`, `npm run lint`, and `npm run build`: passed.
-- Regular local database verification: zero members, zero generations, zero template configurations. Automated fixtures are not production seed data.
+- Unit tests cover canonical full names, leading-zero student IDs, year-level normalization, required fields, status transitions, controlled officer positions, CTO/AI/ML/Software Engineering mapping, archive state, ID formatting beyond four digits, XLSX header aliases, five-field parsing, workbook and duplicate validation, crop bounds, mappings, colors, and authentication authorization helpers.
+- Schema-policy tests inspect every version-controlled migration for RLS, private buckets, Admin-only configuration, archive transition policies, the locked yearly counter, unique IDs, and generation/archive enforcement.
+- Playwright runs the isolated happy path: public Home → Officer Login → Dashboard → five-field XLSX → automatic ID → Officer/AI-ML selection → Technology / CTO Office derivation → photo/crop → Confirm → 1200 × 1950 render/generate → shared history → Logout.
 
-## Still requires organization input / release verification
+The browser test intercepts only its own test run and stores fixtures in memory. It does not use or seed a linked Supabase project.
 
-- The six approved Canva PNGs and dynamic field/accent mappings have not been supplied. Test-only backgrounds verify the pipeline, not the organization's final design.
-- Run acceptance testing with the real workbook, real photos, and organization officers. Other browser engines and production-host authentication have not been exercised.
-- Configure online storage, migrations, officer accounts, HTTPS, login rate limiting, backups, and retention before online release. No deployment was performed.
-- Dependency audit: no high-severity findings after runtime patches; six moderate transitive findings remain (two in the production-only ExcelJS/uuid dependency chain). See DEVELOPMENT.md.
-- The build reports non-blocking upstream Vinext/Vite optimization and large-chunk warnings. Import/export libraries are loaded on demand.
+## Required commands
 
-The development pipeline works with configured templates. Final approved-design integration is not complete until the organization supplies and verifies its assets.
+```sh
+npm test
+npm run test:e2e
+npm run typecheck
+npm run lint
+npm run build
+```
+
+All must pass before release. Local Supabase database execution additionally requires Docker and can be run with `npm run supabase:test:db` after starting the local stack.
+
+On this development machine, `npx supabase status` could not start or inspect a local database because neither Docker nor Podman is installed/on `PATH`. The migration contract is covered statically, but migrations still need execution against a local Docker stack or the intended project during the external setup phase.
+
+## Manual acceptance still required
+
+- Apply migrations to the intended Supabase project and verify Auth/RLS with real Admin and Officer accounts.
+- Upload the six approved template PNGs and mapping JSON.
+- Test representative real membership rows, names, photos, and authorized browsers.
+- Confirm deployment secrets, backups, retention, login abuse controls, and organization acceptance.
+
+The approved assets and external Supabase project were unavailable during local implementation; this is an external setup requirement, not mock data in the application.
