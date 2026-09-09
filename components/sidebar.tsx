@@ -20,7 +20,7 @@ import {
 import { useData } from './data-provider';
 import { api, errorText } from '@/lib/client';
 const navigation = [
-  { label: 'Dashboard', href: '/', icon: LayoutDashboard },
+  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Generate ID', href: '/generate-id', icon: Sparkles },
   { label: 'Members', href: '/members', icon: Users },
   { label: 'Templates', href: '/templates', icon: FolderCog },

@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   title: 'AWS SBG TIP Manila ID Generator',
   icons: { icon: '/favicon.svg' },
   description:
-    'Frontend prototype for the AWS Student Builder Group TIP Manila ID workflow.',
+    'Internal ID management and generation system for AWS Student Builder Group TIP Manila officers.',
 };
 
 export default function RootLayout({

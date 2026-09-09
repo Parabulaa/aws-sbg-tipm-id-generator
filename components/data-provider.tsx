@@ -7,6 +7,7 @@ import {
   useCallback,
 } from 'react';
 import type { ReactNode } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import type {
   MemberRecord,
   ColorSettings,
@@ -31,10 +32,11 @@ export function useData() {
   return data;
 }
 export function DataProvider({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const isPublic = pathname === '/' || pathname === '/login';
   const [data, setData] = useState<Omit<Data, 'refresh'> | null>(null);
   const [error, setError] = useState('');
-  const [login, setLogin] = useState(false);
-  const [busy, setBusy] = useState(false);
   const refresh = useCallback(async () => {
     try {
       const session = await api<{ user: string }>('session');
@@ -55,72 +57,27 @@ export function DataProvider({ children }: { children: ReactNode }) {
         user: session.user,
       });
       setError('');
-      setLogin(false);
     } catch (error) {
       setError(errorText(error));
       if (error instanceof ApiError && error.status === 401) {
         setData(null);
-        setLogin(true);
+        router.replace('/login');
       }
       throw error;
     }
-  }, []);
+  }, [router]);
   useEffect(() => {
+    if (isPublic) return;
     queueMicrotask(() => {
       void refresh().catch(() => {});
     });
-  }, [refresh]);
+  }, [isPublic, refresh]);
+  if (isPublic) return children;
   if (!data)
     return (
       <main className="mx-auto max-w-lg p-8">
         <h1 className="text-2xl font-bold">AWS SBG TIP Manila</h1>
-        {login ? (
-          <form
-            className="mt-6 space-y-4"
-            onSubmit={async (event) => {
-              event.preventDefault();
-              setBusy(true);
-              const form = new FormData(event.currentTarget);
-              try {
-                await api('login', {
-                  method: 'POST',
-                  body: JSON.stringify({
-                    email: form.get('email'),
-                    password: form.get('password'),
-                  }),
-                });
-                await refresh();
-              } catch (error) {
-                setError(errorText(error));
-              } finally {
-                setBusy(false);
-              }
-            }}
-          >
-            <h2 className="font-semibold">Officer sign in</h2>
-            <label className="field">
-              Email
-              <input
-                name="email"
-                type="email"
-                autoComplete="username"
-                required
-              />
-            </label>
-            <label className="field">
-              Password
-              <input
-                name="password"
-                type="password"
-                autoComplete="current-password"
-                required
-              />
-            </label>
-            <button className="btn-primary" disabled={busy}>
-              {busy ? 'Signing in…' : 'Sign in'}
-            </button>
-          </form>
-        ) : !error ? (
+        {!error ? (
           <output className="mt-4 block">Loading records…</output>
         ) : (
           <button
