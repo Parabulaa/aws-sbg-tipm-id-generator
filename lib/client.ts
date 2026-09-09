@@ -50,6 +50,23 @@ export class ApiError extends Error {
 export function fileUrl(key: string) {
   return `/api/files/${key.split('/').map(encodeURIComponent).join('/')}`;
 }
+
+// Storage stays private. Image elements and downloads need the same bearer
+// session as JSON requests; a plain URL does not carry that session.
+export async function fetchPrivateFile(key: string, signal?: AbortSignal) {
+  const { getAccessToken } = await import('./supabase/client');
+  const token = await getAccessToken();
+  if (!token) throw new ApiError('Sign in again to view or download this file.', 401);
+  const response = await fetch(fileUrl(key), {
+    headers: { Authorization: `Bearer ${token}` },
+    signal: signal ?? AbortSignal.timeout(15_000),
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({})) as { error?: string };
+    throw new ApiError(body.error || 'The saved file could not be loaded.', response.status);
+  }
+  return response;
+}
 export function errorText(error: unknown) {
   return error instanceof Error
     ? error.message

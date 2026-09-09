@@ -5,7 +5,7 @@ export default defineConfig({
   timeout: 360000,
   expect: { timeout: 30000 },
   use: {
-    baseURL: 'http://localhost:3100',
+    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3100',
     actionTimeout: 30000,
     viewport: { width: 1440, height: 1000 },
     launchOptions: { channel: 'msedge' },

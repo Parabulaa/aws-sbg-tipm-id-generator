@@ -136,6 +136,17 @@ export const blankMember: MemberInput = {
 
 export const defaultCrop: Crop = { x: 0.5, y: 0.5, zoom: 1 };
 
+// PostgreSQL intentionally uses NULL for fields that do not apply to members.
+// Form inputs and text rendering use strings. Preserve all stored metadata.
+export function memberForReview(
+  row: Omit<MemberRecord, 'officer_position' | 'team'> & {
+    officer_position: string | null;
+    team: string | null;
+  },
+): MemberRecord {
+  return { ...row, officer_position: row.officer_position ?? '', team: row.team ?? '' };
+}
+
 export function isArchived(member: Pick<MemberRecord, 'archived_at'>) {
   return member.archived_at !== null;
 }
@@ -213,7 +224,10 @@ export function validDate(value: string | null) {
   );
 }
 
-export function validateMember(member: MemberInput) {
+export function validateMember(member: Omit<MemberInput, 'officer_position' | 'team'> & {
+  officer_position: string | null;
+  team: string | null;
+}) {
   const errors: string[] = [];
   for (const key of [
     'full_name',
@@ -225,7 +239,7 @@ export function validateMember(member: MemberInput) {
     if (!member[key]) errors.push(`${key} is required`);
   }
   for (const key of Object.keys(blankMember) as (keyof MemberInput)[]) {
-    const value = member[key];
+    const value = member[key] ?? '';
     if (value.length > 240)
       errors.push(`${key} must be 240 characters or fewer`);
     if (

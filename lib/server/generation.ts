@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { accentColor, isArchived } from '../domain';
+import { accentColor, isArchived, memberForReview } from '../domain';
 import type { Generation, MemberRecord } from '../domain';
 import {
   AppError,
@@ -25,7 +25,7 @@ export async function getGenerations(
     return {
       id: row.id as string,
       member_id: row.member_id as string,
-      member: row.member_snapshot as MemberRecord,
+      member: memberForReview(row.member_snapshot as MemberRecord),
       generated_at: row.generated_at as string,
       generated_by: 'Officer',
       accent: row.effective_accent as string,

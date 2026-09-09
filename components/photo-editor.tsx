@@ -5,6 +5,7 @@ import type { MemberRecord, Crop } from '@/lib/domain';
 import { defaultCrop } from '@/lib/domain';
 import { fileUrl, api, errorText } from '@/lib/client';
 import { normalizePhoto } from '@/lib/render-id';
+import { PrivateImage } from './private-image';
 export function PhotoEditor({
   member,
   onMember,
@@ -102,7 +103,7 @@ export function PhotoEditor({
               drag.current = null;
             }}
           >
-            <img
+            {url ? <img
               alt="Position adjustment"
               draggable={false}
               src={source}
@@ -112,7 +113,16 @@ export function PhotoEditor({
                 transform: `scale(${crop.zoom})`,
                 transformOrigin: `${crop.x * 100}% ${crop.y * 100}%`,
               }}
-            />
+            /> : <PrivateImage
+              path={member.photo_path!}
+              alt="Position adjustment"
+              className="h-full w-full object-cover"
+              style={{
+                objectPosition: `${crop.x * 100}% ${crop.y * 100}%`,
+                transform: `scale(${crop.zoom})`,
+                transformOrigin: `${crop.x * 100}% ${crop.y * 100}%`,
+              }}
+            />}
           </div>
           <p className="text-sm text-slate-500">
             Drag to reposition, or use the sliders. The ID preview shows the

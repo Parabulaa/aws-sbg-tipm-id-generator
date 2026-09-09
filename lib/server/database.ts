@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Activity, ColorSettings, MemberRecord } from '../domain';
+import { memberForReview } from '../domain';
 import { AppError } from './errors';
 export { AppError } from './errors';
 
@@ -30,7 +31,7 @@ export async function getMembers(
   if (!includeArchived) query = query.is('archived_at', null);
   const { data, error } = await query;
   if (error) throw new AppError('Member records could not be loaded.');
-  return data as MemberRecord[];
+  return (data as MemberRecord[]).map(memberForReview);
 }
 
 export async function getMember(client: SupabaseClient, id: string) {
@@ -41,7 +42,7 @@ export async function getMember(client: SupabaseClient, id: string) {
     .maybeSingle();
   if (error) throw new AppError('Member record could not be loaded.');
   if (!data) throw new AppError('Member not found.', 404);
-  return data as MemberRecord;
+  return memberForReview(data as MemberRecord);
 }
 
 export async function getColors(
@@ -125,6 +126,8 @@ export async function saveMember(
     updated_at: new Date().toISOString(),
   };
   for (const field of writableMemberFields) changes[field] = updated[field];
+  changes.officer_position = updated.membership_type === 'Officer' ? updated.officer_position || null : null;
+  changes.team = updated.membership_type === 'Officer' ? updated.team || null : null;
   const { data, error } = await client
     .from('members')
     .update(changes)
@@ -145,7 +148,7 @@ export async function saveMember(
       'This member changed in another session. Refresh before saving.',
       409,
     );
-  return data as MemberRecord;
+  return memberForReview(data as MemberRecord);
 }
 
 export async function logActivity(

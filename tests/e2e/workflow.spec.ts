@@ -41,7 +41,9 @@ test('public home → login → five-field import → officer review → generat
       })),
   );
 
-  await page.route('https://supabase.test/auth/v1/**', async (route) => {
+  // This workflow may also exercise deployed assets in a disposable browser.
+  // All auth and application API calls are intercepted; no real records change.
+  await page.route('**/auth/v1/**', async (route) => {
     if (
       route.request().method() === 'POST' &&
       route.request().url().includes('/token')
@@ -75,7 +77,13 @@ test('public home → login → five-field import → officer review → generat
     const json = (value: unknown, status = 200) =>
       route.fulfill({ status, json: value });
     if (path === 'session') return json({ user: 'Test Admin', role: 'admin' });
-    if (path === 'members' && request.method() === 'GET') return json(members);
+    if (path === 'members' && request.method() === 'GET')
+      return json(members.map((member) => ({
+        ...member,
+        // PostgreSQL stores absent officer fields as NULL, not empty strings.
+        officer_position: member.officer_position || null,
+        team: member.team || null,
+      })));
     if (path === 'members/import' && request.method() === 'POST') {
       const rows = (request.postDataJSON() as { members: MemberRecord[] })
         .members;
@@ -133,6 +141,11 @@ test('public home → login → five-field import → officer review → generat
     if (path === 'generations' && request.method() === 'GET')
       return json(generations);
     if (path === 'generations' && request.method() === 'POST') {
+      const payload = await new Response(Uint8Array.from(request.postDataBuffer()!), {
+        headers: { 'Content-Type': request.headers()['content-type'] },
+      }).formData();
+      expect(payload.get('side')).toBe('front');
+      expect(payload.has('back')).toBe(false);
       const member = members[0];
       const id = '10000000-0000-4000-8000-000000000001';
       const record: Generation = {
@@ -142,11 +155,9 @@ test('public home → login → five-field import → officer review → generat
         generated_at: now,
         generated_by: 'Test Admin',
         accent: '#10b981',
-        template_version: 'Officer-front-v1:Officer-back-v1',
+        template_version: 'Officer-front-v1',
         status: 'Generated',
         front_path: `generated-ids/${member.id}/${id}/front.png`,
-        back_path: `generated-ids/${member.id}/${id}/back.png`,
-        pdf_path: `generated-ids/${member.id}/${id}/ID.pdf`,
       };
       generations = [record];
       members[0] = {
@@ -156,12 +167,15 @@ test('public home → login → five-field import → officer review → generat
       };
       return json(record, 201);
     }
-    if (path.startsWith('files/'))
+    if (path.startsWith('files/')) {
+      if (request.headers().authorization !== 'Bearer isolated-e2e-access-token')
+        return json({ error: 'Sign in to access officer records.' }, 401);
       return route.fulfill({
         status: 200,
         body: png,
         contentType: 'image/png',
       });
+    }
     return json({ error: `Unhandled isolated test route: ${path}` }, 404);
   });
 
@@ -214,6 +228,13 @@ test('public home → login → five-field import → officer review → generat
   await page.getByRole('button', { name: 'Confirm import of 1 rows' }).click();
   await expect(page.getByText(/assigned AWS SBG IDs/)).toBeVisible();
   await page.getByRole('link', { name: 'Review / Edit ID' }).click();
+  await expect(page.getByLabel('Full Name', { exact: true })).toHaveValue('JAMES LEBRON');
+  await page.reload();
+  await expect(page.getByLabel('Full Name', { exact: true })).toHaveValue('JAMES LEBRON');
+  const frontCanvas = page.getByLabel('front ID preview for AWSSBG-TIPM-26001');
+  await expect.poll(() => frontCanvas.evaluate((node: HTMLCanvasElement) => node.getContext('2d')!.getImageData(0, 0, 1, 1).data[3])).toBe(255);
+  // Preview must work before confirmation, including Member rows with NULLs.
+  await expect(page.getByRole('button', { name: 'Generate ID', exact: true })).toBeDisabled();
   await page.getByLabel('Membership Type').selectOption('Officer');
   await page.getByLabel('Officer Position').selectOption('AI/ML LEAD');
   await expect(page.getByLabel('Team / Office')).toHaveValue(
@@ -227,6 +248,7 @@ test('public home → login → five-field import → officer review → generat
   });
   await page.getByLabel('Zoom', { exact: true }).fill('1.5');
   await page.getByRole('button', { name: 'Apply uploaded photo' }).click();
+  await expect.poll(() => page.getByAltText('Position adjustment').evaluate((node: HTMLImageElement) => node.naturalWidth)).toBe(1200);
   await page.getByRole('button', { name: 'Confirm ID', exact: true }).click();
   await expect(
     page.getByText('ID confirmed and Ready for generation.'),
@@ -238,6 +260,19 @@ test('public home → login → five-field import → officer review → generat
   await page.getByRole('link', { name: 'Generated IDs' }).click();
   await expect(page.getByText('AWSSBG-TIPM-26001')).toBeVisible();
   await expect(page.getByRole('cell', { name: 'Test Admin' })).toBeVisible();
+  await page.getByText('Preview front', { exact: true }).click();
+  const savedPreview = page.getByAltText('Generated front ID for AWSSBG-TIPM-26001');
+  await expect(savedPreview).toBeVisible();
+  await expect.poll(() => savedPreview.evaluate((node: HTMLImageElement) => node.naturalWidth)).toBe(1200);
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Download front.png', exact: true }).click();
+  expect((await download).suggestedFilename()).toContain('front.png');
+  await page.getByLabel('Select all displayed generations').check();
+  const zipDownload = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Download selected ZIP' }).click();
+  expect((await zipDownload).suggestedFilename()).toBe('AWS-SBG-IDs.zip');
+  await page.getByRole('link', { name: 'Review / Regenerate' }).click();
+  await expect(page.getByLabel('Full Name', { exact: true })).toHaveValue('JAMES LEBRON');
   await page.getByRole('button', { name: 'Sign out' }).click();
   await expect(page).toHaveURL(/\/$/);
 });

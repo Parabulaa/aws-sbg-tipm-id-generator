@@ -187,7 +187,7 @@ export async function renderID(
     );
     drawText(
       ctx,
-      fields[box.field],
+      fields[box.field] ?? '',
       onAccent ? { ...box, color: contrastText(accent) } : box,
     );
   }

@@ -13,7 +13,9 @@ import {
   officerPositions,
   teamForOfficerPosition,
   isArchived,
+  memberForReview,
 } from '../lib/domain';
+import type { MemberRecord } from '../lib/domain';
 
 const input = {
   ...blankMember,
@@ -62,6 +64,19 @@ void test('edits invalidate readiness and uploading never confirms', () => {
     reviewStatus({ ...input, tip_email: '' }, 'photo'),
     'Needs Attention',
   );
+});
+
+void test('database NULL officer fields can be reviewed and validated', () => {
+  const row = { ...input, officer_position: null, team: null };
+  assert.deepEqual(validateMember(row), []);
+  assert.ok(validateMember({ ...row, membership_type: 'Officer' }).includes('Officer position is required'));
+  const stored = { ...row, id: 'existing-id', revision: 7, aws_sbg_id: 'AWSSBG-TIPM-26020' } as unknown as MemberRecord;
+  const reviewed = memberForReview(stored);
+  assert.equal(reviewed.officer_position, '');
+  assert.equal(reviewed.team, '');
+  assert.equal(reviewed.id, stored.id);
+  assert.equal(reviewed.revision, 7);
+  assert.equal(reviewed.aws_sbg_id, stored.aws_sbg_id);
 });
 
 void test('filenames and contrast are deterministic', () => {

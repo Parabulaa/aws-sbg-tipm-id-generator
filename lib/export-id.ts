@@ -4,7 +4,7 @@ import { renderID, pngBlob } from './render-id';
 import { safeFilename } from './domain';
 import type { MemberRecord, ColorSettings, Generation } from './domain';
 import type { Template } from './templates';
-import { api, fileUrl } from './client';
+import { api, fetchPrivateFile } from './client';
 export async function generateMember(
   member: MemberRecord,
   templates: Template[],
@@ -65,7 +65,7 @@ export async function generateMember(
   return api<Generation>('generations', { method: 'POST', body: form });
 }
 export async function downloadFile(key: string, name: string) {
-  const response = await fetch(fileUrl(key));
+  const response = await fetchPrivateFile(key);
   if (!response.ok) throw new Error('Download failed. Refresh and try again.');
   saveBlob(await response.blob(), name);
 }
@@ -100,7 +100,7 @@ export async function exportZip(
       ['ID.pdf', record.pdf_path],
     ] as const) {
       if (!path) continue;
-      const response = await fetch(fileUrl(path));
+      const response = await fetchPrivateFile(path);
       if (!response.ok)
         throw new Error(
           `Could not download ${record.member.aws_sbg_id}. Retry the ZIP download.`,

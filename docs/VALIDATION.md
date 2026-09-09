@@ -8,6 +8,19 @@
 
 The browser test intercepts only its own test run and stores fixtures in memory. It does not use or seed a linked Supabase project.
 
+The review regression uses PostgreSQL-shaped member responses with `null`
+officer position/team fields. It covers Members → Review, a full reload of the
+member URL, canvas preview before confirmation, saved photo display, front-only
+generation, saved-ID preview, PNG/ZIP download, and reopening the review form.
+Private file responses require the test bearer token, so missing authentication
+cannot silently pass. This case reproduced the `null.length` review crash before
+the record conversion and validation fix.
+
+To exercise deployed assets without changing production records, set
+`PLAYWRIGHT_EXTERNAL_SERVER=1` and `PLAYWRIGHT_BASE_URL` to the deployment URL,
+then run `npx playwright test`. Auth and application APIs remain intercepted in
+the disposable browser; this verifies deployed UI behavior, not live RLS/storage.
+
 ## Required commands
 
 ```sh

@@ -13,7 +13,8 @@ import {
   displayName,
   validateMember,
 } from '@/lib/domain';
-import { api, errorText, fileUrl } from '@/lib/client';
+import { api, errorText } from '@/lib/client';
+import { PrivateImage } from './private-image';
 import { GenerationControls } from './generation-controls';
 export function MemberDirectory() {
   const { members, refresh, role } = useData();
@@ -234,8 +235,8 @@ export function MemberDirectory() {
                   </td>
                   <td>
                     {member.photo_path ? (
-                      <img
-                        src={fileUrl(member.photo_path)}
+                      <PrivateImage
+                        path={member.photo_path}
                         alt=""
                         className="size-10 rounded-full object-cover"
                       />

@@ -16,6 +16,7 @@ import type {
 } from '@/lib/domain';
 import type { Template } from '@/lib/templates';
 import { api, ApiError, errorText } from '@/lib/client';
+import { memberForReview } from '@/lib/domain';
 interface Data {
   members: MemberRecord[];
   colors: ColorSettings;
@@ -65,7 +66,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         (result): result is PromiseRejectedResult => result.status === 'rejected',
       )?.reason;
       setData({
-        members: membersResult.status === 'fulfilled' ? membersResult.value : [],
+        members: membersResult.status === 'fulfilled' ? membersResult.value.map(memberForReview) : [],
         colors: colorsResult.status === 'fulfilled' ? colorsResult.value : emptyData.colors,
         generations: generationsResult.status === 'fulfilled' ? generationsResult.value : [],
         activity: activityResult.status === 'fulfilled' ? activityResult.value : [],
