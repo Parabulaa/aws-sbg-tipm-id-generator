@@ -19,7 +19,7 @@ import {
   saveTemplate,
   saveColors,
 } from '@/lib/server/configuration';
-import { generate } from '@/lib/server/generation';
+import { generate, getGenerations } from '@/lib/server/generation';
 async function handle(request: Request) {
   try {
     sameOrigin(request);
@@ -40,31 +40,53 @@ async function handle(request: Request) {
       });
     if (path[0] === 'members') {
       if (request.method === 'GET' && !path[1])
-        return json(await getMembers(env.DB));
+        return json(await getMembers(auth.client));
       if (request.method === 'POST' && (!path[1] || path[1] === 'import')) {
         const data = (await request.json()) as { members: unknown };
-        return await importMembers(env, data.members, !path[1]);
+        return await importMembers(
+          auth.client,
+          auth.profile.id,
+          data.members,
+          !path[1],
+        );
       }
       if (path[2] === 'photo' && ['POST', 'DELETE'].includes(request.method))
-        return await photo(env, path[1], request);
+        return await photo(
+          auth.client,
+          auth.profile.id,
+          env,
+          path[1],
+          request,
+        );
       if (path[2] === 'confirm' && request.method === 'POST')
-        return await confirmMember(env, path[1], request);
+        return await confirmMember(
+          auth.client,
+          auth.profile.id,
+          env,
+          path[1],
+          request,
+        );
       if (request.method === 'PUT' && path[1] && !path[2])
-        return await updateMember(env, path[1], request);
+        return await updateMember(
+          auth.client,
+          auth.profile.id,
+          path[1],
+          request,
+        );
     }
     if (path[0] === 'colors')
       return request.method === 'GET'
-        ? json(await getColors(env.DB))
+        ? json(await getColors(auth.client))
         : request.method === 'PUT'
           ? (assertOfficerRole(auth.profile, 'admin'),
-            await saveColors(env, request))
+            await saveColors(auth.client, auth.profile.id, request))
           : json({ error: 'Method not allowed' }, 405);
     if (path[0] === 'templates')
       return request.method === 'GET'
-        ? json(await getTemplates(env))
+        ? json(await getTemplates(auth.client))
         : request.method === 'POST'
           ? (assertOfficerRole(auth.profile, 'admin'),
-            await saveTemplate(env, request))
+            await saveTemplate(env, auth.client, auth.profile.id, request))
           : json({ error: 'Method not allowed' }, 405);
     if (path[0] === 'officers') {
       assertOfficerRole(auth.profile, 'admin');
@@ -106,15 +128,18 @@ async function handle(request: Request) {
       }
     }
     if (path[0] === 'activity' && request.method === 'GET')
-      return json(await getActivity(env.DB));
+      return json(await getActivity(auth.client));
     if (path[0] === 'generations') {
-      if (request.method === 'POST') return await generate(env, request, actor);
-      if (request.method === 'GET') {
-        const rows = await env.DB.prepare(
-          'SELECT data FROM generated_ids ORDER BY created_at DESC',
-        ).all<{ data: string }>();
-        return json(rows.results.map((row) => JSON.parse(row.data)));
-      }
+      if (request.method === 'POST')
+        return await generate(
+          env,
+          auth.client,
+          auth.profile.id,
+          actor,
+          request,
+        );
+      if (request.method === 'GET')
+        return json(await getGenerations(auth.client));
     }
     if (path[0] === 'files' && request.method === 'GET') {
       const key = decodeURIComponent(path.slice(1).join('/'));

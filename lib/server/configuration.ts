@@ -1,17 +1,42 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { categories } from '../domain';
 import type { ColorSettings } from '../domain';
 import { validateLayout } from '../templates';
 import type { Template } from '../templates';
-import { AppError, json, getColors } from './database';
+import { AppError, json, getColors, logActivity } from './database';
 import type { Bindings } from './database';
 import { pngDimensions } from './members';
-export async function getTemplates(env: Bindings): Promise<Template[]> {
-  const rows = await env.DB.prepare(
-    "SELECT data FROM settings WHERE id LIKE 'template:%'",
-  ).all<{ data: string }>();
-  return rows.results.map((row) => JSON.parse(row.data));
+
+function toTemplate(row: Record<string, unknown>): Template {
+  const category = row.category as Template['category'];
+  const side = row.side as Template['side'];
+  return {
+    key: `${category}-${side}`,
+    category,
+    side,
+    image: row.image_path as string,
+    layout: row.layout as Template['layout'],
+    version: row.version as string,
+    approved: row.approved as boolean,
+  };
 }
-export async function saveTemplate(env: Bindings, request: Request) {
+
+export async function getTemplates(client: SupabaseClient): Promise<Template[]> {
+  const { data, error } = await client
+    .from('templates')
+    .select('category,side,image_path,layout,version,approved')
+    .order('category')
+    .order('side');
+  if (error) throw new AppError('Templates could not be loaded.');
+  return (data ?? []).map((row) => toTemplate(row));
+}
+
+export async function saveTemplate(
+  env: Bindings,
+  client: SupabaseClient,
+  actorId: string,
+  request: Request,
+) {
   const form = await request.formData();
   const category = form.get('category') as string;
   const side = form.get('side') as string;
@@ -50,30 +75,47 @@ export async function saveTemplate(env: Bindings, request: Request) {
       'Confirm the template and field mapping have been approved.',
     );
   const version = crypto.randomUUID();
-  const key = `${category}-${side}`;
-  const image = `templates/${key}/${version}.png`;
+  const image = `templates/${category.toLowerCase()}/${side}/${version}.png`;
   await env.FILES.put(image, bytes, {
     httpMetadata: { contentType: 'image/png' },
   });
-  const template: Template = {
-    key,
-    category: category as Template['category'],
-    side: side as Template['side'],
-    image,
-    layout,
-    version,
-    approved: true,
-  };
-  await env.DB.prepare(
-    'INSERT INTO settings (id, data, revision) VALUES (?, ?, 1) ON CONFLICT(id) DO UPDATE SET data = excluded.data, revision = settings.revision + 1',
-  )
-    .bind(`template:${key}`, JSON.stringify(template))
-    .run();
-  return json(template);
+  const { data, error } = await client
+    .from('templates')
+    .upsert(
+      {
+        category,
+        side,
+        image_path: image,
+        layout,
+        version,
+        approved: true,
+        created_by: actorId,
+        updated_by: actorId,
+      },
+      { onConflict: 'category,side' },
+    )
+    .select('category,side,image_path,layout,version,approved')
+    .single();
+  if (error) {
+    await env.FILES.delete(image);
+    throw new AppError('The approved template could not be saved.');
+  }
+  await logActivity(
+    client,
+    actorId,
+    'template_changed',
+    `Updated the ${category} ${side} template.`,
+  );
+  return json(toTemplate(data));
 }
-export async function saveColors(env: Bindings, request: Request) {
+
+export async function saveColors(
+  client: SupabaseClient,
+  actorId: string,
+  request: Request,
+) {
   const data = (await request.json()) as ColorSettings;
-  const previous = await getColors(env.DB);
+  const previous = await getColors(client);
   if (data.revision !== previous.revision)
     throw new AppError('Color settings changed. Refresh before saving.', 409);
   if (
@@ -95,20 +137,25 @@ export async function saveColors(env: Bindings, request: Request) {
       throw new AppError('Each team needs a unique name and a valid color.');
     names.add(team.name.toLowerCase());
   }
-  data.revision++;
-  const result =
-    previous.revision === 0
-      ? await env.DB.prepare(
-          "INSERT OR IGNORE INTO settings (id,data,revision) VALUES ('colors',?,1)",
-        )
-          .bind(JSON.stringify(data))
-          .run()
-      : await env.DB.prepare(
-          "UPDATE settings SET data=?, revision=? WHERE id='colors' AND revision=?",
-        )
-          .bind(JSON.stringify(data), data.revision, previous.revision)
-          .run();
-  if (!result.meta.changes)
+  const next = { mode: data.mode, teams: data.teams };
+  const { data: saved, error } = await client
+    .from('app_settings')
+    .update({
+      value: next,
+      revision: previous.revision + 1,
+      updated_by: actorId,
+    })
+    .eq('key', 'officer_team_colors')
+    .eq('revision', previous.revision)
+    .select('value,revision')
+    .maybeSingle();
+  if (error || !saved)
     throw new AppError('Color settings changed. Refresh before saving.', 409);
-  return json(data);
+  await logActivity(
+    client,
+    actorId,
+    'team_colors_changed',
+    'Updated officer team-color configuration.',
+  );
+  return json({ ...(saved.value as Omit<ColorSettings, 'revision'>), revision: saved.revision });
 }

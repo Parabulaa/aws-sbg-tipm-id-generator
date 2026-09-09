@@ -123,8 +123,8 @@ export async function renderID(
     }
   }
   const rect = template.layout.photo;
-  if (rect && (photoOverride || member.photo_url)) {
-    const image = await loadImage(photoOverride || fileUrl(member.photo_url!));
+  if (rect && (photoOverride || member.photo_path)) {
+    const image = await loadImage(photoOverride || fileUrl(member.photo_path!));
     const crop = photoSource(
       image.naturalWidth,
       image.naturalHeight,
@@ -145,16 +145,23 @@ export async function renderID(
   }
   const fields = {
     name: displayName(member),
+    full_name: member.full_name,
     role:
       member.membership_type === 'Officer'
-        ? member.position
+        ? member.officer_position
         : member.membership_type === 'Associate'
           ? 'Associate Member'
           : 'Member',
     aws_sbg_id: member.aws_sbg_id,
-    email: member.email,
-    date_issued: member.date_issued,
-    valid_until: member.valid_until,
+    email: member.tip_email,
+    tip_email: member.tip_email,
+    student_id_number: member.student_id_number,
+    program: member.program,
+    year_level: member.year_level,
+    membership_type: member.membership_type,
+    officer_position: member.officer_position,
+    date_issued: member.date_issued ?? '',
+    valid_until: member.valid_until ?? '',
     team: member.team,
   };
   for (const box of template.layout.fields) {

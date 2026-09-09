@@ -1,3 +1,4 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   defaultCrop,
   normalizeMember,
@@ -12,99 +13,58 @@ import {
   saveMember,
   checkRevision,
   json,
+  logActivity,
 } from './database';
 import type { Bindings } from './database';
+
 export async function importMembers(
-  env: Bindings,
+  client: SupabaseClient,
+  actorId: string,
   raw: unknown,
   manual = false,
 ) {
   if (!Array.isArray(raw) || !raw.length || raw.length > 500)
     throw new AppError('Import 1–500 valid records at a time.');
-  const ids = new Set<string>();
-  const records: MemberRecord[] = raw.map((row, index) => {
+  const members = raw.map((row, index) => {
     if (!row || typeof row !== 'object' || Array.isArray(row))
       throw new AppError(`Row ${index + 1}: invalid member record.`);
-    const member = normalizeMember(row);
+    const member = normalizeMember(row as Record<string, unknown>);
     const errors = validateMember(member);
     if (errors.length)
       throw new AppError(`Row ${index + 1}: ${errors.join('; ')}`);
-    if (ids.has(member.aws_sbg_id))
-      throw new AppError(`Duplicate ID: ${member.aws_sbg_id}`);
-    ids.add(member.aws_sbg_id);
-    const now = new Date().toISOString();
-    return {
-      ...member,
-      id: crypto.randomUUID(),
-      photo_url: null,
-      photo_crop_data: { ...defaultCrop },
-      color_override: null,
-      status: 'Draft',
-      revision: 1,
-      created_at: now,
-      updated_at: now,
-    };
+    return member;
   });
-  const existing = await env.DB.prepare('SELECT aws_sbg_id FROM members').all<{
-    aws_sbg_id: string;
-  }>();
-  const duplicates = records.filter((record) =>
-    existing.results.some((row) => row.aws_sbg_id === record.aws_sbg_id),
-  );
-  if (duplicates.length)
-    throw new AppError(
-      `IDs already exist: ${duplicates.map((record) => record.aws_sbg_id).join(', ')}`,
-      409,
-    );
-  // D1 batch is transactional: a uniqueness race rolls back the complete import.
-  const statements: D1PreparedStatement[] = [];
-  // Bound each statement to 100 parameters and the full 500-member import to 40 statements.
-  for (let index = 0; index < records.length; index += 25) {
-    const chunk = records.slice(index, index + 25);
-    statements.push(
-      env.DB.prepare(
-        `INSERT INTO members (id, aws_sbg_id, data, status, revision) VALUES ${chunk.map(() => '(?, ?, ?, ?, 1)').join(',')}`,
-      ).bind(
-        ...chunk.flatMap((member) => [
-          member.id,
-          member.aws_sbg_id,
-          JSON.stringify(member),
-          member.status,
-        ]),
-      ),
-      env.DB.prepare(
-        `INSERT INTO activities (id, member_id, message, created_at) VALUES ${chunk.map(() => '(?, ?, ?, ?)').join(',')}`,
-      ).bind(
-        ...chunk.flatMap((member) => [
-          crypto.randomUUID(),
-          member.id,
-          `${manual ? 'Member added' : 'Member imported'}: ${displayName(member)}`,
-          member.created_at,
-        ]),
-      ),
-    );
+  const { data, error } = await client.rpc('create_members', {
+    member_rows: members,
+    actor: actorId,
+    action_name: manual ? 'member_created' : 'member_imported',
+  });
+  if (error) {
+    if (error.code === '23505')
+      throw new AppError(
+        'A T.I.P. email or student ID already belongs to a member.',
+        409,
+      );
+    throw new AppError(error.message || 'Members could not be imported.');
   }
-  await env.DB.batch(statements);
-  return json({ imported: records.length, members: records }, 201);
+  return json(
+    { imported: (data as MemberRecord[]).length, members: data },
+    201,
+  );
 }
+
 export async function updateMember(
-  env: Bindings,
+  client: SupabaseClient,
+  actorId: string,
   id: string,
   request: Request,
 ) {
-  const previous = await getMember(env.DB, id);
+  const previous = await getMember(client, id);
   const raw = (await request.json()) as Record<string, unknown>;
   checkRevision(previous, raw.revision);
   const input = normalizeMember(raw);
-  if (
-    !input.aws_sbg_id ||
-    !/^[A-Z0-9][A-Z0-9._-]{2,79}$/.test(input.aws_sbg_id)
-  )
-    throw new AppError('A valid AWS SBG ID is required.');
   if (Object.values(input).some((value) => value.length > 240))
     throw new AppError('Fields must be 240 characters or fewer.');
-  if (!['Member', 'Officer', 'Associate'].includes(input.membership_type))
-    throw new AppError('Invalid membership type.');
   const crop = raw.photo_crop_data as Crop;
   if (
     !crop ||
@@ -131,46 +91,75 @@ export async function updateMember(
       input.membership_type === 'Officer'
         ? (raw.color_override as string | null)
         : null,
-    status: reviewStatus(input, previous.photo_url),
+    status: reviewStatus(input, previous.photo_path),
   };
-  return json(
-    await saveMember(
-      env.DB,
-      previous,
-      member,
-      `Member updated: ${displayName(member)}`,
-    ),
+  const saved = await saveMember(client, actorId, previous, member);
+  await logActivity(
+    client,
+    actorId,
+    'member_updated',
+    `Member updated: ${displayName(saved)}`,
+    saved.id,
   );
+  return json(saved);
 }
+
+function addMonths(date: Date, months: number) {
+  const result = new Date(date);
+  result.setUTCMonth(result.getUTCMonth() + months);
+  return result.toISOString().slice(0, 10);
+}
+
 export async function confirmMember(
+  client: SupabaseClient,
+  actorId: string,
   env: Bindings,
   id: string,
   request: Request,
 ) {
-  const previous = await getMember(env.DB, id);
+  const previous = await getMember(client, id);
   checkRevision(
     previous,
     ((await request.json()) as { revision: number }).revision,
   );
   const errors = validateMember(previous);
-  if (errors.length || !previous.photo_url)
+  if (errors.length || !previous.photo_path)
     throw new AppError(
       [
         ...errors,
-        ...(!previous.photo_url ? ['Upload and review a photo first.'] : []),
+        ...(!previous.photo_path ? ['Upload and review a photo first.'] : []),
       ].join('; '),
     );
-  if (!(await env.FILES.head(previous.photo_url)))
+  if (!(await env.FILES.head(previous.photo_path)))
     throw new AppError('Photo is missing. Please upload it again.');
-  return json(
-    await saveMember(
-      env.DB,
-      previous,
-      { ...previous, status: 'Ready' },
-      `ID confirmed: ${displayName(previous)}`,
-    ),
+  const issue = previous.date_issued ?? new Date().toISOString().slice(0, 10);
+  let validityMonths = 12;
+  const setting = await client
+    .from('app_settings')
+    .select('value')
+    .eq('key', 'id_validity_months')
+    .maybeSingle();
+  if (setting.error)
+    throw new AppError('ID validity configuration could not be loaded.');
+  if (typeof setting.data?.value === 'number')
+    validityMonths = setting.data.value;
+  const saved = await saveMember(client, actorId, previous, {
+    ...previous,
+    date_issued: issue,
+    valid_until: previous.valid_until ??
+      addMonths(new Date(`${issue}T00:00:00Z`), validityMonths),
+    status: 'Ready',
+  });
+  await logActivity(
+    client,
+    actorId,
+    'member_confirmed',
+    `ID confirmed: ${saved.aws_sbg_id}`,
+    saved.id,
   );
+  return json(saved);
 }
+
 export function pngDimensions(bytes: Uint8Array) {
   if (
     bytes.length < 24 ||
@@ -180,25 +169,33 @@ export function pngDimensions(bytes: Uint8Array) {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   return { width: view.getUint32(16), height: view.getUint32(20) };
 }
-export async function photo(env: Bindings, id: string, request: Request) {
-  const previous = await getMember(env.DB, id);
+
+export async function photo(
+  client: SupabaseClient,
+  actorId: string,
+  env: Bindings,
+  id: string,
+  request: Request,
+) {
+  const previous = await getMember(client, id);
   if (request.method === 'DELETE') {
     checkRevision(
       previous,
       ((await request.json()) as { revision: number }).revision,
     );
-    const member = await saveMember(
-      env.DB,
-      previous,
-      {
-        ...previous,
-        photo_url: null,
-        photo_crop_data: { ...defaultCrop },
-        status: reviewStatus(previous, null),
-      },
+    const member = await saveMember(client, actorId, previous, {
+      ...previous,
+      photo_path: null,
+      photo_crop_data: { ...defaultCrop },
+      status: reviewStatus(previous, null),
+    });
+    await logActivity(
+      client,
+      actorId,
+      'photo_removed',
       `Photo removed: ${displayName(previous)}`,
+      previous.id,
     );
-    // Prior images remain available to immutable generation history snapshots.
     return json(member);
   }
   const form = await request.formData();
@@ -234,19 +231,20 @@ export async function photo(env: Bindings, id: string, request: Request) {
     httpMetadata: { contentType: 'image/png' },
   });
   try {
-    return json(
-      await saveMember(
-        env.DB,
-        previous,
-        {
-          ...previous,
-          photo_url: key,
-          photo_crop_data: crop,
-          status: reviewStatus(previous, key),
-        },
-        `Photo uploaded: ${displayName(previous)}`,
-      ),
+    const saved = await saveMember(client, actorId, previous, {
+      ...previous,
+      photo_path: key,
+      photo_crop_data: crop,
+      status: reviewStatus(previous, key),
+    });
+    await logActivity(
+      client,
+      actorId,
+      previous.photo_path ? 'photo_replaced' : 'photo_uploaded',
+      `Photo ${previous.photo_path ? 'replaced' : 'uploaded'}: ${displayName(previous)}`,
+      previous.id,
     );
+    return json(saved);
   } catch (error) {
     await env.FILES.delete(key);
     throw error;

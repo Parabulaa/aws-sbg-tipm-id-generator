@@ -4,51 +4,55 @@ import {
   blankMember,
   displayName,
   normalizeMember,
+  normalizeYearLevel,
   validateMember,
   reviewStatus,
   safeFilename,
   contrastText,
 } from '../lib/domain';
+
 const input = {
   ...blankMember,
-  first_name: 'Test',
-  middle_name: 'Long',
-  last_name: 'de la Test',
-  email: 'test@example.org',
-  aws_sbg_id: 'TEST-001',
-  date_issued: '2026-09-08',
-  valid_until: '2027-09-08',
+  full_name: 'Test de la Test',
+  tip_email: 'test@example.org',
+  student_id_number: '001234',
+  program: 'BSCS',
+  year_level: '2nd Year',
 };
-void test('name formatting preserves surnames, optional middle initial and original values', () => {
-  assert.equal(displayName(input), 'Test L. de la Test');
-  assert.equal(displayName({ ...input, middle_name: '' }), 'Test de la Test');
-  assert.equal(input.middle_name, 'Long');
+
+void test('full names remain canonical and student IDs preserve leading zeroes', () => {
+  assert.equal(displayName(input), 'Test de la Test');
+  assert.equal(normalizeMember(input).student_id_number, '001234');
+  assert.equal(normalizeYearLevel('2'), '2nd Year');
+  assert.equal(normalizeYearLevel('3rd year'), '3rd Year');
 });
-void test('validates dates, officers, membership and email', () => {
+
+void test('member validation covers required data and officer fields', () => {
   assert.deepEqual(validateMember(input), []);
   for (const changed of [
-    { email: 'broken' },
-    { date_issued: '2026-02-30' },
-    { valid_until: '2025-01-01' },
+    { tip_email: 'broken' },
+    { student_id_number: '' },
+    { program: '' },
     { membership_type: 'Officer' },
   ]) {
     assert.ok(validateMember(normalizeMember({ ...input, ...changed })).length);
   }
 });
+
 void test('edits invalidate readiness and uploading never confirms', () => {
-  assert.deepEqual(
-    validateMember({ ...input, photo_url: null, revision: 1 } as typeof input),
-    [],
-  );
   assert.equal(reviewStatus(input, null), 'Needs Photo');
   assert.equal(reviewStatus(input, 'photo'), 'Draft');
   assert.equal(
-    reviewStatus({ ...input, email: '' }, 'photo'),
+    reviewStatus({ ...input, tip_email: '' }, 'photo'),
     'Needs Attention',
   );
 });
+
 void test('filenames and contrast are deterministic', () => {
-  assert.equal(safeFilename(input), 'TEST-001_Test-L-de-la-Test');
+  assert.equal(
+    safeFilename({ ...input, aws_sbg_id: 'AWS-SBG-TIPM-2026-0001' }),
+    'AWS-SBG-TIPM-2026-0001_Test-de-la-Test',
+  );
   assert.equal(contrastText('#000000'), '#ffffff');
   assert.equal(contrastText('#ffffff'), '#000000');
 });

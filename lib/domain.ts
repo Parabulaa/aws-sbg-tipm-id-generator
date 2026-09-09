@@ -8,43 +8,53 @@ export const statuses = [
   'Generated',
 ] as const;
 export type MemberStatus = (typeof statuses)[number];
+
 export interface Crop {
   x: number;
   y: number;
   zoom: number;
 }
+
 export interface MemberInput {
-  first_name: string;
-  middle_name: string;
-  last_name: string;
-  email: string;
+  full_name: string;
+  tip_email: string;
+  student_id_number: string;
+  program: string;
+  year_level: string;
   membership_type: Category;
+  officer_position: string;
   team: string;
-  position: string;
-  aws_sbg_id: string;
-  date_issued: string;
-  valid_until: string;
 }
+
 export interface MemberRecord extends MemberInput {
   id: string;
-  photo_url: string | null;
+  aws_sbg_id: string;
+  photo_path: string | null;
   photo_crop_data: Crop;
   color_override: string | null;
+  date_issued: string | null;
+  valid_until: string | null;
   status: MemberStatus;
+  revision: number;
+  created_by: string | null;
+  updated_by: string | null;
   created_at: string;
   updated_at: string;
-  revision: number;
+  archived_at: string | null;
 }
+
 export interface TeamColor {
   name: string;
   color: string;
   enabled: boolean;
 }
+
 export interface ColorSettings {
   mode: 'default' | 'team';
   teams: TeamColor[];
   revision: number;
 }
+
 export interface Generation {
   id: string;
   member_id: string;
@@ -54,67 +64,88 @@ export interface Generation {
   accent: string;
   template_version: string;
   status: 'Generated';
+  front_path?: string;
+  back_path?: string;
+  pdf_path?: string;
 }
+
 export interface Activity {
   id: string;
-  member_id: string;
+  member_id: string | null;
   message: string;
   created_at: string;
 }
+
 export const blankMember: MemberInput = {
-  first_name: '',
-  middle_name: '',
-  last_name: '',
-  email: '',
+  full_name: '',
+  tip_email: '',
+  student_id_number: '',
+  program: '',
+  year_level: '',
   membership_type: 'Member',
+  officer_position: '',
   team: '',
-  position: '',
-  aws_sbg_id: '',
-  date_issued: '',
-  valid_until: '',
 };
+
 export const defaultCrop: Crop = { x: 0.5, y: 0.5, zoom: 1 };
-export function displayName(member: MemberInput) {
-  const middle = member.middle_name.trim();
-  return [
-    member.first_name.trim(),
-    middle ? `${Array.from(middle)[0].toUpperCase()}.` : '',
-    member.last_name.trim(),
-  ]
-    .filter(Boolean)
-    .join(' ');
+
+export function displayName(member: Pick<MemberInput, 'full_name'>) {
+  return member.full_name.trim();
 }
+
+export function normalizeYearLevel(value: string) {
+  const cleaned = value.trim().replace(/\s+/g, ' ');
+  const match = cleaned.match(/^(\d+)(?:st|nd|rd|th)?(?:\s*year)?$/i);
+  if (!match) return cleaned;
+  const number = Number(match[1]);
+  const suffix =
+    number % 100 >= 11 && number % 100 <= 13
+      ? 'th'
+      : number % 10 === 1
+        ? 'st'
+        : number % 10 === 2
+          ? 'nd'
+          : number % 10 === 3
+            ? 'rd'
+            : 'th';
+  return `${number}${suffix} Year`;
+}
+
 export function normalizeMember(raw: Record<string, unknown>): MemberInput {
-  const member = { ...blankMember };
-  for (const key of Object.keys(blankMember) as (keyof MemberInput)[]) {
-    Object.assign(member, {
-      [key]: typeof raw[key] === 'string' ? raw[key].trim() : '',
-    });
-  }
-  member.email = member.email.toLowerCase();
-  member.aws_sbg_id = member.aws_sbg_id.toUpperCase();
-  member.membership_type = (categories.find(
-    (value) =>
-      value.toLowerCase() === String(raw.membership_type).trim().toLowerCase(),
-  ) ?? String(raw.membership_type)) as Category;
-  return member;
+  const text = (key: keyof MemberInput) =>
+    typeof raw[key] === 'string' ? raw[key].trim() : '';
+  const membership = text('membership_type');
+  return {
+    full_name: text('full_name'),
+    tip_email: text('tip_email').toLowerCase(),
+    student_id_number: text('student_id_number'),
+    program: text('program'),
+    year_level: normalizeYearLevel(text('year_level')),
+    membership_type: (categories.find(
+      (value) => value.toLowerCase() === membership.toLowerCase(),
+    ) ?? membership) as Category,
+    officer_position: text('officer_position'),
+    team: text('team'),
+  };
 }
-export function validDate(value: string) {
+
+export function validDate(value: string | null) {
   return (
-    /^\d{4}-\d{2}-\d{2}$/.test(value) &&
-    Number.isFinite(Date.parse(value)) &&
-    new Date(value).toISOString().slice(0, 10) === value
+    value === null ||
+    (/^\d{4}-\d{2}-\d{2}$/.test(value) &&
+      Number.isFinite(Date.parse(value)) &&
+      new Date(value).toISOString().slice(0, 10) === value)
   );
 }
+
 export function validateMember(member: MemberInput) {
   const errors: string[] = [];
   for (const key of [
-    'first_name',
-    'last_name',
-    'email',
-    'aws_sbg_id',
-    'date_issued',
-    'valid_until',
+    'full_name',
+    'tip_email',
+    'student_id_number',
+    'program',
+    'year_level',
   ] as const) {
     if (!member[key]) errors.push(`${key} is required`);
   }
@@ -123,37 +154,28 @@ export function validateMember(member: MemberInput) {
     if (value.length > 240)
       errors.push(`${key} must be 240 characters or fewer`);
     if (
-      typeof value === 'string' &&
       Array.from(value).some(
         (char) => char.charCodeAt(0) < 32 || char.charCodeAt(0) === 127,
       )
     )
       errors.push(`${key} contains invalid characters`);
   }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(member.email))
-    errors.push('Invalid email');
-  if (!/^[A-Z0-9][A-Z0-9._-]{2,79}$/.test(member.aws_sbg_id))
-    errors.push(
-      'Invalid AWS SBG ID (3–80 letters, numbers, dots, underscores or hyphens)',
-    );
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(member.tip_email))
+    errors.push('Invalid T.I.P. email');
   if (!categories.includes(member.membership_type))
     errors.push('Invalid membership type');
+  if (member.membership_type === 'Officer' && !member.officer_position)
+    errors.push('Officer position is required');
   if (member.membership_type === 'Officer' && !member.team)
     errors.push('Officer team is required');
-  if (member.membership_type === 'Officer' && !member.position)
-    errors.push('Officer position is required');
-  if (!validDate(member.date_issued))
-    errors.push('Invalid date_issued (use YYYY-MM-DD)');
-  if (!validDate(member.valid_until))
-    errors.push('Invalid valid_until (use YYYY-MM-DD)');
   if (
-    validDate(member.date_issued) &&
-    validDate(member.valid_until) &&
-    member.valid_until <= member.date_issued
+    member.membership_type !== 'Officer' &&
+    (member.officer_position || member.team)
   )
-    errors.push('Validity must end after the issue date');
+    errors.push('Officer position and team only apply to Officers');
   return [...new Set(errors)];
 }
+
 export function reviewStatus(
   member: MemberInput,
   photo: string | null,
@@ -161,7 +183,10 @@ export function reviewStatus(
   if (validateMember(member).length) return 'Needs Attention';
   return photo ? 'Draft' : 'Needs Photo';
 }
-export function safeFilename(member: MemberInput) {
+
+export function safeFilename(
+  member: Pick<MemberRecord, 'aws_sbg_id' | 'full_name'>,
+) {
   const clean = (text: string) =>
     text
       .normalize('NFKD')
@@ -171,6 +196,7 @@ export function safeFilename(member: MemberInput) {
       .slice(0, 90);
   return `${clean(member.aws_sbg_id)}_${clean(displayName(member)) || 'ID'}`;
 }
+
 export function accentColor(member: MemberRecord, settings: ColorSettings) {
   if (member.membership_type === 'Member') return '#f59e0b';
   if (member.membership_type === 'Associate') return '#8b5cf6';
@@ -186,6 +212,7 @@ export function accentColor(member: MemberRecord, settings: ColorSettings) {
     '#10b981'
   );
 }
+
 export function contrastText(hex: string) {
   const channels = hex
     .slice(1)

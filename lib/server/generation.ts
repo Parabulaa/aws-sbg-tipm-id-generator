@@ -1,4 +1,5 @@
-import { accentColor, displayName } from '../domain';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { accentColor } from '../domain';
 import type { Generation, MemberRecord } from '../domain';
 import {
   AppError,
@@ -10,15 +11,60 @@ import {
 import type { Bindings } from './database';
 import { getTemplates } from './configuration';
 import { pngDimensions } from './members';
-export async function generate(env: Bindings, request: Request, actor: string) {
+
+export async function getGenerations(
+  client: SupabaseClient,
+): Promise<Generation[]> {
+  const { data, error } = await client
+    .from('generated_ids')
+    .select(
+      'id,member_id,member_snapshot,generated_at,generated_by,effective_accent,template_versions,front_path,back_path,pdf_path,officer_profiles:generated_by(display_name,email)',
+    )
+    .order('generated_at', { ascending: false });
+  if (error) throw new AppError('Generation history could not be loaded.');
+  return (data ?? []).map((row) => {
+    const profile = Array.isArray(row.officer_profiles)
+      ? row.officer_profiles[0]
+      : row.officer_profiles;
+    return {
+      id: row.id as string,
+      member_id: row.member_id as string,
+      member: row.member_snapshot as MemberRecord,
+      generated_at: row.generated_at as string,
+      generated_by:
+        (profile as { display_name?: string; email?: string } | null)
+          ?.display_name ||
+        (profile as { email?: string } | null)?.email ||
+        'Officer',
+      accent: row.effective_accent as string,
+      template_version: Object.values(
+        row.template_versions as Record<string, string>,
+      ).join(':'),
+      status: 'Generated',
+      front_path: row.front_path as string,
+      back_path: row.back_path as string,
+      pdf_path: row.pdf_path as string,
+    };
+  });
+}
+
+export async function generate(
+  env: Bindings,
+  client: SupabaseClient,
+  actorId: string,
+  actorName: string,
+  request: Request,
+) {
   const form = await request.formData();
-  const member = await getMember(env.DB, form.get('member_id') as string);
+  const member = await getMember(client, form.get('member_id') as string);
   checkRevision(member, Number(form.get('revision')));
+  if (member.archived_at)
+    throw new AppError('Archived members cannot generate IDs.');
   if (member.status !== 'Ready')
     throw new AppError(
       'Only reviewed Ready members can be generated. Confirm this member first.',
     );
-  const templates = (await getTemplates(env)).filter(
+  const templates = (await getTemplates(client)).filter(
     (item) => item.category === member.membership_type,
   );
   if (
@@ -27,18 +73,19 @@ export async function generate(env: Bindings, request: Request, actor: string) {
     )
   )
     throw new AppError('Approved front and back templates are required.');
-  const version = ['front', 'back']
-    .map((side) => templates.find((item) => item.side === side)!.version)
-    .join(':');
-  const colors = await getColors(env.DB);
+  const versions = Object.fromEntries(
+    (['front', 'back'] as const).map((side) => [
+      side,
+      templates.find((item) => item.side === side)!.version,
+    ]),
+  );
+  const version = `${versions.front}:${versions.back}`;
+  const colors = await getColors(client);
   if (
     form.get('template_version') !== version ||
     Number(form.get('color_revision')) !== colors.revision
   )
-    throw new AppError(
-      'Templates or colors changed. Refresh and regenerate.',
-      409,
-    );
+    throw new AppError('Templates or colors changed. Refresh and regenerate.', 409);
   const files: Record<string, Uint8Array> = {};
   for (const name of ['front', 'back', 'pdf']) {
     const file = form.get(name);
@@ -55,21 +102,8 @@ export async function generate(env: Bindings, request: Request, actor: string) {
   }
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
-  const record: Generation = {
-    id,
-    member_id: member.id,
-    member,
-    generated_at: now,
-    generated_by: actor,
-    accent: accentColor(member, colors),
-    template_version: version,
-    status: 'Generated',
-  };
-  const keys = [
-    `exports/${id}/front.png`,
-    `exports/${id}/back.png`,
-    `exports/${id}/ID.pdf`,
-  ];
+  const base = `exports/${member.id}/${id}`;
+  const keys = [`${base}/front.png`, `${base}/back.png`, `${base}/ID.pdf`];
   try {
     await Promise.all(
       keys.map((key, index) =>
@@ -80,47 +114,34 @@ export async function generate(env: Bindings, request: Request, actor: string) {
         }),
       ),
     );
-    const updated: MemberRecord = {
-      ...member,
+    const accent = accentColor(member, colors);
+    const { data, error } = await client.rpc('record_generation', {
+      generation_id: id,
+      member_uuid: member.id,
+      expected_revision: member.revision,
+      actor: actorId,
+      snapshot: member,
+      template_version_map: versions,
+      accent,
+      photo_reference: member.photo_path,
+      front_file_path: keys[0],
+      back_file_path: keys[1],
+      pdf_file_path: keys[2],
+    });
+    if (error) throw new AppError(error.message || 'Generation could not be recorded.');
+    const record: Generation = {
+      id,
+      member_id: member.id,
+      member,
+      generated_at: (data as { generated_at?: string })?.generated_at ?? now,
+      generated_by: actorName,
+      accent,
+      template_version: version,
       status: 'Generated',
-      updated_at: now,
-      revision: member.revision + 1,
+      front_path: keys[0],
+      back_path: keys[1],
+      pdf_path: keys[2],
     };
-    const results = await env.DB.batch([
-      env.DB.prepare(
-        "INSERT INTO generated_ids (id,member_id,data,created_at) SELECT ?,?,?,? FROM members WHERE id=? AND revision=? AND status='Ready'",
-      ).bind(
-        id,
-        member.id,
-        JSON.stringify(record),
-        now,
-        member.id,
-        member.revision,
-      ),
-      env.DB.prepare(
-        "UPDATE members SET data=?,status='Generated',revision=? WHERE id=? AND revision=? AND EXISTS (SELECT 1 FROM generated_ids WHERE id=?)",
-      ).bind(
-        JSON.stringify(updated),
-        updated.revision,
-        member.id,
-        member.revision,
-        id,
-      ),
-      env.DB.prepare(
-        'INSERT INTO activities (id,member_id,message,created_at) SELECT ?,?,?,? WHERE EXISTS (SELECT 1 FROM generated_ids WHERE id=?)',
-      ).bind(
-        crypto.randomUUID(),
-        member.id,
-        `ID generated: ${displayName(member)}`,
-        now,
-        id,
-      ),
-    ]);
-    if (!results[0].meta.changes)
-      throw new AppError(
-        'Member changed during generation. Review again.',
-        409,
-      );
     return json(record, 201);
   } catch (error) {
     await env.FILES.delete(keys);

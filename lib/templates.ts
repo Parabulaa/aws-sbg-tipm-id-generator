@@ -11,8 +11,15 @@ export interface Rect {
 export type TextField =
   | 'name'
   | 'role'
+  | 'full_name'
   | 'aws_sbg_id'
   | 'email'
+  | 'tip_email'
+  | 'student_id_number'
+  | 'program'
+  | 'year_level'
+  | 'membership_type'
+  | 'officer_position'
   | 'date_issued'
   | 'valid_until'
   | 'team';
@@ -68,8 +75,15 @@ export function validateLayout(layout: TemplateLayout) {
       ![
         'name',
         'role',
+        'full_name',
         'aws_sbg_id',
         'email',
+        'tip_email',
+        'student_id_number',
+        'program',
+        'year_level',
+        'membership_type',
+        'officer_position',
         'date_issued',
         'valid_until',
         'team',

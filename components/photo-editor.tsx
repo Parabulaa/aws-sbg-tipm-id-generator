@@ -28,7 +28,7 @@ export function PhotoEditor({
     [url],
   );
   const source =
-    url || (member.photo_url ? fileUrl(member.photo_url) : undefined);
+    url || (member.photo_path ? fileUrl(member.photo_path) : undefined);
   const crop = member.photo_crop_data;
   return (
     <section className="space-y-3">
@@ -171,7 +171,7 @@ export function PhotoEditor({
                 Apply uploaded photo
               </button>
             )}
-            {member.photo_url && (
+            {member.photo_path && (
               <button
                 className="btn"
                 disabled={busy || !!pending}

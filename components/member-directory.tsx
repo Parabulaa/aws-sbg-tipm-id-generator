@@ -31,7 +31,13 @@ export function MemberDirectory() {
       (!category || member.membership_type === category) &&
       (!team || member.team === team) &&
       (!status || member.status === status) &&
-      [displayName(member), member.email, member.aws_sbg_id, member.position]
+      [
+        displayName(member),
+        member.tip_email,
+        member.student_id_number,
+        member.aws_sbg_id,
+        member.officer_position,
+      ]
         .join(' ')
         .toLowerCase()
         .includes(query.toLowerCase()),
@@ -202,9 +208,9 @@ export function MemberDirectory() {
                     />
                   </td>
                   <td>
-                    {member.photo_url ? (
+                    {member.photo_path ? (
                       <img
-                        src={fileUrl(member.photo_url)}
+                        src={fileUrl(member.photo_path)}
                         alt=""
                         className="size-10 rounded-full object-cover"
                       />
@@ -217,7 +223,7 @@ export function MemberDirectory() {
                   </td>
                   <td>{member.aws_sbg_id}</td>
                   <td>
-                    {member.position || member.membership_type}
+                    {member.officer_position || member.membership_type}
                     <br />
                     <span className="text-slate-500">{member.team}</span>
                   </td>
@@ -225,7 +231,7 @@ export function MemberDirectory() {
                   <td>
                     <StatusBadge status={member.status} />
                   </td>
-                  <td>{member.valid_until}</td>
+                  <td>{member.valid_until ?? 'Not issued'}</td>
                   <td>
                     <Link
                       className="btn whitespace-nowrap"

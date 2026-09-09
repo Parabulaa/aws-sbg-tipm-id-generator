@@ -1,17 +1,14 @@
 import type { MemberInput } from '@/lib/domain';
 import { categories } from '@/lib/domain';
-const labels: Record<keyof MemberInput, string> = {
-  first_name: 'First name',
-  middle_name: 'Middle name',
-  last_name: 'Last name',
-  email: 'Email',
-  membership_type: 'Membership type',
-  team: 'Team',
-  position: 'Position',
-  aws_sbg_id: 'AWS SBG ID',
-  date_issued: 'Date issued',
-  valid_until: 'Valid until',
-};
+
+const fields: { key: keyof MemberInput; label: string; type?: string }[] = [
+  { key: 'full_name', label: 'Full Name' },
+  { key: 'tip_email', label: 'T.I.P. Email', type: 'email' },
+  { key: 'student_id_number', label: 'Student ID Number' },
+  { key: 'program', label: 'Department / Program' },
+  { key: 'year_level', label: 'Year Level' },
+];
+
 export function MemberForm({
   value,
   onChange,
@@ -23,42 +20,55 @@ export function MemberForm({
 }) {
   return (
     <fieldset disabled={disabled} className="grid min-w-0 gap-4 sm:grid-cols-2">
-      {(Object.keys(labels) as (keyof MemberInput)[]).map((key) => (
+      {fields.map(({ key, label, type }) => (
         <label key={key} className="field">
-          {labels[key]}
-          {key === 'membership_type' ? (
-            <select
-              aria-label={labels[key]}
-              value={value[key]}
-              onChange={(event) =>
-                onChange({
-                  ...value,
-                  [key]: event.target.value as MemberInput['membership_type'],
-                })
-              }
-            >
-              {categories.map((category) => (
-                <option key={category}>{category}</option>
-              ))}
-            </select>
-          ) : (
-            <input
-              maxLength={240}
-              type={
-                key === 'email'
-                  ? 'email'
-                  : ['date_issued', 'valid_until'].includes(key)
-                    ? 'date'
-                    : 'text'
-              }
-              value={value[key]}
-              onChange={(event) =>
-                onChange({ ...value, [key]: event.target.value })
-              }
-            />
-          )}
+          {label}
+          <input
+            maxLength={240}
+            type={type ?? 'text'}
+            value={value[key]}
+            onChange={(event) => onChange({ ...value, [key]: event.target.value })}
+          />
         </label>
       ))}
+      <label className="field">
+        Membership Type
+        <select
+          aria-label="Membership Type"
+          value={value.membership_type}
+          onChange={(event) => {
+            const membership_type = event.target.value as MemberInput['membership_type'];
+            onChange({
+              ...value,
+              membership_type,
+              officer_position: membership_type === 'Officer' ? value.officer_position : '',
+              team: membership_type === 'Officer' ? value.team : '',
+            });
+          }}
+        >
+          {categories.map((category) => <option key={category}>{category}</option>)}
+        </select>
+      </label>
+      {value.membership_type === 'Officer' && (
+        <>
+          <label className="field">
+            Officer Position
+            <input
+              maxLength={240}
+              value={value.officer_position}
+              onChange={(event) => onChange({ ...value, officer_position: event.target.value })}
+            />
+          </label>
+          <label className="field">
+            Team / Office
+            <input
+              maxLength={240}
+              value={value.team}
+              onChange={(event) => onChange({ ...value, team: event.target.value })}
+            />
+          </label>
+        </>
+      )}
     </fieldset>
   );
 }

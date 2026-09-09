@@ -57,7 +57,7 @@ export function GenerateIdWorkspace() {
               .filter(
                 (record) =>
                   record.id === member.id ||
-                  [displayName(record), record.email, record.aws_sbg_id]
+                  [displayName(record), record.tip_email, record.aws_sbg_id]
                     .join(' ')
                     .toLowerCase()
                     .includes(query.toLowerCase()),
@@ -170,7 +170,7 @@ function ReviewEditor({
             onMember={(updated) => {
               setMember((current) => ({
                 ...current,
-                photo_url: updated.photo_url,
+                photo_path: updated.photo_path,
                 photo_crop_data: updated.photo_crop_data,
                 revision: updated.revision,
                 status: updated.status,
@@ -221,7 +221,7 @@ function ReviewEditor({
             <button
               className="btn-primary"
               disabled={
-                !member.photo_url ||
+                !member.photo_path ||
                 !!preview ||
                 !!validateMember(member).length
               }

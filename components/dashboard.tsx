@@ -24,7 +24,9 @@ export function Dashboard() {
     [
       'Expired IDs',
       members.filter(
-        (m) => m.valid_until < new Date().toISOString().slice(0, 10),
+        (m) =>
+          m.valid_until !== null &&
+          m.valid_until < new Date().toISOString().slice(0, 10),
       ).length,
     ],
   ];

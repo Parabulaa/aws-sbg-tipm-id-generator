@@ -119,10 +119,10 @@ export function GeneratedHistory() {
                 </td>
                 <td>
                   <div className="flex min-w-44 items-center gap-2">
-                    {record.member.photo_url && (
+                    {record.member.photo_path && (
                       <img
                         alt=""
-                        src={fileUrl(record.member.photo_url)}
+                        src={fileUrl(record.member.photo_path)}
                         className="size-10 rounded-full object-cover"
                       />
                     )}
@@ -134,11 +134,11 @@ export function GeneratedHistory() {
                   <br />
                   {record.member.team}
                   <br />
-                  {record.member.position}
+                  {record.member.officer_position}
                 </td>
                 <td>{record.member.aws_sbg_id}</td>
                 <td>{new Date(record.generated_at).toLocaleString()}</td>
-                <td>{record.member.valid_until}</td>
+                <td>{record.member.valid_until ?? 'Not issued'}</td>
                 <td>{record.generated_by}</td>
                 <td>
                   {record.status}
