@@ -66,8 +66,8 @@ void test('edits invalidate readiness and uploading never confirms', () => {
 
 void test('filenames and contrast are deterministic', () => {
   assert.equal(
-    safeFilename({ ...input, aws_sbg_id: 'AWS-SBG-TIPM-2026-0001' }),
-    'AWS-SBG-TIPM-2026-0001_Test-de-la-Test',
+    safeFilename({ ...input, aws_sbg_id: 'AWSCC-TIPM-26001' }),
+    'AWSCC-TIPM-26001_Test-de-la-Test',
   );
   assert.equal(contrastText('#000000'), '#ffffff');
   assert.equal(contrastText('#ffffff'), '#000000');
@@ -75,16 +75,16 @@ void test('filenames and contrast are deterministic', () => {
 
 void test('AWS SBG IDs use the configured prefix and never collapse sequence values', () => {
   assert.equal(
-    formatAwsSbgId('AWS-SBG-TIPM', 2026, 1),
-    'AWS-SBG-TIPM-2026-0001',
+    formatAwsSbgId('AWSCC-TIPM', 2026, 1),
+    'AWSCC-TIPM-26001',
   );
   assert.equal(
-    formatAwsSbgId('AWS-SBG-TIPM', 2026, 10000),
-    'AWS-SBG-TIPM-2026-10000',
+    formatAwsSbgId('AWSCC-TIPM', 2026, 10000),
+    'AWSCC-TIPM-2610000',
   );
   assert.notEqual(
-    formatAwsSbgId('AWS-SBG-TIPM', 2026, 10),
-    formatAwsSbgId('AWS-SBG-TIPM', 2026, 11),
+    formatAwsSbgId('AWSCC-TIPM', 2026, 10),
+    formatAwsSbgId('AWSCC-TIPM', 2026, 11),
   );
 });
 

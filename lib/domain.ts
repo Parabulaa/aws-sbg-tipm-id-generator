@@ -142,12 +142,18 @@ export function isArchived(member: Pick<MemberRecord, 'archived_at'>) {
 
 export function formatAwsSbgId(prefix: string, year: number, value: number) {
   if (
-    !/^\d{4}$/.test(String(year)) ||
+    !Number.isInteger(year) ||
+    year < 0 ||
+    year > 9999 ||
     !Number.isSafeInteger(value) ||
     value < 1
   )
     throw new Error('Invalid AWS SBG ID sequence value.');
-  return `${prefix.trim()}-${year}-${String(value).padStart(4, '0')}`;
+  // AWSCC-TIPM-24000: two-digit school-year term followed immediately by a
+  // three-digit sequence (Captain = 001, next officer = 002, etc.). Values
+  // above 999 are kept intact rather than truncated.
+  const term = String(year).padStart(4, '0').slice(-2);
+  return `${prefix.trim()}-${term}${String(value).padStart(3, '0')}`;
 }
 
 export function displayName(member: Pick<MemberInput, 'full_name'>) {
