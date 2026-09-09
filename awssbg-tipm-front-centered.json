@@ -7,7 +7,7 @@
   },
   "fields": [
     {
-      "field": "full_name",
+      "field": "name",
       "x": 110,
       "y": 1165,
       "width": 980,
@@ -43,7 +43,7 @@
       "weight": "bold"
     },
     {
-      "field": "tip_email",
+      "field": "email",
       "x": 90,
       "y": 1505,
       "width": 1020,
