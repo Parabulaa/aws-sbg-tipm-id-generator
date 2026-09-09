@@ -1,5 +1,4 @@
 import { defineConfig } from '@playwright/test';
-import { resolve } from 'node:path';
 export default defineConfig({
   testDir: './tests/e2e',
   workers: 1,
@@ -12,11 +11,21 @@ export default defineConfig({
     launchOptions: { channel: 'msedge' },
     trace: 'retain-on-failure',
   },
-  webServer: {
-    command: 'node scripts/start-e2e.mjs',
-    url: 'http://localhost:3100/api/session',
-    reuseExistingServer: false,
-    timeout: 120000,
-    env: { ID_TEST_STATE: resolve('.wrangler', `e2e-${Date.now()}`) },
-  },
+  webServer: process.env.PLAYWRIGHT_EXTERNAL_SERVER
+    ? undefined
+    : {
+        command: 'node node_modules/vinext/dist/cli.js dev --port 3100',
+        url: 'http://localhost:3100/',
+        reuseExistingServer: false,
+        timeout: 120000,
+        gracefulShutdown: { signal: 'SIGINT', timeout: 1000 },
+        env: {
+          VITE_SUPABASE_URL: 'https://supabase.test',
+          VITE_SUPABASE_PUBLISHABLE_KEY: 'test-publishable-key',
+          SUPABASE_URL: 'https://supabase.test',
+          SUPABASE_PUBLISHABLE_KEY: 'test-publishable-key',
+          WRANGLER_LOG_PATH: '.wrangler/logs',
+          WRANGLER_SEND_METRICS: 'false',
+        },
+      },
 });

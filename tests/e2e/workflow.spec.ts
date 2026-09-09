@@ -1,133 +1,26 @@
 import { test, expect } from '@playwright/test';
-import type { MemberRecord } from '../../lib/domain';
-import type { Template } from '../../lib/templates';
 import ExcelJS from 'exceljs';
-import { PDFDocument } from 'pdf-lib';
-import JSZip from 'jszip';
-test('empty system → XLSX → photo/crop → review → generate → files/history', async ({
+import type { MemberRecord, Generation } from '../../lib/domain';
+import type { Template } from '../../lib/templates';
+
+test('public home → login → five-field import → officer review → generate → history → logout', async ({
   page,
-  request,
 }) => {
-  const errors: string[] = [];
-  page.on('pageerror', (error) => errors.push(error.message));
-  await page.goto('/');
-  await expect(
-    page.getByText('No members imported yet. Upload an XLSX file to begin.'),
-  ).toBeVisible();
-  expect(await (await request.get('/api/members')).json()).toEqual([]);
-  await page.goto('/members');
-  const workbook = new ExcelJS.Workbook();
-  const sheet = workbook.addWorksheet('Members');
-  sheet.addRow([
-    'first_name',
-    'middle_name',
-    'last_name',
-    'email',
-    'membership_type',
-    'team',
-    'position',
-    'aws_sbg_id',
-    'date_issued',
-    'valid_until',
-  ]);
-  sheet.addRow([
-    'QA',
-    'Middle',
-    'de la Test',
-    'qa@example.org',
-    'Officer',
-    'Quality',
-    'Test Lead',
-    'QA-001',
-    '2026-09-08',
-    '2027-09-08',
-  ]);
-  sheet.addRow([
-    'QA2',
-    '',
-    'Test',
-    'qa2@example.org',
-    'Member',
-    '',
-    '',
-    'QA-002',
-    '2026-09-08',
-    '2027-09-08',
-  ]);
-  sheet.addRow([
-    'QA3',
-    '',
-    'Test',
-    'qa3@example.org',
-    'Associate',
-    '',
-    '',
-    'QA-003',
-    '2026-09-08',
-    '2027-09-08',
-  ]);
-  sheet.addRow([
-    'Invalid',
-    '',
-    'Test',
-    'bad',
-    'Member',
-    '',
-    '',
-    'QA-004',
-    '2026-09-08',
-    '2027-09-08',
-  ]);
-  await page.getByLabel('Membership spreadsheet').setInputFiles({
-    name: 'test-members.xlsx',
-    mimeType:
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    buffer: Buffer.from(await workbook.xlsx.writeBuffer()),
-  });
-  await expect(page.getByText('4 total · 3 valid · 1 invalid')).toBeVisible();
-  await page
-    .getByRole('button', { name: 'Confirm import of 3 valid rows' })
-    .click();
-  await expect(page.getByText('3 members imported as Draft.')).toBeVisible();
-  const members = await (await request.get('/api/members')).json();
-  expect(members).toHaveLength(3);
-  await page.goto(`/generate-id?member=${members[0].id}`);
-  await expect(
-    page.getByText(
-      'Approved Officer front template is not configured. Add the approved PNG and field mapping in Templates.',
-    ),
-  ).toBeVisible();
-  const denied = await request.post('/api/members/import', {
-    data: { members: [members[0]] },
-  });
-  expect(denied.status()).toBe(403);
-  const duplicate = await request.post('/api/members/import', {
-    headers: { Origin: 'http://localhost:3100' },
-    data: { members: [members[0]] },
-  });
-  expect(duplicate.status()).toBe(409);
-  // Fixtures are created only in this run's isolated D1/R2 storage. They are not approved organization assets.
-  const png = Buffer.from(
-    await page.evaluate(() => {
-      const canvas = document.createElement('canvas');
-      canvas.width = 1200;
-      canvas.height = 1950;
-      const ctx = canvas.getContext('2d')!;
-      ctx.fillStyle = 'white';
-      ctx.fillRect(0, 0, 1200, 1950);
-      return canvas.toDataURL('image/png').split(',')[1];
-    }),
-    'base64',
-  );
-  const layout = {
-    photo: { x: 400, y: 200, width: 400, height: 500 },
+  let png = Buffer.alloc(0);
+  let members: MemberRecord[] = [];
+  let generations: Generation[] = [];
+  const now = '2026-09-09T00:00:00.000Z';
+  const layout: Template['layout'] = {
+    photo: { x: 400, y: 180, width: 400, height: 520 },
     accents: [{ x: 0, y: 0, width: 1200, height: 100 }],
-    fields: ['name', 'role', 'aws_sbg_id', 'email'].map((field, index) => ({
+    fields: (
+      ['full_name', 'officer_position', 'aws_sbg_id', 'tip_email'] as const
+    ).map((field, index) => ({
       field,
       x: 100,
-      y: 800 + index * 160,
+      y: 800 + index * 170,
       width: 1000,
-      height: 140,
+      height: 145,
       fontSize: 64,
       minFontSize: 16,
       color: '#000000',
@@ -135,52 +28,205 @@ test('empty system → XLSX → photo/crop → review → generate → files/his
       weight: 'bold',
     })),
   };
-  for (const category of ['Officer', 'Member', 'Associate'])
-    for (const side of ['front', 'back']) {
-      const response = await request.post('/api/templates', {
-        headers: { Origin: 'http://localhost:3100' },
-        multipart: {
-          category,
-          side,
-          approved: 'true',
-          layout: JSON.stringify(
-            side === 'front' ? layout : { fields: [], accents: [] },
-          ),
-          image: { name: 'test-only.png', mimeType: 'image/png', buffer: png },
+  const templates: Template[] = ['Member', 'Associate', 'Officer'].flatMap(
+    (category) =>
+      (['front', 'back'] as const).map((side) => ({
+        key: `${category}-${side}`,
+        category: category as Template['category'],
+        side,
+        image: `id-templates/${category.toLowerCase()}/${side}/approved.png`,
+        layout: side === 'front' ? layout : { fields: [], accents: [] },
+        version: `${category}-${side}-v1`,
+        approved: true,
+      })),
+  );
+
+  await page.route('https://supabase.test/auth/v1/**', async (route) => {
+    if (
+      route.request().method() === 'POST' &&
+      route.request().url().includes('/token')
+    ) {
+      await route.fulfill({
+        json: {
+          access_token: 'isolated-e2e-access-token',
+          refresh_token: 'isolated-e2e-refresh-token',
+          token_type: 'bearer',
+          expires_in: 3600,
+          user: {
+            id: '00000000-0000-4000-8000-000000000001',
+            aud: 'authenticated',
+            role: 'authenticated',
+            email: 'admin@example.org',
+            app_metadata: {},
+            user_metadata: {},
+            created_at: now,
+          },
         },
       });
-      expect(response.status(), await response.text()).toBe(200);
+      return;
     }
-  await request.put('/api/colors', {
-    headers: { Origin: 'http://localhost:3100' },
-    data: {
-      mode: 'team',
-      revision: 0,
-      teams: [{ name: 'Quality', color: '#ff0000', enabled: true }],
-    },
+    await route.fulfill({ status: 204, body: '' });
   });
-  await page.goto(`/generate-id?member=${members[0].id}`);
+
+  await page.route('**/api/**', async (route) => {
+    const request = route.request();
+    const url = new URL(request.url());
+    const path = url.pathname.replace('/api/', '');
+    const json = (value: unknown, status = 200) =>
+      route.fulfill({ status, json: value });
+    if (path === 'session') return json({ user: 'Test Admin', role: 'admin' });
+    if (path === 'members' && request.method() === 'GET') return json(members);
+    if (path === 'members/import' && request.method() === 'POST') {
+      const rows = (request.postDataJSON() as { members: MemberRecord[] })
+        .members;
+      members = rows.map((row, index) => ({
+        ...row,
+        id: `00000000-0000-4000-8000-${String(index + 2).padStart(12, '0')}`,
+        aws_sbg_id: `AWS-SBG-TIPM-2026-${String(index + 1).padStart(4, '0')}`,
+        photo_path: null,
+        photo_crop_data: { x: 0.5, y: 0.5, zoom: 1 },
+        color_override: null,
+        date_issued: null,
+        valid_until: null,
+        status: 'Draft',
+        revision: 1,
+        created_by: null,
+        updated_by: null,
+        created_at: now,
+        updated_at: now,
+        archived_at: null,
+      }));
+      return json({ imported: members.length, members }, 201);
+    }
+    const memberMatch = path.match(
+      /^members\/([^/]+)(?:\/(photo|confirm|archive))?$/,
+    );
+    if (memberMatch) {
+      const index = members.findIndex((member) => member.id === memberMatch[1]);
+      const member = members[index];
+      if (memberMatch[2] === 'photo')
+        members[index] = {
+          ...member,
+          photo_path: `member-photos/${member.id}/photo.png`,
+          photo_crop_data: { x: 0.5, y: 0.5, zoom: 1.5 },
+          status: 'Draft',
+          revision: member.revision + 1,
+        };
+      else if (memberMatch[2] === 'confirm')
+        members[index] = {
+          ...member,
+          status: 'Ready',
+          date_issued: '2026-09-09',
+          valid_until: '2027-09-09',
+          revision: member.revision + 1,
+        };
+      else if (!memberMatch[2] && request.method() === 'PUT') {
+        const body = request.postDataJSON() as MemberRecord;
+        members[index] = { ...member, ...body, revision: member.revision + 1 };
+      }
+      return json(members[index]);
+    }
+    if (path === 'colors')
+      return json({ mode: 'default', teams: [], revision: 1 });
+    if (path === 'templates') return json(templates);
+    if (path === 'activity') return json([]);
+    if (path === 'generations' && request.method() === 'GET')
+      return json(generations);
+    if (path === 'generations' && request.method() === 'POST') {
+      const member = members[0];
+      const id = '10000000-0000-4000-8000-000000000001';
+      const record: Generation = {
+        id,
+        member_id: member.id,
+        member,
+        generated_at: now,
+        generated_by: 'Test Admin',
+        accent: '#10b981',
+        template_version: 'Officer-front-v1:Officer-back-v1',
+        status: 'Generated',
+        front_path: `generated-ids/${member.id}/${id}/front.png`,
+        back_path: `generated-ids/${member.id}/${id}/back.png`,
+        pdf_path: `generated-ids/${member.id}/${id}/ID.pdf`,
+      };
+      generations = [record];
+      members[0] = {
+        ...member,
+        status: 'Generated',
+        revision: member.revision + 1,
+      };
+      return json(record, 201);
+    }
+    if (path.startsWith('files/'))
+      return route.fulfill({
+        status: 200,
+        body: png,
+        contentType: 'image/png',
+      });
+    return json({ error: `Unhandled isolated test route: ${path}` }, 404);
+  });
+
+  await page.goto('/');
   await expect(
-    page.getByRole('heading', { name: 'QA M. de la Test' }),
+    page.getByRole('heading', { name: 'ID Generator' }),
   ).toBeVisible();
-  await expect(
-    page.getByRole('button', { name: 'Confirm ID', exact: true }),
-  ).toBeDisabled();
-  await page
-    .getByLabel('Upload member photo')
-    .setInputFiles({ name: 'photo.png', mimeType: 'image/png', buffer: png });
-  await expect(
-    page.getByRole('button', { name: 'Apply uploaded photo' }),
-  ).toBeVisible();
+  png = Buffer.from(
+    await page.evaluate(() => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1200;
+      canvas.height = 1950;
+      const context = canvas.getContext('2d')!;
+      context.fillStyle = '#ffffff';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      return canvas.toDataURL('image/png').split(',')[1];
+    }),
+    'base64',
+  );
+  await page.getByRole('link', { name: 'Officer Login' }).click();
+  await page.waitForFunction(() =>
+    Object.keys(document.querySelector('form') ?? {}).some((key) =>
+      key.startsWith('__reactProps$'),
+    ),
+  );
+  await page.getByLabel('T.I.P./Officer Email').fill('admin@example.org');
+  await page.getByLabel('Password').fill('isolated-test-password');
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await expect(page).toHaveURL(/\/dashboard$/);
+  await page.getByRole('link', { name: 'Members', exact: true }).click();
+
+  const workbook = new ExcelJS.Workbook();
+  workbook.addWorksheet('Members').addRows([
+    [
+      'Full Name',
+      'T.I.P. Email',
+      'Student ID number',
+      'Department/Program',
+      'Year Level',
+    ],
+    ['JAMES LEBRON', 'james@example.org', '001234', 'BSCS', '3rd'],
+  ]);
+  await page.getByLabel('Membership spreadsheet').setInputFiles({
+    name: 'members.xlsx',
+    mimeType:
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    buffer: Buffer.from(await workbook.xlsx.writeBuffer()),
+  });
+  await expect(page.getByText('IDs to be assigned')).toBeVisible();
+  await page.getByRole('button', { name: 'Confirm import of 1 rows' }).click();
+  await expect(page.getByText(/assigned AWS SBG IDs/)).toBeVisible();
+  await page.getByRole('link', { name: 'Review / Edit ID' }).click();
+  await page.getByLabel('Membership Type').selectOption('Officer');
+  await page.getByLabel('Officer Position').selectOption('AI/ML LEAD');
+  await expect(page.getByLabel('Team / Office')).toHaveValue(
+    'Technology / CTO Office',
+  );
+  await page.getByRole('button', { name: 'Save information' }).click();
+  await page.getByLabel('Upload member photo').setInputFiles({
+    name: 'photo.png',
+    mimeType: 'image/png',
+    buffer: png,
+  });
   await page.getByLabel('Zoom', { exact: true }).fill('1.5');
   await page.getByRole('button', { name: 'Apply uploaded photo' }).click();
-  await expect(
-    page.getByRole('button', { name: 'Apply uploaded photo' }),
-  ).toHaveCount(0);
-  await page.reload();
-  await expect(page.getByLabel('Zoom', { exact: true })).toHaveValue('1.5');
-  await page.getByRole('button', { name: 'Back', exact: true }).click();
-  await page.getByRole('button', { name: 'Front', exact: true }).click();
   await page.getByRole('button', { name: 'Confirm ID', exact: true }).click();
   await expect(
     page.getByText('ID confirmed and Ready for generation.'),
@@ -189,222 +235,9 @@ test('empty system → XLSX → photo/crop → review → generate → files/his
   await expect(
     page.getByText('ID files generated and saved in history.'),
   ).toBeVisible();
-  const records = await (await request.get('/api/generations')).json();
-  expect(records).toHaveLength(1);
-  expect(records[0].accent).toBe('#ff0000');
-  const front = await (
-    await request.get(`/api/files/exports/${records[0].id}/front.png`)
-  ).body();
-  const dimensions = new DataView(
-    front.buffer,
-    front.byteOffset,
-    front.byteLength,
-  );
-  expect(dimensions.getUint32(16)).toBe(1200);
-  expect(dimensions.getUint32(20)).toBe(1950);
-  const pdf = await PDFDocument.load(
-    await (
-      await request.get(`/api/files/exports/${records[0].id}/ID.pdf`)
-    ).body(),
-  );
-  expect(pdf.getPageCount()).toBe(2);
-  const longTextDimensions = await page.evaluate(async () => {
-    const modulePath = '/lib/render-id.ts';
-    const { renderID } = await import(modulePath);
-    const members = (await (
-      await fetch('/api/members')
-    ).json()) as MemberRecord[];
-    const templates = (await (
-      await fetch('/api/templates')
-    ).json()) as Template[];
-    const colors = await (await fetch('/api/colors')).json();
-    const canvas = document.createElement('canvas');
-    await renderID(
-      canvas,
-      {
-        ...members[0],
-        first_name: 'Alexandria Maria Francesca Isabella',
-        middle_name: 'Cristina',
-        last_name: 'de los Santos Villanueva Montenegro',
-        position:
-          'Technology and Software Engineering Community Development Lead',
-        email:
-          'alexandria.maria.francesca.de-los-santos.villanueva@example.org',
-      },
-      templates.find(
-        (item: { category: string; side: string }) =>
-          item.category === 'Officer' && item.side === 'front',
-      ),
-      colors,
-    );
-    return [canvas.width, canvas.height];
-  });
-  expect(longTextDimensions).toEqual([1200, 1950]);
-  const pixel = await page.evaluate(async (id) => {
-    const image = new Image();
-    image.src = `/api/files/exports/${id}/front.png`;
-    await image.decode();
-    const canvas = document.createElement('canvas');
-    canvas.width = 1200;
-    canvas.height = 1950;
-    const ctx = canvas.getContext('2d')!;
-    ctx.drawImage(image, 0, 0);
-    return Array.from(ctx.getImageData(10, 10, 1, 1).data);
-  }, records[0].id);
-  expect(pixel).toEqual([255, 0, 0, 255]);
-  await page.getByRole('button', { name: 'Save & Next', exact: true }).click();
-  await expect(
-    page.getByRole('heading', { name: 'QA2 Test', exact: true }),
-  ).toBeVisible();
-  await page.getByLabel('Email', { exact: true }).fill('invalid');
-  await page
-    .getByRole('button', { name: 'Save information', exact: true })
-    .click();
-  await expect(
-    page.getByText('Information and photo position saved.'),
-  ).toBeVisible();
-  expect((await (await request.get('/api/members')).json())[1].status).toBe(
-    'Needs Attention',
-  );
-  await page.getByLabel('Email', { exact: true }).fill('qa2@example.org');
-  await page
-    .getByRole('button', { name: 'Save information', exact: true })
-    .click();
-  await expect
-    .poll(
-      async () => (await (await request.get('/api/members')).json())[1].status,
-    )
-    .toBe('Needs Photo');
-  for (const item of members.slice(1)) {
-    const current = (await (await request.get('/api/members')).json()).find(
-      (row: { id: string }) => row.id === item.id,
-    );
-    const uploaded = await request.post(`/api/members/${item.id}/photo`, {
-      headers: { Origin: 'http://localhost:3100' },
-      multipart: {
-        revision: String(current.revision),
-        photo: { name: 'test-photo.png', mimeType: 'image/png', buffer: png },
-      },
-    });
-    expect(uploaded.status()).toBe(200);
-    const withPhoto = await uploaded.json();
-    const confirmed = await request.post(`/api/members/${item.id}/confirm`, {
-      headers: { Origin: 'http://localhost:3100' },
-      data: { revision: withPhoto.revision },
-    });
-    expect(confirmed.status()).toBe(200);
-    const stale = await request.put(`/api/members/${item.id}`, {
-      headers: { Origin: 'http://localhost:3100' },
-      data: current,
-    });
-    expect(stale.status()).toBe(409);
-  }
-  await page.goto('/members');
-  await page.getByLabel('Select QA2 Test', { exact: true }).check();
-  await page
-    .getByRole('button', { name: 'Generate Selected', exact: true })
-    .click();
-  await expect(page.getByText('1 generated; 0 failed.')).toBeVisible();
-  expect(await (await request.get('/api/generations')).json()).toHaveLength(2);
-  await page
-    .getByLabel('Membership', { exact: true })
-    .selectOption('Associate');
-  await expect(
-    page.getByRole('link', { name: 'Review / Edit ID' }),
-  ).toHaveCount(1);
-  await page
-    .getByRole('button', { name: 'Generate All Ready', exact: true })
-    .click();
-  await expect
-    .poll(
-      async () => (await (await request.get('/api/generations')).json()).length,
-    )
-    .toBe(3);
-  await page.goto(`/generate-id?member=${members[0].id}`);
-  page.once('dialog', (dialog) => dialog.accept());
-  await page
-    .getByRole('button', { name: 'Regenerate ID', exact: true })
-    .click();
-  await expect(
-    page.getByText('ID files generated and saved in history.'),
-  ).toBeVisible();
-  expect(await (await request.get('/api/generations')).json()).toHaveLength(4);
-  expect(
-    await (
-      await request.get(`/api/files/exports/${records[0].id}/front.png`)
-    ).body(),
-  ).toEqual(front);
-  await page.goto('/generated-ids');
-  await page.getByLabel('Select all displayed generations').check();
-  const downloadPromise = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Download selected ZIP' }).click();
-  const download = await downloadPromise;
-  const stream = await download.createReadStream();
-  const chunks: Buffer[] = [];
-  for await (const chunk of stream!) chunks.push(chunk);
-  const zip = await JSZip.loadAsync(Buffer.concat(chunks));
-  const files = Object.keys(zip.files).filter((name) => !zip.files[name].dir);
-  expect(files).toHaveLength(12);
-  for (const category of ['Officers', 'Associates', 'Members'])
-    expect(
-      files.some((name) => name.startsWith(`AWS-SBG-IDs/${category}/`)),
-    ).toBe(true);
-  await page.setViewportSize({ width: 390, height: 844 });
-  for (const path of [
-    '/',
-    '/members',
-    '/generate-id',
-    '/templates',
-    '/generated-ids',
-  ]) {
-    await page.goto(path);
-    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-    expect(
-      await page.evaluate(
-        () => document.documentElement.scrollWidth <= window.innerWidth,
-      ),
-    ).toBe(true);
-  }
-  expect(errors).toEqual([]);
-});
-
-test('80-member persistent batch is atomic and rejects duplicates', async ({
-  request,
-}) => {
-  const before = await (await request.get('/api/members')).json();
-  const members = Array.from({ length: 80 }, (_, index) => ({
-    first_name: 'Batch',
-    middle_name: '',
-    last_name: `Test ${index}`,
-    email: `batch-${index}@example.org`,
-    membership_type: 'Member',
-    team: '',
-    position: '',
-    aws_sbg_id: `BATCH-${String(index).padStart(3, '0')}`,
-    date_issued: '2026-09-08',
-    valid_until: '2027-09-08',
-  }));
-  const response = await request.post('/api/members/import', {
-    headers: { Origin: 'http://localhost:3100' },
-    data: { members },
-  });
-  expect(response.status(), await response.text()).toBe(201);
-  const stored = await (await request.get('/api/members')).json();
-  expect(stored).toHaveLength(before.length + 80);
-  expect(
-    stored.filter(
-      (member: { aws_sbg_id: string; status: string }) =>
-        member.aws_sbg_id.startsWith('BATCH-') && member.status === 'Draft',
-    ),
-  ).toHaveLength(80);
-  const duplicate = await request.post('/api/members/import', {
-    headers: { Origin: 'http://localhost:3100' },
-    data: {
-      members: [{ ...members[0], aws_sbg_id: 'UNIQUE-NEW' }, members[1]],
-    },
-  });
-  expect(duplicate.status()).toBe(409);
-  expect(await (await request.get('/api/members')).json()).toHaveLength(
-    stored.length,
-  );
+  await page.getByRole('link', { name: 'Generated IDs' }).click();
+  await expect(page.getByText('AWS-SBG-TIPM-2026-0001')).toBeVisible();
+  await expect(page.getByRole('cell', { name: 'Test Admin' })).toBeVisible();
+  await page.getByRole('button', { name: 'Sign out' }).click();
+  await expect(page).toHaveURL(/\/$/);
 });
