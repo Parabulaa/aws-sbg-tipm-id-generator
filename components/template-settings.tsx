@@ -2,10 +2,10 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useData } from './data-provider';
-import { api, errorText, fileUrl } from '@/lib/client';
+import { api, errorText } from '@/lib/client';
 import { categories } from '@/lib/domain';
 import type { ColorSettings } from '@/lib/domain';
-import { getAccessToken } from '@/lib/supabase/client';
+import { PrivateImage } from './private-image';
 export function TemplateSettings() {
   const { templates, colors, refresh, role } = useData();
   const [error, setError] = useState('');
@@ -47,7 +47,7 @@ export function TemplateSettings() {
                 </h2>
                 {template ? (
                   <>
-                    <AuthenticatedImage
+                      <PrivateImage
                       path={template.image}
                       alt={`${category} ${side} approved background`}
                       className="mx-auto my-3 w-40"
@@ -390,48 +390,4 @@ interface OfficerAccess {
   display_name: string;
   role: 'admin' | 'officer';
   is_active: boolean;
-}
-
-function AuthenticatedImage({
-  path,
-  alt,
-  className,
-}: {
-  path: string;
-  alt: string;
-  className?: string;
-}) {
-  const [src, setSrc] = useState('');
-  const [error, setError] = useState('');
-  useEffect(() => {
-    let cancelled = false;
-    let objectUrl = '';
-    void getAccessToken()
-      .then((token) =>
-        fetch(fileUrl(path), {
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        }),
-      )
-      .then(async (response) => {
-        if (!response.ok) throw new Error('Template preview could not be loaded.');
-        return response.blob();
-      })
-      .then((blob) => {
-        if (!cancelled) {
-          objectUrl = URL.createObjectURL(blob);
-          setSrc(objectUrl);
-        }
-      })
-      .catch((reason) => {
-        if (!cancelled) setError(errorText(reason));
-      });
-    return () => {
-      cancelled = true;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-    };
-  }, [path]);
-  if (error) return <p className="notice-error text-xs">{error}</p>;
-  if (!src)
-    return <div className="my-3 h-52 rounded-xl bg-slate-100" aria-label="Loading template preview" />;
-  return <img src={src} alt={alt} className={className} />;
 }

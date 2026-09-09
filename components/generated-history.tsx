@@ -4,7 +4,8 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useData } from './data-provider';
 import { displayName, categories, safeFilename } from '@/lib/domain';
-import { errorText, fileUrl } from '@/lib/client';
+import { errorText } from '@/lib/client';
+import { PrivateImage } from './private-image';
 export function GeneratedHistory() {
   const { generations } = useData();
   const [category, setCategory] = useState('');
@@ -121,9 +122,9 @@ export function GeneratedHistory() {
                 <td>
                   <div className="flex min-w-44 items-center gap-2">
                     {record.member.photo_path && (
-                      <img
+                      <PrivateImage
+                        path={record.member.photo_path}
                         alt=""
-                        src={fileUrl(record.member.photo_path)}
                         className="size-10 rounded-full object-cover"
                       />
                     )}
@@ -155,23 +156,23 @@ export function GeneratedHistory() {
                 </td>
                 <td>
                   <div className="flex min-w-60 flex-wrap gap-2">
-                    <a
-                      className="btn"
-                      href={fileUrl(record.front_path!)}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      Preview front
-                    </a>
+                    <details className="min-w-40">
+                      <summary className="btn cursor-pointer">Preview front</summary>
+                      <PrivateImage
+                        path={record.front_path!}
+                        alt={`Generated front ID for ${record.member.aws_sbg_id}`}
+                        className="mt-2 w-40 rounded-lg border object-contain"
+                      />
+                    </details>
                     {record.back_path && (
-                      <a
-                        className="btn"
-                        href={fileUrl(record.back_path)}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        Preview back
-                      </a>
+                      <details className="min-w-40">
+                        <summary className="btn cursor-pointer">Preview back</summary>
+                        <PrivateImage
+                          path={record.back_path}
+                          alt={`Generated back ID for ${record.member.aws_sbg_id}`}
+                          className="mt-2 w-40 rounded-lg border object-contain"
+                        />
+                      </details>
                     )}
                     {[
                       ['front.png', record.front_path],
