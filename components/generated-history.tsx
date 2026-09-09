@@ -163,19 +163,21 @@ export function GeneratedHistory() {
                     >
                       Preview front
                     </a>
-                    <a
-                      className="btn"
-                      href={fileUrl(record.back_path!)}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      Preview back
-                    </a>
+                    {record.back_path && (
+                      <a
+                        className="btn"
+                        href={fileUrl(record.back_path)}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Preview back
+                      </a>
+                    )}
                     {[
                       ['front.png', record.front_path],
                       ['back.png', record.back_path],
                       ['ID.pdf', record.pdf_path],
-                    ].map(([file, path]) => (
+                    ].filter(([, path]) => path).map(([file, path]) => (
                       <button
                         className="btn"
                         key={file}
