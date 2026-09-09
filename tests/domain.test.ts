@@ -10,6 +10,7 @@ import {
   safeFilename,
   contrastText,
   formatAwsSbgId,
+  officerPositions,
 } from '../lib/domain';
 
 const input = {
@@ -38,6 +39,18 @@ void test('member validation covers required data and officer fields', () => {
   ]) {
     assert.ok(validateMember(normalizeMember({ ...input, ...changed })).length);
   }
+});
+
+void test('officer positions use the canonical controlled list', () => {
+  assert.ok(officerPositions.includes('AI/ML LEAD'));
+  assert.ok(
+    validateMember({
+      ...input,
+      membership_type: 'Officer',
+      officer_position: 'UNLISTED ROLE',
+      team: 'Technology',
+    }).includes('Select a valid officer position'),
+  );
 });
 
 void test('edits invalidate readiness and uploading never confirms', () => {

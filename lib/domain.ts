@@ -1,5 +1,27 @@
 export const categories = ['Member', 'Officer', 'Associate'] as const;
 export type Category = (typeof categories)[number];
+export const officerPositions = [
+  'LORSO REPRESENTATIVE',
+  'CHIEF EXECUTIVE OFFICER/LEAD',
+  'EXECUTIVE SECRETARY',
+  'ASSOCIATE SECRETARY',
+  'BUILDHERS+ AMBASSADOR',
+  'CHIEF FINANCIAL OFFICER',
+  'VICE-CHIEF FINANCIAL OFFICER',
+  'CHIEF OPERATIONS OFFICER',
+  'VICE-CHIEF OPERATIONS OFFICER',
+  'CHIEF MARKETING OFFICER',
+  'VICE-CHIEF MARKETING OFFICER',
+  'CHIEF RELATIONS OFFICER',
+  'VICE-CHIEF RELATIONS OFFICER',
+  'CHIEF CREATIVES OFFICER',
+  'VICE-CHIEF CREATIVES OFFICER',
+  'CHIEF TECHNOLOGY OFFICER',
+  'VICE-CHIEF TECHNOLOGY OFFICER',
+  'AI/ML LEAD',
+  'SOFTWARE ENGINEERING LEAD',
+] as const;
+export type OfficerPosition = (typeof officerPositions)[number];
 export const statuses = [
   'Draft',
   'Needs Photo',
@@ -125,6 +147,11 @@ export function normalizeMember(raw: Record<string, unknown>): MemberInput {
   const text = (key: keyof MemberInput) =>
     typeof raw[key] === 'string' ? raw[key].trim() : '';
   const membership = text('membership_type');
+  const rawPosition = text('officer_position');
+  const position =
+    officerPositions.find(
+      (value) => value.toLowerCase() === rawPosition.toLowerCase(),
+    ) ?? rawPosition;
   return {
     full_name: text('full_name'),
     tip_email: text('tip_email').toLowerCase(),
@@ -134,7 +161,7 @@ export function normalizeMember(raw: Record<string, unknown>): MemberInput {
     membership_type: (categories.find(
       (value) => value.toLowerCase() === membership.toLowerCase(),
     ) ?? membership) as Category,
-    officer_position: text('officer_position'),
+    officer_position: position,
     team: text('team'),
   };
 }
@@ -176,6 +203,11 @@ export function validateMember(member: MemberInput) {
     errors.push('Invalid membership type');
   if (member.membership_type === 'Officer' && !member.officer_position)
     errors.push('Officer position is required');
+  if (
+    member.membership_type === 'Officer' &&
+    !officerPositions.includes(member.officer_position as OfficerPosition)
+  )
+    errors.push('Select a valid officer position');
   if (member.membership_type === 'Officer' && !member.team)
     errors.push('Officer team is required');
   if (
