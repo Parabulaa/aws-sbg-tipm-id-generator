@@ -11,6 +11,7 @@ import {
   contrastText,
   formatAwsSbgId,
   officerPositions,
+  teamForOfficerPosition,
 } from '../lib/domain';
 
 const input = {
@@ -84,4 +85,14 @@ void test('AWS SBG IDs use the configured prefix and never collapse sequence val
     formatAwsSbgId('AWS-SBG-TIPM', 2026, 10),
     formatAwsSbgId('AWS-SBG-TIPM', 2026, 11),
   );
+});
+
+void test('technology leads and CTO roles derive the Technology office', () => {
+  for (const position of [
+    'CHIEF TECHNOLOGY OFFICER',
+    'VICE-CHIEF TECHNOLOGY OFFICER',
+    'AI/ML LEAD',
+    'SOFTWARE ENGINEERING LEAD',
+  ])
+    assert.equal(teamForOfficerPosition(position), 'Technology / CTO Office');
 });

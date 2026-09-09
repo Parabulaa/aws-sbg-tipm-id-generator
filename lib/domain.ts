@@ -22,6 +22,31 @@ export const officerPositions = [
   'SOFTWARE ENGINEERING LEAD',
 ] as const;
 export type OfficerPosition = (typeof officerPositions)[number];
+export const officerPositionTeams: Record<OfficerPosition, string> = {
+  'LORSO REPRESENTATIVE': 'LORSO',
+  'CHIEF EXECUTIVE OFFICER/LEAD': 'Executive',
+  'EXECUTIVE SECRETARY': 'Executive',
+  'ASSOCIATE SECRETARY': 'Executive',
+  'BUILDHERS+ AMBASSADOR': 'BuildHers+',
+  'CHIEF FINANCIAL OFFICER': 'Finance',
+  'VICE-CHIEF FINANCIAL OFFICER': 'Finance',
+  'CHIEF OPERATIONS OFFICER': 'Operations',
+  'VICE-CHIEF OPERATIONS OFFICER': 'Operations',
+  'CHIEF MARKETING OFFICER': 'Marketing',
+  'VICE-CHIEF MARKETING OFFICER': 'Marketing',
+  'CHIEF RELATIONS OFFICER': 'Relations',
+  'VICE-CHIEF RELATIONS OFFICER': 'Relations',
+  'CHIEF CREATIVES OFFICER': 'Creatives',
+  'VICE-CHIEF CREATIVES OFFICER': 'Creatives',
+  'CHIEF TECHNOLOGY OFFICER': 'Technology / CTO Office',
+  'VICE-CHIEF TECHNOLOGY OFFICER': 'Technology / CTO Office',
+  'AI/ML LEAD': 'Technology / CTO Office',
+  'SOFTWARE ENGINEERING LEAD': 'Technology / CTO Office',
+};
+
+export function teamForOfficerPosition(position: string) {
+  return officerPositionTeams[position as OfficerPosition] ?? '';
+}
 export const statuses = [
   'Draft',
   'Needs Photo',
@@ -162,7 +187,10 @@ export function normalizeMember(raw: Record<string, unknown>): MemberInput {
       (value) => value.toLowerCase() === membership.toLowerCase(),
     ) ?? membership) as Category,
     officer_position: position,
-    team: text('team'),
+    team:
+      membership.toLowerCase() === 'officer'
+        ? teamForOfficerPosition(position)
+        : '',
   };
 }
 

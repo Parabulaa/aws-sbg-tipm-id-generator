@@ -1,5 +1,9 @@
 import type { MemberInput } from '@/lib/domain';
-import { categories, officerPositions } from '@/lib/domain';
+import {
+  categories,
+  officerPositions,
+  teamForOfficerPosition,
+} from '@/lib/domain';
 
 const fields: { key: keyof MemberInput; label: string; type?: string }[] = [
   { key: 'full_name', label: 'Full Name' },
@@ -63,7 +67,11 @@ export function MemberForm({
               aria-label="Officer Position"
               value={value.officer_position}
               onChange={(event) =>
-                onChange({ ...value, officer_position: event.target.value })
+                onChange({
+                  ...value,
+                  officer_position: event.target.value,
+                  team: teamForOfficerPosition(event.target.value),
+                })
               }
             >
               <option value="">Select a position</option>
@@ -74,13 +82,7 @@ export function MemberForm({
           </label>
           <label className="field">
             Team / Office
-            <input
-              maxLength={240}
-              value={value.team}
-              onChange={(event) =>
-                onChange({ ...value, team: event.target.value })
-              }
-            />
+            <input maxLength={240} value={value.team} readOnly />
           </label>
         </>
       )}
