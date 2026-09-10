@@ -71,11 +71,21 @@ function wrapText(ctx: CanvasRenderingContext2D, text: string, width: number) {
   if (line) lines.push(line);
   return lines;
 }
+function canvasFontFamily(fontFamily: TextBox['fontFamily']) {
+  if (fontFamily !== 'montserrat') return 'Arial, Helvetica, sans-serif';
+  if (typeof document === 'undefined') return 'Montserrat, Arial, sans-serif';
+  return (
+    getComputedStyle(document.documentElement).getPropertyValue(
+      '--font-montserrat',
+    ).trim() || 'Montserrat, Arial, sans-serif'
+  );
+}
 function drawText(ctx: CanvasRenderingContext2D, text: string, box: TextBox) {
   let lines: string[] = [];
   let font = box.fontSize;
+  const family = canvasFontFamily(box.fontFamily);
   for (; font >= box.minFontSize; font--) {
-    ctx.font = `${box.weight} ${font}px Arial`;
+    ctx.font = `${box.weight} ${font}px ${family}`;
     lines = wrapText(ctx, text, box.width);
     if (
       lines.length * font * 1.15 <= box.height &&
@@ -112,6 +122,15 @@ export async function renderID(
   canvas.height = HEIGHT;
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Canvas rendering is unavailable in this browser.');
+  if (typeof document !== 'undefined' && document.fonts) {
+    await Promise.all(
+      template.layout.fields.map((box) =>
+        document.fonts.load(
+          `${box.weight === 'bold' ? 800 : 500} ${box.fontSize}px ${canvasFontFamily(box.fontFamily)}`,
+        ),
+      ),
+    );
+  }
   const background = await loadImage(fileUrl(template.image));
   if (background.naturalWidth !== WIDTH || background.naturalHeight !== HEIGHT)
     throw new Error('Approved template dimensions do not match 1200 × 1950.');

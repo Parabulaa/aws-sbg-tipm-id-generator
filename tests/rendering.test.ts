@@ -33,6 +33,46 @@ void test('template layout rejects out-of-canvas regions and invalid field mappi
     /1200/,
   );
   validateLayout({ fields: [], accents: [] });
+  validateLayout({
+    fields: [
+      {
+        field: 'name',
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 50,
+        fontSize: 24,
+        minFontSize: 12,
+        color: '#003b71',
+        align: 'center',
+        weight: 'bold',
+        fontFamily: 'montserrat',
+      },
+    ],
+    accents: [],
+  });
+  assert.throws(
+    () =>
+      validateLayout({
+        fields: [
+          {
+            field: 'name',
+            x: 0,
+            y: 0,
+            width: 100,
+            height: 50,
+            fontSize: 24,
+            minFontSize: 12,
+            color: '#003b71',
+            align: 'center',
+            weight: 'bold',
+            fontFamily: 'comic-sans' as 'arial',
+          },
+        ],
+        accents: [],
+      }),
+    /Invalid text field/,
+  );
 });
 void test('officer team mode and manual override do not alter fixed Member/Associate colors', () => {
   const member = {

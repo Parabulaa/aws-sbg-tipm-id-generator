@@ -30,6 +30,8 @@ export interface TextBox extends Rect {
   color: string;
   align: 'left' | 'center' | 'right';
   weight: 'normal' | 'bold';
+  /** Defaults to Arial for older templates. Montserrat gives the approved rounded geometric ID style. */
+  fontFamily?: 'arial' | 'montserrat';
 }
 export interface TemplateLayout {
   photo?: Rect;
@@ -91,6 +93,8 @@ export function validateLayout(layout: TemplateLayout) {
       !/^#[0-9a-f]{6}$/i.test(field.color) ||
       !['left', 'center', 'right'].includes(field.align) ||
       !['normal', 'bold'].includes(field.weight) ||
+      (field.fontFamily !== undefined &&
+        !['arial', 'montserrat'].includes(field.fontFamily)) ||
       !Number.isFinite(field.fontSize) ||
       !Number.isFinite(field.minFontSize) ||
       field.minFontSize < 12 ||
