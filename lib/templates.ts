@@ -34,7 +34,7 @@ export interface TextBox extends Rect {
   fontFamily?: 'arial' | 'montserrat';
 }
 export interface TemplateLayout {
-  photo?: Rect;
+  photo?: Rect & { borderRadius?: number };
   fields: TextBox[];
   accents: (Rect & { label?: string })[];
 }
@@ -56,6 +56,11 @@ export function validateLayout(layout: TemplateLayout) {
     throw new Error('Layout requires fields and accents arrays.');
   if (layout.fields.length > 20 || layout.accents.length > 20)
     throw new Error('Too many template regions.');
+  const radius = layout.photo?.borderRadius;
+  if (radius !== undefined &&
+    (!Number.isFinite(radius) || radius < 0 ||
+      radius > Math.min(layout.photo!.width, layout.photo!.height) / 2))
+    throw new Error('Photo borderRadius must fit within the photo region.');
   for (const rect of [
     ...layout.fields,
     ...layout.accents,

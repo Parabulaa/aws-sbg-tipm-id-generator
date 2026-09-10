@@ -163,6 +163,10 @@ export async function renderID(
       rect.width / rect.height,
       member.photo_crop_data,
     );
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect(rect.x, rect.y, rect.width, rect.height, rect.borderRadius ?? 0);
+    ctx.clip();
     ctx.drawImage(
       image,
       crop.x,
@@ -174,6 +178,7 @@ export async function renderID(
       rect.width,
       rect.height,
     );
+    ctx.restore();
   }
   const fields = {
     name: displayName(member),

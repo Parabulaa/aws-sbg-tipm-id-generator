@@ -1,9 +1,10 @@
 {
   "photo": {
-    "x": 306,
-    "y": 450,
-    "width": 588,
-    "height": 654
+    "x": 338,
+    "y": 470,
+    "width": 528,
+    "height": 628,
+    "borderRadius": 54
   },
   "fields": [
     {

@@ -4,6 +4,15 @@ import { photoSource } from '../lib/render-id';
 import { validateLayout } from '../lib/templates';
 import { accentColor, blankMember } from '../lib/domain';
 import type { MemberRecord } from '../lib/domain';
+void test('photo corners accept bounded radii and preserve older rectangular layouts', () => {
+  const photo = { x: 338, y: 470, width: 528, height: 628 };
+  validateLayout({ photo, fields: [], accents: [] });
+  validateLayout({ photo: { ...photo, borderRadius: 54 }, fields: [], accents: [] });
+  for (const borderRadius of [-1, NaN, Infinity, 265])
+    assert.throws(() => validateLayout({
+      photo: { ...photo, borderRadius }, fields: [], accents: [],
+    }), /borderRadius/);
+});
 void test('photo crop stays within image bounds at all corners and zoom settings', () => {
   for (const [width, height] of [
     [2400, 1200],
