@@ -25,6 +25,7 @@ interface Data {
   templates: Template[];
   user: string;
   role: 'admin' | 'officer';
+  loading: boolean;
   refresh: () => Promise<void>;
 }
 const Context = createContext<Data | null>(null);
@@ -36,6 +37,7 @@ const emptyData: Omit<Data, 'refresh'> = {
   templates: [],
   user: 'Officer',
   role: 'officer',
+  loading: true,
 };
 export function useData() {
   const data = useContext(Context);
@@ -47,6 +49,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const isPublic = pathname === '/' || pathname === '/login';
   const [data, setData] = useState<Omit<Data, 'refresh'>>(emptyData);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const refresh = useCallback(async () => {
     try {
@@ -73,6 +76,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         templates: templatesResult.status === 'fulfilled' ? templatesResult.value : [],
         user: session.user,
         role: session.role,
+        loading: false,
       });
       setError(firstError ? errorText(firstError) : '');
     } catch (error) {
@@ -81,6 +85,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
         router.replace('/login');
       }
       throw error;
+    } finally {
+      setLoading(false);
     }
   }, [router]);
   useEffect(() => {
@@ -91,7 +97,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, [isPublic, refresh]);
   if (isPublic) return children;
   return (
-    <Context.Provider value={{ ...data, refresh }}>
+    <Context.Provider value={{ ...data, loading, refresh }}>
       {error && (
         <div role="alert" className="notice-error">
           {error}

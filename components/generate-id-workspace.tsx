@@ -60,7 +60,7 @@ function ActionLabel({
 }
 
 export function GenerateIdWorkspace() {
-  const { members } = useData();
+  const { members, loading } = useData();
   const params = useSearchParams();
   const [selected, setSelected] = useState('');
   const [query, setQuery] = useState('');
@@ -69,6 +69,10 @@ export function GenerateIdWorkspace() {
   const filtered = useMemo(() => members.filter((record) =>
     [displayName(record), record.tip_email, record.aws_sbg_id, record.student_id_number]
       .join(' ').toLowerCase().includes(query.toLowerCase())), [members, query]);
+
+  if (loading) {
+    return <output className="sr-only">Loading members</output>;
+  }
 
   if (!member) {
     return (
