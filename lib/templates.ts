@@ -45,7 +45,7 @@ export interface TextBox extends Rect {
   fontFamily?: 'arial' | 'montserrat';
 }
 export interface TemplateLayout {
-  photo?: Rect & { borderRadius?: number };
+  photo?: Rect & { borderRadius?: number; clipPolygon?: [number, number][] };
   fields: TextBox[];
   accents: (Rect & { label?: string })[];
 }
@@ -79,6 +79,11 @@ export function validateLayout(layout: TemplateLayout) {
   if (layout.fields.length > 20 || layout.accents.length > 20)
     throw new Error('Too many template regions.');
   const radius = layout.photo?.borderRadius;
+  const polygon = layout.photo?.clipPolygon;
+  if (polygon !== undefined && (!Array.isArray(polygon) || polygon.length < 3 || polygon.length > 200 ||
+    polygon.some(point => !Array.isArray(point) || point.length !== 2 ||
+      point.some(value => !Number.isFinite(value) || value < 0 || value > 1))))
+    throw new Error('Photo clipPolygon requires 3–200 normalized coordinate pairs between 0 and 1.');
   if (radius !== undefined &&
     (!Number.isFinite(radius) || radius < 0 ||
       radius > Math.min(layout.photo!.width, layout.photo!.height) / 2))

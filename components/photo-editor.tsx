@@ -6,16 +6,19 @@ import { defaultCrop } from '@/lib/domain';
 import { fileUrl, api, errorText } from '@/lib/client';
 import { normalizePhoto } from '@/lib/render-id';
 import { PrivateImage } from './private-image';
+import type { TemplateLayout } from '@/lib/templates';
 export function PhotoEditor({
   member,
   onMember,
   onCrop,
   onPreview,
+  photoRegion,
 }: {
   member: MemberRecord;
   onMember: (member: MemberRecord) => void;
   onCrop: (crop: Crop) => void;
   onPreview: (url?: string) => void;
+  photoRegion?: TemplateLayout['photo'];
 }) {
   const [pending, setPending] = useState<Blob | null>(null);
   const [url, setUrl] = useState<string>();
@@ -65,7 +68,12 @@ export function PhotoEditor({
       {source && (
         <>
           <div
-            className="relative mx-auto h-52 w-44 touch-none overflow-hidden rounded-xl border bg-slate-100"
+            className="relative mx-auto w-44 touch-none overflow-hidden bg-slate-100"
+            style={{
+              aspectRatio: photoRegion ? `${photoRegion.width} / ${photoRegion.height}` : '176 / 208',
+              borderRadius: photoRegion ? `${(photoRegion.borderRadius ?? 0) / photoRegion.width * 100}% / ${(photoRegion.borderRadius ?? 0) / photoRegion.height * 100}%` : '12px',
+              clipPath: photoRegion?.clipPolygon ? `polygon(${photoRegion.clipPolygon.map(([x, y]) => `${x * 100}% ${y * 100}%`).join(',')})` : undefined,
+            }}
             onPointerDown={(event) => {
               event.currentTarget.setPointerCapture(event.pointerId);
               drag.current = {

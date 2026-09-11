@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useData } from './data-provider';
 import { MemberForm } from './member-form';
 import { PhotoEditor } from './photo-editor';
+import { selectTemplate } from '@/lib/templates';
 import { IDPreview } from './id-preview';
 import { StatusBadge } from './status-badge';
 import { GenerationControls } from './generation-controls';
@@ -163,6 +164,7 @@ function ReviewEditor({
             onChange={(value) => setMember({ ...member, ...value })}
           />
           <PhotoEditor
+            photoRegion={selectTemplate(templates, member, 'front')?.layout.photo}
             key={member.id}
             member={member}
             onCrop={(crop) => setMember({ ...member, photo_crop_data: crop })}

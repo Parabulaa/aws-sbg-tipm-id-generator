@@ -1,0 +1,64 @@
+{
+  "photo": {
+    "x": 370,
+    "y": 519,
+    "width": 489,
+    "height": 582,
+    "borderRadius": 47
+  },
+  "fields": [
+    {
+      "field": "name",
+      "x": 90,
+      "y": 1170,
+      "width": 1020,
+      "height": 156,
+      "fontSize": 68,
+      "minFontSize": 30,
+      "color": "#071421",
+      "align": "center",
+      "weight": "bold",
+      "fontFamily": "montserrat"
+    },
+    {
+      "field": "role",
+      "x": 90,
+      "y": 1335,
+      "width": 1020,
+      "height": 120,
+      "fontSize": 46,
+      "minFontSize": 24,
+      "color": "#A01219",
+      "align": "center",
+      "weight": "bold",
+      "fontFamily": "montserrat"
+    },
+    {
+      "field": "aws_sbg_id",
+      "x": 90,
+      "y": 1470,
+      "width": 1020,
+      "height": 65,
+      "fontSize": 38,
+      "minFontSize": 22,
+      "color": "#071421",
+      "align": "center",
+      "weight": "bold",
+      "fontFamily": "montserrat"
+    },
+    {
+      "field": "email",
+      "x": 90,
+      "y": 1545,
+      "width": 1020,
+      "height": 60,
+      "fontSize": 32,
+      "minFontSize": 18,
+      "color": "#A01219",
+      "align": "center",
+      "weight": "normal",
+      "fontFamily": "montserrat"
+    }
+  ],
+  "accents": []
+}

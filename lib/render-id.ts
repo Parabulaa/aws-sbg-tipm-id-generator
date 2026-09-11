@@ -165,7 +165,13 @@ export async function renderID(
     );
     ctx.save();
     ctx.beginPath();
-    ctx.roundRect(rect.x, rect.y, rect.width, rect.height, rect.borderRadius ?? 0);
+    if (rect.clipPolygon?.length) {
+      rect.clipPolygon.forEach(([x, y], index) => {
+        if (index === 0) ctx.moveTo(rect.x + x * rect.width, rect.y + y * rect.height);
+        else ctx.lineTo(rect.x + x * rect.width, rect.y + y * rect.height);
+      });
+      ctx.closePath();
+    } else ctx.roundRect(rect.x, rect.y, rect.width, rect.height, rect.borderRadius ?? 0);
     ctx.clip();
     ctx.drawImage(
       image,
