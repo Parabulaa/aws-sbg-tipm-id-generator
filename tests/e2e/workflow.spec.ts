@@ -206,6 +206,7 @@ test('public home → login → five-field import → officer review → generat
   await page.getByRole('button', { name: 'Login' }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
   await page.getByRole('link', { name: 'Members', exact: true }).click();
+  await page.getByRole('button', { name: 'Import XLSX', exact: true }).click();
 
   const workbook = new ExcelJS.Workbook();
   workbook.addWorksheet('Members').addRows([
@@ -227,6 +228,11 @@ test('public home → login → five-field import → officer review → generat
   await expect(page.getByText('IDs to be assigned')).toBeVisible();
   await page.getByRole('button', { name: 'Confirm import of 1 rows' }).click();
   await expect(page.getByText(/assigned AWS SBG IDs/)).toBeVisible();
+  await page.getByLabel('Select JAMES LEBRON').check();
+  await page.getByRole('button', { name: 'Delete Selected' }).click();
+  await expect(page.getByRole('dialog', { name: 'Delete selected members?' })).toBeVisible();
+  await page.getByRole('button', { name: 'Cancel' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
   await page.getByRole('link', { name: 'Review / Edit ID' }).click();
   await expect(page.getByLabel('Full Name', { exact: true })).toHaveValue('JAMES LEBRON');
   await page.reload();

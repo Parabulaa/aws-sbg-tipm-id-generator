@@ -9,6 +9,9 @@
   .btn-primary {
     @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-cyan-200/40 bg-cyan-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-50;
   }
+  .btn-danger {
+    @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-red-500/60 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-300 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-40;
+  }
   .field {
     @apply flex min-w-0 flex-col gap-1.5 text-sm font-medium text-slate-700;
   }
@@ -121,6 +124,13 @@ body {
   color: #e0f2f5;
 }
 .internal-app .btn:hover { background: #24264a; }
+.member-action-button {
+  width: 100%;
+  min-height: 2.625rem;
+  padding-inline: .75rem;
+  border-radius: .5rem;
+  white-space: nowrap;
+}
 .internal-app .notice {
   border-color: rgb(88 67 197 / 0.55);
   background: rgb(88 67 197 / 0.16);

@@ -41,7 +41,6 @@ export function Sidebar({ collapsed = false, onToggle }: { collapsed?: boolean; 
           <Brand compact={compact} onExpand={compact ? onToggle : undefined} />
           {!compact && onToggle && <CollapseButton collapsed={collapsed} onClick={onToggle} />}
         </div>
-        {compact && onToggle && <div className="mt-3 flex justify-center"><CollapseButton collapsed={collapsed} onClick={onToggle} /></div>}
         <nav className="mt-6 space-y-1.5" aria-label="Main navigation">
           {navigation.map(({ label, href, icon: Icon }) => (
             <Link

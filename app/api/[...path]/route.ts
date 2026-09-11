@@ -15,6 +15,7 @@ import {
   photo,
   archiveMember,
   restoreMember,
+  deleteMembers,
 } from '@/lib/server/members';
 import {
   getTemplates,
@@ -41,6 +42,10 @@ async function handle(request: Request) {
         id: auth.profile.id,
       });
     if (path[0] === 'members') {
+      if (request.method === 'DELETE' && !path[1]) {
+        assertOfficerRole(auth.profile, 'admin');
+        return await deleteMembers(auth.client, auth.profile.id, request);
+      }
       if (request.method === 'GET' && !path[1]) {
         const includeArchived =
           new URL(request.url).searchParams.get('archived') === 'true';

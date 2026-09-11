@@ -6,9 +6,11 @@ import type { Generation } from '@/lib/domain';
 export function GenerationControls({
   selectedIds,
   filteredIds,
+  buttonClassName = '',
 }: {
   selectedIds?: string[];
   filteredIds?: string[];
+  buttonClassName?: string;
 }) {
   const { members, colors, templates, refresh } = useData();
   const [progress, setProgress] = useState('');
@@ -52,12 +54,13 @@ export function GenerationControls({
       setBusy(false);
     }
   }
+  const embedded = !!buttonClassName;
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap gap-2">
+    <div className={embedded ? 'contents' : 'space-y-3'}>
+      <div className={embedded ? 'contents' : 'flex flex-wrap gap-2'}>
         {selectedIds && (
           <button
-            className="btn-primary"
+            className={`btn-primary ${buttonClassName}`}
             disabled={busy || !selectedIds.length}
             onClick={() => void run(selectedIds)}
           >
@@ -66,7 +69,7 @@ export function GenerationControls({
         )}
         {filteredIds && (
           <button
-            className="btn"
+            className={`btn ${buttonClassName}`}
             disabled={busy || !filteredIds.length}
             onClick={() => void run(filteredIds)}
           >
@@ -74,7 +77,7 @@ export function GenerationControls({
           </button>
         )}
         <button
-          className="btn"
+          className={`btn ${buttonClassName}`}
           disabled={
             busy || !members.some((member) => member.status === 'Ready')
           }
@@ -84,7 +87,7 @@ export function GenerationControls({
         </button>
         {!!generated.length && (
           <button
-            className="btn"
+            className={`btn ${buttonClassName}`}
             disabled={busy}
             onClick={async () => {
               setBusy(true);
@@ -103,13 +106,15 @@ export function GenerationControls({
           </button>
         )}
       </div>
-      <p className="text-sm text-slate-500">
-        Only Ready records are generated. Use membership and team filters to
-        produce category or team batches.
-      </p>
-      {progress && <output className="block">{progress}</output>}
+      {!embedded && (
+        <p className="text-sm text-slate-500">
+          Only Ready records are generated. Use membership and team filters to
+          produce category or team batches.
+        </p>
+      )}
+      {progress && <output className={`${embedded ? 'col-span-full' : ''} block`}>{progress}</output>}
       {error && (
-        <p role="alert" className="notice-error whitespace-pre-line">
+        <p role="alert" className={`notice-error whitespace-pre-line ${embedded ? 'col-span-full' : ''}`}>
           {error}
         </p>
       )}

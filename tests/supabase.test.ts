@@ -52,3 +52,11 @@ void test('generation and archive permissions are enforced below the UI', () => 
   assert.match(sql, /members_admin_update/i);
   assert.match(sql, /templates_admin_update/i);
 });
+
+void test('batch deletion is restricted to administrators and clears dependent records', () => {
+  assert.match(sql, /function public\.delete_members/i);
+  assert.match(sql, /not public\.is_admin\(\)/i);
+  assert.match(sql, /update public\.activities set member_id = null/i);
+  assert.match(sql, /delete from public\.generated_ids/i);
+  assert.match(sql, /delete from public\.members/i);
+});

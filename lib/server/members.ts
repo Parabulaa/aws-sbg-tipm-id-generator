@@ -103,6 +103,47 @@ export async function updateMember(
   return json(saved);
 }
 
+export async function deleteMembers(
+  client: SupabaseClient,
+  actorId: string,
+  request: Request,
+) {
+  const body = (await request.json()) as { ids?: unknown };
+  if (!Array.isArray(body.ids) || !body.ids.length || body.ids.length > 500)
+    throw new AppError('Select 1–500 members to delete.');
+  const ids = [...new Set(body.ids)];
+  if (ids.some((id) => typeof id !== 'string' || !/^[0-9a-f-]{36}$/i.test(id)))
+    throw new AppError('Invalid member selection.');
+
+  const [{ data: memberRows, error: memberError }, { data: generationRows, error: generationError }] =
+    await Promise.all([
+      client.from('members').select('photo_path').in('id', ids),
+      client.from('generated_ids').select('front_path,back_path,pdf_path').in('member_id', ids),
+    ]);
+  if (memberError || generationError)
+    throw new AppError('Selected member records could not be prepared for deletion.');
+
+  const { data, error } = await client.rpc('delete_members', {
+    member_ids: ids,
+    actor: actorId,
+  });
+  if (error) throw new AppError(error.message || 'Selected members could not be deleted.');
+
+  const photos = (memberRows ?? [])
+    .map((row) => row.photo_path as string | null)
+    .filter((path): path is string => !!path)
+    .map((path) => path.replace(/^member-photos\//, ''));
+  const generated = (generationRows ?? [])
+    .flatMap((row) => [row.front_path, row.back_path, row.pdf_path])
+    .filter((path): path is string => typeof path === 'string' && !!path)
+    .map((path) => path.replace(/^generated-ids\//, ''));
+  await Promise.all([
+    photos.length ? client.storage.from('member-photos').remove(photos) : Promise.resolve(),
+    generated.length ? client.storage.from('generated-ids').remove(generated) : Promise.resolve(),
+  ]);
+  return json({ deleted: Number(data ?? ids.length) });
+}
+
 function addMonths(date: Date, months: number) {
   const result = new Date(date);
   result.setUTCMonth(result.getUTCMonth() + months);
