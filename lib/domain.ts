@@ -23,7 +23,7 @@ export const officerPositions = [
 ] as const;
 export type OfficerPosition = (typeof officerPositions)[number];
 export const officerPositionTeams: Record<OfficerPosition, string> = {
-  'LORSO REPRESENTATIVE': 'LORSO',
+  'LORSO REPRESENTATIVE': 'Executive',
   'CHIEF EXECUTIVE OFFICER/LEAD': 'Executive',
   'EXECUTIVE SECRETARY': 'Executive',
   'ASSOCIATE SECRETARY': 'Executive',

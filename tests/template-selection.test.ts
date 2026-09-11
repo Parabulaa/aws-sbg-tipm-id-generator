@@ -13,7 +13,7 @@ void test('officer positions select their own approved design, including technol
   for (const [officer_position, team] of Object.entries(officerPositionTeams)) {
     const member = { ...blankMember, membership_type: 'Officer' as const, officer_position, team: 'stale team' };
     assert.equal(selectTemplate([fallback, ...designs], member, 'front')?.version,
-      team === 'LORSO' ? 'shared' : team);
+      team);
   }
 });
 void test('missing designs use only shared fallback and never another office or side', () => {

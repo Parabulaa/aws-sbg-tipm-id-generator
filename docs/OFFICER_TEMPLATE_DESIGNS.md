@@ -25,6 +25,7 @@ save its independent front or back. Officers can view but cannot change template
 Preview and generation select the design from the officer's controlled position.
 AI/ML Lead and Software Engineering Lead use Technology / CTO Office.
 If a team side is absent, an approved shared Officer side is used if available;
-another team's artwork is never selected. LORSO uses the shared Officer design
-because it is not one of the eight requested offices. Existing generated files
+another team's artwork is never selected. LORSO belongs to Executive and uses its design.
+Apply migration `20260911000200_lorso_executive_office.sql` to correct the database mapping.
+Existing generated files
 are unchanged; regenerate to use newly uploaded designs.
