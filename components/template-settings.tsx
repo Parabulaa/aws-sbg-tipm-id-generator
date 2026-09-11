@@ -6,11 +6,14 @@ import { api, errorText } from '@/lib/client';
 import { categories } from '@/lib/domain';
 import type { ColorSettings } from '@/lib/domain';
 import { PrivateImage } from './private-image';
+import { officerDesigns } from '@/lib/templates';
+import type { Template } from '@/lib/templates';
 export function TemplateSettings() {
   const { templates, colors, refresh, role } = useData();
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
+  const [category, setCategory] = useState('Member');
   const [settings, setSettings] = useState<ColorSettings>(colors);
   const [officers, setOfficers] = useState<OfficerAccess[]>([]);
   useEffect(() => {
@@ -31,11 +34,41 @@ export function TemplateSettings() {
         member, and the composited front preview will use this background,
         photo, ID number, and mapped fields before you generate the PNG.
       </p>
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {categories.flatMap((category) =>
+      <section className="space-y-4">
+        <h2 className="text-xl font-semibold">Officer designs</h2>
+        <p className="text-sm text-slate-600">Upload each office’s approved artwork separately. Front and back previews show the saved backgrounds.</p>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {officerDesigns.map(design => (
+            <article key={design.team} className="rounded-2xl border bg-white p-4">
+              <h3 className="font-semibold">{design.label}</h3>
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                {(['front', 'back'] as const).map(side => (
+                  <TemplateBackground key={side} side={side} label={design.label}
+                    template={templates.find(t => t.category === 'Officer' && t.team === design.team && t.side === side)} />
+                ))}
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+      <section className="space-y-4">
+      <h2 className="text-xl font-semibold">Member front and back</h2>
+      <div className="grid gap-4 sm:grid-cols-2">
+        {(['front', 'back'] as const).map(side => (
+          <div key={side} className="rounded-2xl border bg-white p-4">
+            <TemplateBackground side={side} label="Member"
+              template={templates.find(t => t.category === 'Member' && !t.team && t.side === side)} />
+          </div>
+        ))}
+      </div>
+      </section>
+      <details className="rounded-2xl border bg-white p-4">
+      <summary className="cursor-pointer font-semibold">Shared Officer and Associate templates</summary>
+      <section className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        {(['Officer', 'Associate'] as const).flatMap((category) =>
           (['front', 'back'] as const).map((side) => {
             const template = templates.find(
-              (item) => item.category === category && item.side === side,
+              (item) => item.category === category && item.side === side && !item.team,
             );
             return (
               <div
@@ -69,6 +102,7 @@ export function TemplateSettings() {
           }),
         )}
       </section>
+      </details>
       {role === 'admin' ? (
         <details className="rounded-2xl border bg-white p-5">
           <summary className="cursor-pointer font-semibold">
@@ -106,12 +140,21 @@ export function TemplateSettings() {
           >
             <label className="field">
               Membership
-              <select name="category" aria-label="Membership">
+              <select name="category" aria-label="Membership" value={category} onChange={event => setCategory(event.target.value)}>
                 {categories.map((category) => (
                   <option key={category}>{category}</option>
                 ))}
               </select>
             </label>
+            {category === 'Officer' && (
+              <label className="field">
+                Officer design
+                <select name="team" aria-label="Officer design">
+                  {officerDesigns.map(design => <option key={design.team} value={design.team}>{design.label}</option>)}
+                  <option value="">Shared Officer fallback</option>
+                </select>
+              </label>
+            )}
             <label className="field">
               Side
               <select name="side" aria-label="Side">
@@ -390,4 +433,26 @@ interface OfficerAccess {
   display_name: string;
   role: 'admin' | 'officer';
   is_active: boolean;
+}
+
+function TemplateBackground({ template, label, side }: { template?: Template; label: string; side: string }) {
+  return <div>
+    <h3 className="font-medium capitalize">{side}</h3>
+    {template ? <>
+      <a href={`#preview-${template.key}`} className="block" onClick={event => {
+        event.preventDefault();
+        (document.getElementById(`preview-${template.key}`) as HTMLDialogElement)?.showModal();
+      }}>
+        <PrivateImage path={template.image} alt={`${label} ${side} template`} className="mx-auto my-3 aspect-[1200/1950] w-full max-w-64 object-contain" />
+        <span className="text-sm text-blue-700">Enlarge preview</span>
+      </a>
+      <p className="mt-2 text-xs text-emerald-800">{template.approved ? 'Approved' : 'Not approved'} · 1200 × 1950 px</p>
+      <dialog id={`preview-${template.key}`} className="fixed inset-0 m-auto max-h-[95vh] w-[min(90vw,600px)] overflow-auto rounded-2xl p-4 backdrop:bg-black/60">
+        <form method="dialog" className="flex items-center justify-between gap-3">
+          <h3 className="font-semibold capitalize">{label} {side}</h3><button className="btn">Close</button>
+        </form>
+        <PrivateImage path={template.image} alt={`${label} ${side} enlarged template`} className="mt-3 w-full" />
+      </dialog>
+    </> : <div className="mt-3 flex aspect-[1200/1950] max-h-96 items-center justify-center rounded-xl border border-dashed bg-slate-50 p-3 text-center text-sm text-slate-500">No {side} design uploaded</div>}
+  </div>;
 }

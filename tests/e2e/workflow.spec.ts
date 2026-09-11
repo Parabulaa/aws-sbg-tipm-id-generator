@@ -273,6 +273,18 @@ test('public home → login → five-field import → officer review → generat
   expect((await zipDownload).suggestedFilename()).toBe('AWS-SBG-IDs.zip');
   await page.getByRole('link', { name: 'Review / Regenerate' }).click();
   await expect(page.getByLabel('Full Name', { exact: true })).toHaveValue('JAMES LEBRON');
+  await page.getByRole('link', { name: 'Templates', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Officer designs', exact: true })).toBeVisible();
+  for (const name of ['Executive', 'Buildhers', 'Relation', 'Operation', 'Marketing', 'Finance', 'Creatives', 'Technology'])
+    await expect(page.getByRole('heading', { name, exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Member front and back', exact: true })).toBeVisible();
+  await page.getByText('Enlarge preview', { exact: true }).first().click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await page.getByRole('button', { name: 'Close', exact: true }).click();
+  await expect(page.getByRole('dialog')).not.toBeVisible();
+  await page.getByText('Configure an approved template', { exact: true }).click();
+  await page.getByLabel('Membership', { exact: true }).selectOption('Officer');
+  await page.getByLabel('Officer design', { exact: true }).selectOption('Technology / CTO Office');
   await page.getByRole('button', { name: 'Sign out' }).click();
   await expect(page).toHaveURL(/\/$/);
 });
