@@ -5,10 +5,10 @@ import { PageHeader } from '@/components/page-header';
 
 export default function GenerateIdPage() {
   return (
-    <AppLayout>
+    <AppLayout fullWidth>
       <PageHeader
         title="Generate ID"
-        description="Select a registered member and preview their organization ID."
+        description="Select a registered member and generate their organization ID."
       />
       <Suspense
         fallback={

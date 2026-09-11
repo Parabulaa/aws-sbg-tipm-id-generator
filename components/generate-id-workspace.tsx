@@ -1,99 +1,143 @@
 'use client';
-import { useEffect, useState } from 'react';
+
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import {
+  Check, CheckCircle2, ChevronLeft, ChevronRight, Download, Eye,
+  FileDown, FileText, Image as ImageIcon, Info, Loader2, Palette,
+  RotateCcw, Save, Search, ShieldCheck, UserRound, Users,
+} from 'lucide-react';
+import { PDFDocument } from 'pdf-lib';
 import { useData } from './data-provider';
 import { MemberForm } from './member-form';
 import { PhotoEditor } from './photo-editor';
-import { selectTemplate } from '@/lib/templates';
 import { IDPreview } from './id-preview';
 import { StatusBadge } from './status-badge';
-import { GenerationControls } from './generation-controls';
-import { displayName, validateMember } from '@/lib/domain';
+import {
+  accentColor, displayName, safeFilename, validateMember,
+} from '@/lib/domain';
 import type { MemberRecord, Generation } from '@/lib/domain';
+import type { Side } from '@/lib/templates';
+import { selectTemplate } from '@/lib/templates';
 import { api, errorText } from '@/lib/client';
+import { pngBlob, renderID } from '@/lib/render-id';
+import { downloadFile, generateMember, saveBlob } from '@/lib/export-id';
+import { Toaster, toast } from '@/components/ui/toast';
+
+type BusyAction =
+  | '' | 'save' | 'next' | 'confirm' | 'generate' | 'front'
+  | 'back' | 'pdf' | 'print';
+
+function CardHeading({
+  icon, title, description, trailing,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  description?: string;
+  trailing?: React.ReactNode;
+}) {
+  return (
+    <div className="generate-card-heading">
+      <span className="generate-card-icon">{icon}</span>
+      <div className="min-w-0 flex-1">
+        <h2>{title}</h2>
+        {description && <p>{description}</p>}
+      </div>
+      {trailing}
+    </div>
+  );
+}
+
+function ActionLabel({
+  busy, busyText, children,
+}: {
+  busy: boolean;
+  busyText: string;
+  children: React.ReactNode;
+}) {
+  return busy ? <><Loader2 className="size-4 animate-spin" />{busyText}</> : <>{children}</>;
+}
+
 export function GenerateIdWorkspace() {
   const { members } = useData();
   const params = useSearchParams();
   const [selected, setSelected] = useState('');
   const [query, setQuery] = useState('');
-  const member =
-    members.find(
-      (member) => member.id === (selected || params.get('member')),
-    ) || members[0];
-  if (!member)
+  const member = members.find((record) => record.id === (selected || params.get('member'))) || members[0];
+
+  const filtered = useMemo(() => members.filter((record) =>
+    [displayName(record), record.tip_email, record.aws_sbg_id, record.student_id_number]
+      .join(' ').toLowerCase().includes(query.toLowerCase())), [members, query]);
+
+  if (!member) {
     return (
-      <div className="mt-6 notice">
-        No members imported yet.{' '}
-        <Link className="underline" href="/members">
-          Upload an XLSX file to begin.
-        </Link>
+      <div className="mt-4 notice">
+        No members imported yet. <Link className="underline" href="/members">Upload an XLSX file to begin.</Link>
       </div>
     );
+  }
+
   const index = members.findIndex((record) => record.id === member.id);
   return (
-    <div className="mt-4 space-y-4">
-      <section className="grid gap-3 rounded-xl border bg-white p-3 md:grid-cols-[minmax(13rem,.7fr)_minmax(20rem,1.3fr)_auto] md:items-end">
-        <label className="field">
-          Search review queue
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Name, ID or email"
+    <Toaster>
+      <div className="generate-workspace">
+        <section className="generate-card generate-selection-card">
+          <CardHeading
+            icon={<Users className="size-4" />}
+            title="Member Selection"
+            description="Search for a member or select from the list."
+            trailing={
+              <div className="generate-member-state">
+                <StatusBadge status={member.status} />
+                <span>Member {index + 1} of {members.length}</span>
+              </div>
+            }
           />
-        </label>
-        <label className="field">
-          Select member
-          <select
-            aria-label="Select member"
-            value={member.id}
-            onChange={(event) => {
-              if (
-                window.confirm('Switch members? Save any current edits first.')
-              )
-                setSelected(event.target.value);
-            }}
-          >
-            {members
-              .filter(
-                (record) =>
-                  record.id === member.id ||
-                  [displayName(record), record.tip_email, record.aws_sbg_id]
-                    .join(' ')
-                    .toLowerCase()
-                    .includes(query.toLowerCase()),
-              )
-              .map((record) => (
-                <option key={record.id} value={record.id}>
-                  {displayName(record)} — {record.aws_sbg_id} — {record.status}
-                </option>
-              ))}
-          </select>
-        </label>
-        <p className="whitespace-nowrap pb-2 text-xs text-slate-500">
-          Member {index + 1} of {members.length}
-        </p>
-      </section>
-      <ReviewEditor
-        key={member.id}
-        initial={member}
-        previous={() => setSelected(members[Math.max(0, index - 1)].id)}
-        next={() =>
-          setSelected(members[Math.min(members.length - 1, index + 1)].id)
-        }
-        first={index === 0}
-        last={index === members.length - 1}
-      />
-      <GenerationControls />
-    </div>
+          <div className="generate-selection-fields">
+            <label className="field generate-search-field">
+              <span className="sr-only">Search member</span>
+              <Search className="generate-input-icon size-4" />
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search name, ID, or email..."
+              />
+            </label>
+            <label className="field">
+              <span>Select member</span>
+              <select
+                aria-label="Select member"
+                value={member.id}
+                onChange={(event) => setSelected(event.target.value)}
+              >
+                {(filtered.some((record) => record.id === member.id) ? filtered : [member, ...filtered])
+                  .filter((record, position, list) => list.findIndex((item) => item.id === record.id) === position)
+                  .map((record) => (
+                    <option key={record.id} value={record.id}>
+                      {displayName(record)} — {record.status}
+                    </option>
+                  ))}
+              </select>
+            </label>
+          </div>
+        </section>
+
+        <ReviewEditor
+          key={member.id}
+          initial={member}
+          previous={() => setSelected(members[Math.max(0, index - 1)].id)}
+          next={() => setSelected(members[Math.min(members.length - 1, index + 1)].id)}
+          first={index === 0}
+          last={index === members.length - 1}
+        />
+      </div>
+    </Toaster>
   );
 }
+
 function ReviewEditor({
-  initial,
-  previous,
-  next,
-  first,
-  last,
+  initial, previous, next, first, last,
 }: {
   initial: MemberRecord;
   previous: () => void;
@@ -101,15 +145,24 @@ function ReviewEditor({
   first: boolean;
   last: boolean;
 }) {
-  const { colors, templates, refresh } = useData();
+  const { colors, templates, generations, refresh } = useData();
   const [member, setMember] = useState(initial);
   const [saved, setSaved] = useState(initial);
-  const [busy, setBusy] = useState('');
+  const [busy, setBusy] = useState<BusyAction>('');
   const [error, setError] = useState('');
-  const [notice, setNotice] = useState('');
-  const [preview, setPreview] = useState<string>();
+  const [photoPreview, setPhotoPreview] = useState<string>();
+  const [side, setSide] = useState<Side>('front');
   const [generation, setGeneration] = useState<Generation>();
   const dirty = JSON.stringify(member) !== JSON.stringify(saved);
+  const latestGeneration = generation || generations.find((record) => record.member_id === member.id);
+  const assignedMember = { ...member, color_override: null };
+  const assignedColor = accentColor(assignedMember, colors);
+  const currentColor = accentColor(member, colors);
+  const assignedName = member.membership_type === 'Officer'
+    ? (member.team || 'Executive')
+    : member.membership_type;
+  const errors = validateMember(member);
+
   useEffect(() => {
     if (!dirty && initial.revision > saved.revision) {
       queueMicrotask(() => {
@@ -118,17 +171,21 @@ function ReviewEditor({
       });
     }
   }, [initial, dirty, saved.revision]);
+
   useEffect(() => {
     const handler = (event: BeforeUnloadEvent) => {
-      if (dirty || preview) {
-        event.preventDefault();
-      }
+      if (dirty || photoPreview) event.preventDefault();
     };
     window.addEventListener('beforeunload', handler);
     return () => window.removeEventListener('beforeunload', handler);
-  }, [dirty, preview]);
+  }, [dirty, photoPreview]);
+
+  function notify(message: string, type: 'success' | 'error' = 'success') {
+    toast.add({ title: message, type, timeout: 3200 });
+  }
+
   async function save() {
-    if (preview) throw new Error('Apply the uploaded photo before saving.');
+    if (photoPreview) throw new Error('Apply the uploaded photo before saving.');
     if (!dirty) return member;
     const updated = await api<MemberRecord>(`members/${member.id}`, {
       method: 'PUT',
@@ -139,36 +196,168 @@ function ReviewEditor({
     await refresh();
     return updated;
   }
-  async function act(label: string, operation: () => Promise<void>) {
+
+  async function action(label: BusyAction, operation: () => Promise<void>) {
     setBusy(label);
     setError('');
-    setNotice('');
     try {
       await operation();
-    } catch (error) {
-      setError(errorText(error));
+    } catch (caught) {
+      const message = errorText(caught);
+      setError(message);
+      notify(message, 'error');
     } finally {
       setBusy('');
     }
   }
+
+  function focusFirstInvalid() {
+    const firstInput = document.querySelector<HTMLElement>('.generate-information-card input, .generate-information-card select');
+    firstInput?.focus();
+    firstInput?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  async function confirm() {
+    if (errors.length) {
+      focusFirstInvalid();
+      throw new Error(errors[0]);
+    }
+    if (!member.photo_path || photoPreview) {
+      document.querySelector<HTMLElement>('.generate-photo-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      throw new Error(photoPreview ? 'Apply the uploaded photo first.' : 'Upload a member photo first.');
+    }
+    const updated = await save();
+    const confirmed = await api<MemberRecord>(`members/${member.id}/confirm`, {
+      method: 'POST',
+      body: JSON.stringify({ revision: updated.revision }),
+    });
+    setMember(confirmed);
+    setSaved(confirmed);
+    await refresh();
+    notify('ID confirmed and Ready for generation.');
+    return confirmed;
+  }
+
+  async function readyForGeneration() {
+    if (dirty || photoPreview) throw new Error('Save and confirm the latest changes before generating.');
+    if (member.status === 'Generated') {
+      return api<MemberRecord>(`members/${member.id}/confirm`, {
+        method: 'POST',
+        body: JSON.stringify({ revision: member.revision }),
+      });
+    }
+    if (member.status !== 'Ready') throw new Error('Confirm this ID before generating.');
+    return member;
+  }
+
+  async function generateCurrentSide() {
+    const current = await readyForGeneration();
+    const result = await generateMember(current, templates, colors, side === 'front' ? 'front' : 'both');
+    setGeneration(result);
+    const updated = { ...current, status: 'Generated' as const, revision: current.revision + 1 };
+    setMember(updated);
+    setSaved(updated);
+    await refresh();
+    notify(
+      side === 'front'
+        ? 'ID files generated and saved in history.'
+        : 'Back ID generated and saved in history.',
+    );
+  }
+
+  async function renderSideBlob(targetSide: Side) {
+    const template = selectTemplate(templates, member, targetSide);
+    if (!template) throw new Error(`Approved ${targetSide} template is not configured.`);
+    const canvas = document.createElement('canvas');
+    await renderID(canvas, member, template, colors, photoPreview);
+    const blob = await pngBlob(canvas);
+    canvas.width = 0;
+    canvas.height = 0;
+    return blob;
+  }
+
+  async function createPrintPdf() {
+    const [front, back] = await Promise.all([renderSideBlob('front'), renderSideBlob('back')]);
+    const document = await PDFDocument.create();
+    for (const blob of [front, back]) {
+      const image = await document.embedPng(await blob.arrayBuffer());
+      const page = document.addPage([288, 468]);
+      page.drawImage(image, { x: 0, y: 0, width: 288, height: 468 });
+    }
+    return new Blob([Uint8Array.from(await document.save())], { type: 'application/pdf' });
+  }
+
+  async function savePng(targetSide: Side) {
+    const path = targetSide === 'front' ? latestGeneration?.front_path : latestGeneration?.back_path;
+    const name = `${safeFilename(member)}_${targetSide}.png`;
+    if (path) await downloadFile(path, name);
+    else saveBlob(await renderSideBlob(targetSide), name);
+    notify(`${targetSide === 'front' ? 'Front' : 'Back'} PNG saved`);
+  }
+
+  const generatedAt = latestGeneration?.generated_at
+    ? new Date(latestGeneration.generated_at).toLocaleString()
+    : 'Not generated';
+  const statusItems = [
+    ['Information Saved', !dirty],
+    ['Photo Adjusted', !!member.photo_path && !photoPreview],
+    ['Front Ready', !!latestGeneration?.front_path],
+    ['Back Ready', !!latestGeneration?.back_path],
+  ] as const;
+
   return (
-    <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-      <section className="space-y-5 rounded-2xl border bg-white p-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold">{displayName(member)}</h2>
-          <StatusBadge status={dirty ? 'Draft' : member.status} />
-        </div>
-        <fieldset disabled={!!busy} className="min-w-0 space-y-5">
-          <MemberForm
-            value={member}
-            onChange={(value) => setMember({ ...member, ...value })}
+    <div className="generate-main-grid">
+      <div className="generate-left-column">
+        <section className="generate-card generate-information-card">
+          <CardHeading
+            icon={<UserRound className="size-4" />}
+            title="Member Information"
+            description="Member details used on the ID."
+            trailing={<StatusBadge status={dirty ? 'Draft' : member.status} />}
           />
+          <fieldset disabled={!!busy} className="generate-form-wrap">
+            <MemberForm value={member} onChange={(value) => setMember({ ...member, ...value })} />
+          </fieldset>
+          <div className="generate-appearance">
+            <CardHeading icon={<Palette className="size-4" />} title="ID Appearance" description="Assigned team color is applied live." />
+            <div className="generate-color-row">
+              <div className="generate-color-label">
+                <span className="generate-color-swatch" style={{ backgroundColor: currentColor }} />
+                <span><strong>{assignedName}</strong><small>{currentColor.toUpperCase()}</small></span>
+              </div>
+              {member.membership_type === 'Officer' && (
+                <label className="generate-color-picker">
+                  <span>Adjust</span>
+                  <input
+                    type="color" value={member.color_override || assignedColor}
+                    aria-label="Temporarily adjust assigned team color"
+                    onChange={(event) => setMember({ ...member, color_override: event.target.value })}
+                  />
+                </label>
+              )}
+              <button
+                className="btn generate-reset-color" type="button"
+                disabled={!member.color_override}
+                onClick={() => {
+                  setMember({ ...member, color_override: null });
+                  notify('Team color restored');
+                }}
+              >
+                <RotateCcw className="size-4" /> Reset to Assigned Team Color
+              </button>
+            </div>
+          </div>
+          {!!errors.length && <p className="notice-error" role="alert">{errors.join('; ')}</p>}
+        </section>
+
+        <section className="generate-card generate-photo-card">
+          <CardHeading icon={<ImageIcon className="size-4" />} title="Member Photo" description="Upload, crop, and position the member photo." />
           <PhotoEditor
             photoRegion={selectTemplate(templates, member, 'front')?.layout.photo}
-            key={member.id}
             member={member}
             onCrop={(crop) => setMember({ ...member, photo_crop_data: crop })}
-            onPreview={setPreview}
+            onPreview={setPhotoPreview}
+            onNotify={notify}
             onMember={(updated) => {
               setMember((current) => ({
                 ...current,
@@ -179,215 +368,110 @@ function ReviewEditor({
                 updated_at: updated.updated_at,
               }));
               setSaved(updated);
-              void refresh().catch((error) => setError(errorText(error)));
+              void refresh().catch((caught) => setError(errorText(caught)));
             }}
           />
-          {member.membership_type === 'Officer' && (
-            <div className="space-y-2">
-              <label className="field">
-                Officer accent override
-                <input
-                  type="color"
-                  value={member.color_override || '#10b981'}
-                  onChange={(event) =>
-                    setMember({ ...member, color_override: event.target.value })
-                  }
-                />
-              </label>
-              <button
-                className="btn"
-                onClick={() => setMember({ ...member, color_override: null })}
-              >
-                Reset to assigned team color
-              </button>
-              <p className="text-sm text-slate-500">
-                Team color mode and mappings are configured in Templates.
-              </p>
-            </div>
-          )}
-          {!!validateMember(member).length && (
-            <p className="notice-error">{validateMember(member).join('; ')}</p>
-          )}
-          <div className="flex flex-wrap gap-2">
-            <button
-              className="btn"
-              onClick={() =>
-                void act('Saving information…', async () => {
-                  await save();
-                  setNotice('Information and photo position saved.');
-                })
-              }
-            >
-              Save information
+        </section>
+
+        <section className="generate-card generate-workflow-card">
+          <CardHeading icon={<ShieldCheck className="size-4" />} title="Confirmation / Workflow" description="Save and confirm this member before generation." />
+          <div className="generate-workflow-actions">
+            <button className="btn" type="button" disabled={!!busy || first} onClick={previous}>
+              <ChevronLeft className="size-4" /> Previous
             </button>
-            <button
-              className="btn-primary"
-              disabled={
-                !member.photo_path ||
-                !!preview ||
-                !!validateMember(member).length
-              }
-              onClick={() =>
-                void act('Confirming ID…', async () => {
-                  const updated = await save();
-                  const confirmed = await api<MemberRecord>(
-                    `members/${member.id}/confirm`,
-                    {
-                      method: 'POST',
-                      body: JSON.stringify({ revision: updated.revision }),
-                    },
-                  );
-                  setMember(confirmed);
-                  setSaved(confirmed);
-                  await refresh();
-                  setNotice('ID confirmed and Ready for generation.');
-                })
-              }
-            >
-              Confirm ID
+            <button className="btn" type="button" disabled={!!busy || !dirty} onClick={() => void action('save', async () => {
+              await save();
+              notify('Member information saved');
+            })}>
+              <ActionLabel busy={busy === 'save'} busyText="Saving..."><Save className="size-4" /> Save Information</ActionLabel>
+            </button>
+            <button className="btn" type="button" disabled={!!busy || last} onClick={() => void action('next', async () => {
+              await save();
+              notify('Member information saved');
+              next();
+            })}>
+              <ActionLabel busy={busy === 'next'} busyText="Saving...">Save &amp; Next <ChevronRight className="size-4" /></ActionLabel>
+            </button>
+            <button className="btn-primary" type="button" disabled={!!busy} onClick={() => void action('confirm', async () => { await confirm(); })}>
+              <ActionLabel busy={busy === 'confirm'} busyText="Confirming..."><Check className="size-4" /> Confirm ID</ActionLabel>
             </button>
           </div>
-          <p className="text-sm text-slate-600">
-            Confirm only after verifying the information, photo position, and
-            both sides. Editing confirmed information requires confirmation
-            again.
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <button
-              className="btn"
-              disabled={first}
-              onClick={() => {
-                if (
-                  !(dirty || preview) ||
-                  window.confirm(
-                    'Discard unsaved changes and go to the previous member?',
-                  )
-                )
-                  previous();
-              }}
-            >
-              Previous
-            </button>
-            <button
-              className="btn"
-              disabled={last}
-              onClick={() =>
-                void act('Saving and moving to next member…', async () => {
-                  await save();
-                  next();
-                })
-              }
-            >
-              Save &amp; Next
-            </button>
-          </div>
-        </fieldset>
-        {busy && <output className="block">{busy}</output>}
-        {notice && <output className="notice block">{notice}</output>}
-        {error && (
-          <p role="alert" className="notice-error">
-            {error}
-          </p>
-        )}
-      </section>
-      <section className="min-w-0 space-y-4">
+          {error && <p role="alert" className="notice-error">{error}</p>}
+        </section>
+      </div>
+
+      <div className="generate-right-column">
         <IDPreview
-          member={member}
-          templates={templates}
-          colors={colors}
-          photoOverride={preview}
+          member={member} templates={templates} colors={colors}
+          photoOverride={photoPreview} side={side} onSideChange={setSide}
         />
-        {member.status !== 'Ready' && member.status !== 'Generated' && (
-          <p className="notice">
-            Front ID generation unlocks after you save the member, apply a
-            photo, and click <strong>Confirm ID</strong>. Current status:{' '}
-            <strong>{member.status}</strong>.
-          </p>
-        )}
-        {!member.photo_path && (
-          <p className="notice">
-            Upload and apply a member photo to enable confirmation and ID
-            generation.
-          </p>
-        )}
         <button
-          className="btn-primary"
-          aria-label={member.status === 'Generated' ? 'Regenerate ID' : 'Generate ID'}
-          disabled={
-            !!busy ||
-            dirty ||
-            !!preview ||
-            !['Ready', 'Generated'].includes(member.status)
-          }
-          onClick={() =>
-            void act('Generating front PNG…', async () => {
-              let current = member;
-              if (current.status === 'Generated') {
-                if (
-                  !window.confirm(
-                    'Confirm this information and photo again before regenerating?',
-                  )
-                )
-                  return;
-                current = await api<MemberRecord>(
-                  `members/${member.id}/confirm`,
-                  {
-                    method: 'POST',
-                    body: JSON.stringify({ revision: member.revision }),
-                  },
-                );
-                setMember(current);
-                setSaved(current);
-              }
-              const { generateMember } = await import('@/lib/export-id');
-              const result = await generateMember(
-                current,
-                templates,
-                colors,
-                'front',
-              );
-              setGeneration(result);
-              const updated = {
-                ...current,
-                status: 'Generated' as const,
-                revision: current.revision + 1,
-              };
-              setMember(updated);
-              setSaved(updated);
-              await refresh();
-              setNotice('ID files generated and saved in history.');
-            })
-          }
+          className="btn-primary generate-main-action" type="button"
+          aria-label="Generate ID"
+          disabled={!!busy || dirty || !!photoPreview || !['Ready', 'Generated'].includes(member.status)}
+          onClick={() => void action('generate', generateCurrentSide)}
         >
-          {member.status === 'Generated'
-            ? 'Regenerate Front ID'
-            : 'Generate Front ID'}
+          <ActionLabel busy={busy === 'generate'} busyText="Generating...">
+            <ImageIcon className="size-4" /> Generate {side === 'front' ? 'Front' : 'Back'} ID
+          </ActionLabel>
         </button>
-        {generation && (
-          <div className="flex flex-wrap gap-2">
-            {(
-              [['front.png', generation.front_path]] as const
-            ).map(([file, path]) => (
-              <button
-                className="btn"
-                key={file}
-                disabled={!!busy}
-                onClick={() =>
-                  void act('Preparing download…', async () => {
-                    const { downloadFile } = await import('@/lib/export-id');
-                    if (!path)
-                      throw new Error('Generated file reference is missing.');
-                    await downloadFile(path, `${member.aws_sbg_id}_${file}`);
-                  })
-                }
-              >
-                Download{' '}
-                Front PNG
-              </button>
-            ))}
+
+        <section className="generate-card generate-export-card">
+          <CardHeading icon={<Download className="size-4" />} title="Export & Print" description="Export production-ready ID files." />
+          <div className="generate-export-actions">
+            <button className="btn" type="button" disabled={!!busy} onClick={() => void action('front', async () => savePng('front'))}>
+              <ActionLabel busy={busy === 'front'} busyText="Saving..."><Download className="size-4" /> Save Front PNG</ActionLabel>
+            </button>
+            <button className="btn" type="button" disabled={!!busy} onClick={() => void action('back', async () => savePng('back'))}>
+              <ActionLabel busy={busy === 'back'} busyText="Saving..."><Download className="size-4" /> Save Back PNG</ActionLabel>
+            </button>
+            <button className="btn" type="button" disabled={!!busy} onClick={() => void action('pdf', async () => {
+              if (latestGeneration?.pdf_path) await downloadFile(latestGeneration.pdf_path, `${safeFilename(member)}_ID.pdf`);
+              else saveBlob(await createPrintPdf(), `${safeFilename(member)}_ID.pdf`);
+              notify('Print PDF created');
+            })}>
+              <ActionLabel busy={busy === 'pdf'} busyText="Creating..."><FileDown className="size-4" /> Download Print PDF</ActionLabel>
+            </button>
+            <button className="btn col-span-full" type="button" disabled={!!busy} onClick={() => void action('print', async () => {
+              const url = URL.createObjectURL(await createPrintPdf());
+              window.open(url, '_blank', 'noopener,noreferrer');
+              window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+            })}>
+              <ActionLabel busy={busy === 'print'} busyText="Preparing..."><Eye className="size-4" /> Open Print Layout</ActionLabel>
+            </button>
           </div>
-        )}
-      </section>
+          <div className="generate-export-info-grid">
+            <div>
+              <h3><Info className="size-4" /> Export Information</h3>
+              {['1200 × 1950 px', 'High quality PNG export', '2-page PDF: Front and Back', 'File names use the member ID'].map((item) => (
+                <p key={item}><Check className="size-3.5" /> {item}</p>
+              ))}
+            </div>
+            <div>
+              <h3><CheckCircle2 className="size-4" /> Generation Status</h3>
+              {statusItems.map(([label, ready]) => (
+                <p key={label} className={ready ? 'is-ready' : ''}><CheckCircle2 className="size-3.5" /> {label}</p>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="generate-card generate-summary-card">
+          <CardHeading
+            icon={<FileText className="size-4" />}
+            title="Output Summary"
+            trailing={<Link className="btn generate-view-files" href="/generated-ids">View Files</Link>}
+          />
+          <dl>
+            <div><dt>Front file name</dt><dd><input aria-label="Front file name" readOnly value={`${safeFilename(member)}_front.png`} /></dd></div>
+            <div><dt>Back file name</dt><dd><input aria-label="Back file name" readOnly value={`${safeFilename(member)}_back.png`} /></dd></div>
+            <div><dt>Member ID</dt><dd><input aria-label="Member ID" readOnly value={member.aws_sbg_id} /></dd></div>
+            <div><dt>Validity</dt><dd>{member.valid_until || 'Not issued'}</dd></div>
+            <div><dt>Date Generated</dt><dd>{generatedAt}</dd></div>
+            <div><dt>Current status</dt><dd><StatusBadge status={member.status} /></dd></div>
+          </dl>
+        </section>
+      </div>
     </div>
   );
 }
