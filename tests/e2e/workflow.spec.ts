@@ -285,6 +285,11 @@ test('public home → login → five-field import → officer review → generat
   await page.getByText('Configure an approved template', { exact: true }).click();
   await page.getByLabel('Membership', { exact: true }).selectOption('Officer');
   await page.getByLabel('Officer design', { exact: true }).selectOption('Technology / CTO Office');
+  await expect(page.getByText('Shared Officer and Associate templates')).toHaveCount(0);
+  await expect(page.getByText('Officer team colors')).toHaveCount(0);
+  await expect(page.getByLabel('Front field mapping JSON')).toBeVisible();
+  await page.getByLabel('Side', { exact: true }).selectOption('back');
+  await expect(page.getByLabel('Front field mapping JSON')).toHaveCount(0);
   await page.getByRole('button', { name: 'Sign out' }).click();
   await expect(page).toHaveURL(/\/$/);
 });

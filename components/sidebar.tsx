@@ -7,7 +7,6 @@ import {
   FolderCog,
   LayoutDashboard,
   Menu,
-  Settings,
   Sparkles,
   Users,
 } from 'lucide-react';
@@ -51,15 +50,7 @@ export function Sidebar() {
           ))}
         </nav>
         <div className="mt-auto border-t border-slate-200 pt-4">
-          <Link
-            href="/templates#colors"
-            onClick={() => setOpen(false)}
-            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-600"
-          >
-            <Settings className="size-[18px]" />
-            Team color settings
-          </Link>
-          <div className="mt-3 rounded-2xl bg-slate-50 p-3">
+          <div className="rounded-2xl bg-slate-50 p-3">
             <p className="break-words text-sm font-semibold">{user}</p>
             <p className="mt-0.5 text-xs capitalize text-slate-500">{role}</p>
             <button

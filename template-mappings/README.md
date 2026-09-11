@@ -4,6 +4,9 @@ Use each JSON with the corresponding original 1200 × 1950 PNG. Do not reuse
 the previous gold mapping for every office. These mappings follow the supplied
 frame openings; text starts below the frames. No member records are included.
 
+Back designs contain no generated fields. The website accepts the completed back
+PNG directly and creates an empty layout automatically. No back JSON is needed.
+
 | Office | Artwork | JSON | Photo x, y | Width × height |
 | --- | --- | --- | --- | --- |
 | Executive (including LORSO) | Emerald | executive-front.json | 362, 476 | 476 × 591 |

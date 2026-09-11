@@ -60,7 +60,15 @@ export async function saveTemplate(
   const size = pngDimensions(bytes);
   if (size.width !== 1200 || size.height !== 1950)
     throw new AppError('Template must be exactly 1200 × 1950 pixels.');
-  const layout = JSON.parse(form.get('layout') as string);
+  let layout: Template['layout'];
+  const layoutInput = form.get('layout');
+  try {
+    layout = side === 'back'
+      ? { fields: [], accents: [] }
+      : JSON.parse(typeof layoutInput === 'string' ? layoutInput : '');
+  } catch {
+    throw new AppError('Front template mapping must be valid JSON.');
+  }
   try {
     validateLayout(layout);
   } catch (error) {

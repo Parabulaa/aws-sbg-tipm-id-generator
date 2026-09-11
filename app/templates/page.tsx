@@ -6,7 +6,7 @@ export default function TemplatesPage() {
     <AppLayout>
       <PageHeader
         title="Templates"
-        description="Approved backgrounds, field mappings, and officer team colors."
+        description="Approved front and back ID artwork with front-side field mappings."
       />
       <TemplateSettings />
     </AppLayout>

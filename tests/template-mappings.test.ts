@@ -5,7 +5,7 @@ import { validateLayout } from '../lib/templates';
 import type { TemplateLayout } from '../lib/templates';
 
 void test('all eight office mappings fit the canvas and keep text below the photo frame', () => {
-  const files = readdirSync('template-mappings').filter(name => name.endsWith('.json'));
+  const files = readdirSync('template-mappings').filter(name => name.endsWith('-front.json'));
   assert.equal(files.length, 8);
   for (const file of files) {
     const layout = JSON.parse(readFileSync(`template-mappings/${file}`, 'utf8')) as TemplateLayout;
