@@ -1,4 +1,15 @@
 import type { Category } from './domain';
+import { teamForOfficerPosition } from './domain';
+export const officerDesigns = [
+  { label: 'Executive', team: 'Executive' },
+  { label: 'Buildhers', team: 'BuildHers+' },
+  { label: 'Relation', team: 'Relations' },
+  { label: 'Operation', team: 'Operations' },
+  { label: 'Marketing', team: 'Marketing' },
+  { label: 'Finance', team: 'Finance' },
+  { label: 'Creatives', team: 'Creatives' },
+  { label: 'Technology', team: 'Technology / CTO Office' },
+] as const;
 export const WIDTH = 1200;
 export const HEIGHT = 1950;
 export type Side = 'front' | 'back';
@@ -39,6 +50,7 @@ export interface TemplateLayout {
   accents: (Rect & { label?: string })[];
 }
 export interface Template {
+  team?: string;
   key: string;
   category: Category;
   side: Side;
@@ -46,6 +58,16 @@ export interface Template {
   layout: TemplateLayout;
   version: string;
   approved: boolean;
+}
+export function selectTemplate(
+  templates: Template[],
+  member: { membership_type: Category; officer_position: string; team: string },
+  side: Side,
+) {
+  const candidates = templates.filter(t => t.category === member.membership_type && t.side === side && t.approved);
+  const team = teamForOfficerPosition(member.officer_position) || member.team;
+  return (member.membership_type === 'Officer' && candidates.find(t => t.team === team)) ||
+    candidates.find(t => !t.team);
 }
 export function validateLayout(layout: TemplateLayout) {
   if (

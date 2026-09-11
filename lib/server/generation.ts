@@ -9,6 +9,7 @@ import {
   json,
 } from './database';
 import { getTemplates } from './configuration';
+import { selectTemplate } from '../templates';
 import { pngDimensions } from './members';
 
 export async function getGenerations(
@@ -62,7 +63,7 @@ export async function generate(
   const requiredSides = side === 'front' ? (['front'] as const) : (['front', 'back'] as const);
   if (
     !requiredSides.every((templateSide) =>
-      templates.some((item) => item.side === templateSide && item.approved),
+      !!selectTemplate(templates, member, templateSide),
     )
   )
     throw new AppError(
@@ -73,7 +74,7 @@ export async function generate(
   const versions = Object.fromEntries(
     requiredSides.map((templateSide) => [
       templateSide,
-      templates.find((item) => item.side === templateSide)!.version,
+      selectTemplate(templates, member, templateSide)!.version,
     ]),
   );
   const version = requiredSides.map((templateSide) => versions[templateSide]).join(':');

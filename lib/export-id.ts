@@ -4,6 +4,7 @@ import { renderID, pngBlob } from './render-id';
 import { safeFilename } from './domain';
 import type { MemberRecord, ColorSettings, Generation } from './domain';
 import type { Template } from './templates';
+import { selectTemplate } from './templates';
 import { api, fetchPrivateFile } from './client';
 export async function generateMember(
   member: MemberRecord,
@@ -15,12 +16,7 @@ export async function generateMember(
     throw new Error('Only Ready members can be generated.');
   const sides = side === 'front' ? (['front'] as const) : (['front', 'back'] as const);
   const selected = sides.map((side) =>
-    templates.find(
-      (template) =>
-        template.category === member.membership_type &&
-        template.side === side &&
-        template.approved,
-    ),
+    selectTemplate(templates, member, side),
   );
   if (selected.some((template) => !template))
     throw new Error(

@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { MemberRecord, ColorSettings } from '@/lib/domain';
 import type { Template, Side } from '@/lib/templates';
 import { renderID } from '@/lib/render-id';
+import { selectTemplate } from '@/lib/templates';
 import { errorText } from '@/lib/client';
 export function IDPreview({
   member,
@@ -19,9 +20,7 @@ export function IDPreview({
   const canvas = useRef<HTMLCanvasElement>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const template = templates.find(
-    (item) => item.category === member.membership_type && item.side === side,
-  );
+  const template = selectTemplate(templates, member, side);
   useEffect(() => {
     let cancelled = false;
     if (!template || !canvas.current) return;

@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { categories } from '../domain';
 import type { ColorSettings } from '../domain';
-import { validateLayout } from '../templates';
+import { validateLayout, officerDesigns } from '../templates';
 import type { Template } from '../templates';
 import { AppError, json, getColors, logActivity } from './database';
 import { pngDimensions } from './members';
@@ -9,8 +9,10 @@ import { pngDimensions } from './members';
 function toTemplate(row: Record<string, unknown>): Template {
   const category = row.category as Template['category'];
   const side = row.side as Template['side'];
+  const team = typeof row.team === 'string' ? row.team : '';
   return {
-    key: `${category}-${side}`,
+    key: `${category}-${team}-${side}`,
+    team,
     category,
     side,
     image: row.image_path as string,
@@ -25,7 +27,7 @@ export async function getTemplates(
 ): Promise<Template[]> {
   const { data, error } = await client
     .from('templates')
-    .select('category,side,image_path,layout,version,approved')
+    .select('*')
     .order('category')
     .order('side');
   if (error) throw new AppError('Templates could not be loaded.');
@@ -40,6 +42,12 @@ export async function saveTemplate(
   const form = await request.formData();
   const category = form.get('category') as string;
   const side = form.get('side') as string;
+  const teamInput = form.get('team');
+  if (teamInput !== null && typeof teamInput !== 'string')
+    throw new AppError('Choose a valid officer design.');
+  const team = teamInput ?? '';
+  if (team && (category !== 'Officer' || !officerDesigns.some(d => d.team === team)))
+    throw new AppError('Choose a valid officer design.');
   if (
     !categories.includes(category as (typeof categories)[number]) ||
     !['front', 'back'].includes(side)
@@ -89,6 +97,7 @@ export async function saveTemplate(
     .upsert(
       {
         category,
+        team,
         side,
         image_path: image,
         layout,
@@ -97,12 +106,14 @@ export async function saveTemplate(
         created_by: actorId,
         updated_by: actorId,
       },
-      { onConflict: 'category,side' },
+      { onConflict: 'category,side,team' },
     )
-    .select('category,side,image_path,layout,version,approved')
+    .select('*')
     .single();
   if (error) {
     await client.storage.from('id-templates').remove([objectPath]);
+    if (['42703', 'PGRST204', '42P10'].includes(error.code))
+      throw new AppError('Template storage needs the officer-design database update. Ask your administrator to apply migration 20260911000100_officer_template_designs.sql.');
     throw new AppError('The approved template could not be saved.');
   }
   await logActivity(
