@@ -48,14 +48,14 @@ export function MemberDirectory() {
         .includes(query.toLowerCase()),
   );
   return (
-    <div className="mt-6 space-y-6">
+    <div className="mt-4 space-y-4">
       <ImportMembers />
-      <button className="btn" onClick={() => setAdding(!adding)}>
+      <div className="flex flex-wrap gap-2"><button className="btn" onClick={() => setAdding(!adding)}>
         {adding ? 'Cancel adding' : 'Add member manually'}
       </button>
       {role === 'admin' && (
         <button
-          className="btn ml-2"
+          className="btn"
           onClick={async () => {
             const next = !showArchived;
             setShowArchived(next);
@@ -73,7 +73,7 @@ export function MemberDirectory() {
         >
           {showArchived ? 'Hide archived members' : 'Show archived members'}
         </button>
-      )}
+      )}</div>
       {adding && (
         <form
           className="rounded-2xl border bg-white p-5 space-y-4"
@@ -112,8 +112,8 @@ export function MemberDirectory() {
           )}
         </form>
       )}
-      <section className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
-        <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+        <div className="grid gap-3 p-3 sm:grid-cols-2 xl:grid-cols-4">
           <label className="field">
             Search
             <input

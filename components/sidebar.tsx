@@ -7,6 +7,8 @@ import {
   FolderCog,
   LayoutDashboard,
   Menu,
+  PanelLeftClose,
+  PanelLeftOpen,
   Sparkles,
   Users,
 } from 'lucide-react';
@@ -26,35 +28,43 @@ const navigation = [
   { label: 'Templates', href: '/templates', icon: FolderCog },
   { label: 'Generated IDs', href: '/generated-ids', icon: FileBadge2 },
 ];
-export function Sidebar() {
+export function Sidebar({ collapsed = false, onToggle }: { collapsed?: boolean; onToggle?: () => void }) {
   const pathname = usePathname();
   const { user, role } = useData();
   const [open, setOpen] = useState(false);
   const [error, setError] = useState('');
-  function content() {
+  function content(compact = collapsed) {
     return (
       <>
-        <Brand />
-        <nav className="mt-8 space-y-1" aria-label="Main navigation">
+        <div className={`flex items-center ${compact ? 'justify-center' : 'justify-between gap-2'}`}>
+          <Brand compact={compact} />
+          {!compact && onToggle && <CollapseButton collapsed={collapsed} onClick={onToggle} />}
+        </div>
+        {compact && onToggle && <div className="mt-3 flex justify-center"><CollapseButton collapsed={collapsed} onClick={onToggle} /></div>}
+        <nav className="mt-6 space-y-1.5" aria-label="Main navigation">
           {navigation.map(({ label, href, icon: Icon }) => (
             <Link
               key={href}
               href={href}
               onClick={() => setOpen(false)}
               aria-current={pathname === href ? 'page' : undefined}
-              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${pathname === href ? 'bg-amber-50 text-amber-800' : 'text-slate-600 hover:bg-slate-50'}`}
+              title={compact ? label : undefined}
+              className={`flex min-h-11 items-center rounded-lg border px-3 text-sm font-semibold transition-colors ${compact ? 'justify-center' : 'gap-3'} ${pathname === href ? 'border-cyan-300/40 bg-cyan-300 text-slate-950' : 'border-transparent text-slate-300 hover:border-slate-600 hover:bg-slate-800'}`}
             >
-              <Icon className="size-[18px]" />
-              {label}
+              <Icon className="size-[18px] shrink-0" />
+              {!compact && label}
             </Link>
           ))}
         </nav>
         <div className="mt-auto border-t border-slate-200 pt-4">
-          <div className="rounded-2xl bg-slate-50 p-3">
+          <div className={`rounded-lg border border-slate-700 bg-slate-900 ${compact ? 'p-2 text-center' : 'p-3'}`}>
+            {!compact && <>
             <p className="break-words text-sm font-semibold">{user}</p>
             <p className="mt-0.5 text-xs capitalize text-slate-500">{role}</p>
+            </>}
             <button
-              className="btn mt-2"
+              className={`btn ${compact ? 'size-10 px-0' : 'mt-2 w-full'}`}
+              title="Sign out"
               onClick={async () => {
                 try {
                   const { error } =
@@ -66,7 +76,7 @@ export function Sidebar() {
                 }
               }}
             >
-              Sign out
+              {compact ? '↗' : 'Sign out'}
             </button>
           </div>
           {error && (
@@ -91,7 +101,7 @@ export function Sidebar() {
           <Menu className="size-5" />
         </button>
       </header>
-      <aside className="fixed inset-y-0 left-0 z-20 hidden w-[260px] flex-col overflow-y-auto border-r border-slate-200 bg-white p-5 lg:flex">
+      <aside className={`fixed inset-y-0 left-0 z-20 hidden flex-col overflow-y-auto border-r border-slate-800 bg-[#040d0e] p-4 text-white transition-[width] duration-200 lg:flex ${collapsed ? 'w-[76px]' : 'w-[240px]'}`}>
         {content()}
       </aside>
       <Sheet open={open} onOpenChange={setOpen}>
@@ -100,22 +110,26 @@ export function Sidebar() {
           <SheetDescription className="sr-only">
             Choose a page in the ID generator.
           </SheetDescription>
-          {content()}
+          {content(false)}
         </SheetContent>
       </Sheet>
     </>
   );
 }
-function Brand() {
+function CollapseButton({ collapsed, onClick }: { collapsed: boolean; onClick: () => void }) {
+  const Icon = collapsed ? PanelLeftOpen : PanelLeftClose;
+  return <button type="button" className="hidden size-10 shrink-0 place-items-center rounded-lg border border-slate-700 bg-slate-900 text-cyan-200 hover:bg-slate-800 lg:grid" aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'} onClick={onClick}><Icon className="size-5" /></button>;
+}
+function Brand({ compact = false }: { compact?: boolean }) {
   return (
     <div className="flex min-w-0 items-center gap-3">
-      <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-amber-500 text-lg font-black text-white">
+      <span className="grid size-10 shrink-0 place-items-center rounded-lg border border-cyan-300/40 bg-cyan-300 text-sm font-black text-[#040d0e]">
         AWS
       </span>
-      <div className="min-w-0">
+      {!compact && <div className="min-w-0">
         <p className="truncate text-sm font-bold">AWS SBG TIP Manila</p>
-        <p className="text-sm text-slate-500">ID Generator</p>
-      </div>
+        <p className="text-xs text-cyan-200/70">ID Generator</p>
+      </div>}
     </div>
   );
 }

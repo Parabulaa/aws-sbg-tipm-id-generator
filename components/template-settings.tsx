@@ -22,20 +22,10 @@ export function TemplateSettings() {
       .catch(() => {});
   }, [role]);
   return (
-    <div className="mt-6 space-y-6">
-      <p className="notice">
-        Use approved 1200 × 1950 PNG backgrounds with matching field
-        coordinates. Front designs need a mapping JSON; completed back designs
-        only need their PNG.
-      </p>
-      <p className="notice">
-        After saving a template, open <strong>Generate ID</strong>, select a
-        member, and the composited front preview will use this background,
-        photo, ID number, and mapped fields before you generate the PNG.
-      </p>
-      <section className="space-y-4">
+    <div className="mt-4 space-y-5">
+      <section className="space-y-3">
         <h2 className="text-xl font-semibold">Officer designs</h2>
-        <p className="text-sm text-slate-600">Upload each office’s approved artwork separately. Front and back previews show the saved backgrounds.</p>
+        <p className="text-xs text-slate-500">Eight office designs · front and back</p>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {officerDesigns.map(design => (
             <article key={design.team} className="rounded-2xl border bg-white p-4">

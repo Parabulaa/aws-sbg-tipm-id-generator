@@ -4,10 +4,10 @@
 
 @layer components {
   .btn {
-    @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50;
   }
   .btn-primary {
-    @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-cyan-200/40 bg-cyan-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-50;
   }
   .field {
     @apply flex min-w-0 flex-col gap-1.5 text-sm font-medium text-slate-700;
@@ -16,7 +16,7 @@
   .field select,
   .field textarea,
   .search-input {
-    @apply min-h-10 w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-2 text-base text-slate-950;
+    @apply min-h-10 w-full min-w-0 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950;
   }
   .notice-error {
     @apply rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800;
@@ -84,6 +84,65 @@
 body {
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
   min-width: 320px;
+}
+
+/* Authenticated workspace: compact, high-contrast continuation of the public UI. */
+.internal-app {
+  background:
+    linear-gradient(rgb(154 211 224 / 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(154 211 224 / 0.035) 1px, transparent 1px),
+    #071113;
+  background-size: 40px 40px;
+  color: #e0f2f5;
+}
+.internal-app header.border-b { border-color: rgb(154 211 224 / 0.16); }
+.internal-app h1,
+.internal-app h2,
+.internal-app h3,
+.internal-app .text-slate-950 { color: #f2fbfc; }
+.internal-app .text-slate-800,
+.internal-app .text-slate-700,
+.internal-app .text-slate-600 { color: #c2d7dc; }
+.internal-app .text-slate-500 { color: #8ea8b0; }
+.internal-app .bg-white,
+.internal-app article,
+.internal-app details { background-color: #111827; }
+.internal-app .bg-slate-50 { background-color: #172033; }
+.internal-app .border,
+.internal-app .border-slate-200,
+.internal-app .border-slate-300 { border-color: rgb(154 211 224 / 0.2); }
+.internal-app .field input,
+.internal-app .field select,
+.internal-app .field textarea,
+.internal-app .search-input {
+  border-color: rgb(154 211 224 / 0.25);
+  background: #0a1519;
+  color: #e0f2f5;
+}
+.internal-app .btn {
+  border-color: rgb(154 211 224 / 0.3);
+  background: #181a33;
+  color: #e0f2f5;
+}
+.internal-app .btn:hover { background: #24264a; }
+.internal-app .notice {
+  border-color: rgb(88 67 197 / 0.55);
+  background: rgb(88 67 197 / 0.16);
+  color: #e0f2f5;
+}
+.internal-app .data-table th {
+  background: #172033;
+  color: #b8d0d6;
+}
+.internal-app .data-table td { border-color: rgb(154 211 224 / 0.1); }
+.internal-app .divide-y > :not(:last-child) { border-color: rgb(154 211 224 / 0.12); }
+
+@media (max-width: 1023px) {
+  .internal-app > header {
+    border-color: rgb(154 211 224 / 0.16);
+    background: #040d0e;
+    color: #e0f2f5;
+  }
 }
 
 :root {

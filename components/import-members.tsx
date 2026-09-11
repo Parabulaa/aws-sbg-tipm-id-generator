@@ -16,14 +16,10 @@ export function ImportMembers() {
   const valid = rows.filter((row) => !row.errors.length);
   const duplicates = rows.filter((row) => row.duplicate).length;
   return (
-    <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5">
-      <h2 className="font-semibold">Import membership XLSX</h2>
-      <p className="text-sm text-slate-600">
-        First worksheet only. Required columns: Full Name, T.I.P. Email, Student
-        ID number, Department/Program, and Year Level. Photos are added manually
-        during review; AWS SBG IDs are assigned automatically.
-      </p>
-      <label className="field max-w-xs">
+    <section className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
+      <div className="flex flex-wrap items-baseline justify-between gap-2"><h2 className="font-semibold">Import XLSX</h2><p className="text-xs text-slate-500">Required: name, TIP email, student ID, program and year level</p></div>
+      <div className="grid gap-3 md:grid-cols-[14rem_1fr]">
+      <label className="field">
         Classification for this batch
         <select
           value={classification}
@@ -71,6 +67,7 @@ export function ImportMembers() {
           }}
         />
       </label>
+      </div>
       {!!rows.length && (
         <>
           <div className="grid gap-2 sm:grid-cols-5">

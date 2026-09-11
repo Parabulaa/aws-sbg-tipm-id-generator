@@ -31,15 +31,15 @@ export function Dashboard() {
     ],
   ];
   return (
-    <div className="mt-6 space-y-6">
+    <div className="mt-4 space-y-4">
       <Link className="btn-primary" href="/members">
         Import / review members
       </Link>
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {metrics.map(([label, count]) => (
-          <SurfaceCard key={label} className="p-5">
+          <SurfaceCard key={label} className="p-4">
             <p className="text-sm text-slate-600">{label}</p>
-            <p className="mt-2 text-3xl font-bold">{count}</p>
+            <p className="mt-1 text-2xl font-bold">{count}</p>
           </SurfaceCard>
         ))}
       </section>
@@ -48,12 +48,9 @@ export function Dashboard() {
           No members imported yet. Upload an XLSX file to begin.
         </p>
       )}
-      <SurfaceCard className="p-5">
+      <SurfaceCard className="p-4">
         <h2 className="font-semibold">Recent ID Activity</h2>
-        <p className="mt-1 text-sm text-slate-500">
-          {generations.length} saved generation versions. Generated IDs above
-          counts members currently marked Generated.
-        </p>
+        <p className="mt-1 text-xs text-slate-500">{generations.length} saved versions</p>
         {activity.length ? (
           <ul className="mt-4 divide-y">
             {activity.map((item) => (

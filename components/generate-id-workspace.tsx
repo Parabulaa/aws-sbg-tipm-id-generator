@@ -32,8 +32,8 @@ export function GenerateIdWorkspace() {
     );
   const index = members.findIndex((record) => record.id === member.id);
   return (
-    <div className="mt-6 space-y-5">
-      <section className="rounded-2xl border bg-white p-4">
+    <div className="mt-4 space-y-4">
+      <section className="grid gap-3 rounded-xl border bg-white p-3 md:grid-cols-[minmax(13rem,.7fr)_minmax(20rem,1.3fr)_auto] md:items-end">
         <label className="field">
           Search review queue
           <input
@@ -42,7 +42,7 @@ export function GenerateIdWorkspace() {
             placeholder="Name, ID or email"
           />
         </label>
-        <label className="field mt-3">
+        <label className="field">
           Select member
           <select
             aria-label="Select member"
@@ -70,7 +70,7 @@ export function GenerateIdWorkspace() {
               ))}
           </select>
         </label>
-        <p className="mt-3 text-sm">
+        <p className="whitespace-nowrap pb-2 text-xs text-slate-500">
           Member {index + 1} of {members.length}
         </p>
       </section>

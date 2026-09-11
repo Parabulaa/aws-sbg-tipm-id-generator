@@ -28,7 +28,7 @@ export function GeneratedHistory() {
     }
   }
   return (
-    <div className="mt-6 space-y-4">
+    <div className="mt-4 space-y-4">
       <div className="flex flex-wrap items-end gap-3">
         <label className="field">
           Membership
