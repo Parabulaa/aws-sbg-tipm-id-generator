@@ -4,10 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { errorText } from '@/lib/client';
-import {
-  browserSupabaseConfig,
-  getSupabaseBrowserClient,
-} from '@/lib/supabase/client';
+import { browserSupabaseConfig, getSupabaseBrowserClient } from '@/lib/supabase/client';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -16,81 +13,44 @@ export default function LoginPage() {
   const configured = browserSupabaseConfig().configured;
   useEffect(() => {
     if (!configured) return;
-    void getSupabaseBrowserClient()
-      .auth.getSession()
-      .then(({ data }) => {
-        if (data.session) router.replace('/dashboard');
-      });
+    void getSupabaseBrowserClient().auth.getSession().then(({ data }) => {
+      if (data.session) router.replace('/dashboard');
+    });
   }, [configured, router]);
   return (
-    <main className="grid min-h-screen place-items-center bg-slate-950 px-5 py-12 text-white">
-      <section className="w-full max-w-md rounded-3xl border border-white/10 bg-white/[.06] p-7 shadow-2xl backdrop-blur sm:p-9">
-        <div className="mb-8 flex items-center justify-between">
-          <div className="grid size-11 place-items-center rounded-xl bg-amber-500 text-xs font-black text-slate-950">AWS</div>
-          <Link href="/" className="text-sm font-semibold text-amber-300 transition hover:text-amber-200">← Public home</Link>
-        </div>
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-300">SBG · TIP Manila</p>
-        <h1 className="mt-3 text-3xl font-bold">Officer Login</h1>
-        <p className="mt-2 text-slate-300">Sign in to manage member records and generate IDs.</p>
-        <form
-          className="mt-7 space-y-4"
-          onSubmit={async (event) => {
-            event.preventDefault();
-            setBusy(true);
-            setError('');
+    <main className="internal-public-page flex min-h-screen flex-col px-6 sm:px-10">
+      <header className="mx-auto flex w-full max-w-7xl items-center py-7 sm:py-8">
+        <Link href="/" className="leading-tight text-[#E0F2F5]">
+          <span className="block text-base font-semibold">AWS SBG TIP Manila</span>
+          <span className="mt-1 block text-sm text-[#9AD3E0]/70">ID Generator</span>
+        </Link>
+      </header>
+      <div className="flex flex-1 items-center justify-center py-12 sm:pb-24">
+        <section className="internal-login-panel internal-enter w-full max-w-[420px]">
+          <h1 className="text-3xl font-semibold tracking-[-0.025em] text-[#E0F2F5] sm:text-4xl">Officer Login</h1>
+          <p className="mt-3 text-base leading-7 text-[#E0F2F5]/65">Access is limited to authorized AWS SBG TIP Manila officers.</p>
+          <form className="mt-8 space-y-5" onSubmit={async (event) => {
+            event.preventDefault(); setBusy(true); setError('');
             const form = new FormData(event.currentTarget);
             try {
-              const email = form.get('email');
-              const password = form.get('password');
-              if (typeof email !== 'string' || typeof password !== 'string')
-                throw new Error('Enter your officer email and password.');
-              const { error } =
-                await getSupabaseBrowserClient().auth.signInWithPassword({
-                  email,
-                  password,
-                });
-              if (error)
-                throw new Error(
-                  'Email or password is incorrect, or this account is not available.',
-                );
+              const email = form.get('email'); const password = form.get('password');
+              if (typeof email !== 'string' || typeof password !== 'string') throw new Error('Enter your officer email and password.');
+              const { error } = await getSupabaseBrowserClient().auth.signInWithPassword({ email, password });
+              if (error) throw new Error('Email or password is incorrect, or this account is not available.');
               router.replace('/dashboard');
-            } catch (error) {
-              setError(errorText(error));
-            } finally {
-              setBusy(false);
-            }
-          }}
-        >
-          <label className="field">
-            <span className="text-slate-200">T.I.P./Officer Email</span>
-            <input className="border-white/15 bg-slate-900/70 text-white placeholder:text-slate-500" name="email" type="email" autoComplete="username" required />
-          </label>
-          <label className="field">
-            <span className="text-slate-200">Password</span>
-            <input
-              className="border-white/15 bg-slate-900/70 text-white placeholder:text-slate-500"
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              required
-            />
-          </label>
-          <button className="btn-primary w-full" disabled={busy || !configured}>
-            {busy ? 'Signing in…' : 'Sign in'}
-          </button>
-          {!configured && (
-            <p className="notice-error">
-              Supabase is not configured. Add the project URL and publishable
-              key to .env.local.
-            </p>
-          )}
-          {error && (
-            <p role="alert" className="notice-error">
-              {error}
-            </p>
-          )}
-        </form>
-      </section>
+            } catch (error) { setError(errorText(error)); } finally { setBusy(false); }
+          }}>
+            <label className="internal-login-field"><span>Officer Email</span><input name="email" type="email" autoComplete="username" required /></label>
+            <label className="internal-login-field"><span>Password</span><input name="password" type="password" autoComplete="current-password" required /></label>
+            <button className="internal-action w-full" disabled={busy || !configured}>
+              <span>{busy ? 'Signing in…' : 'Login'}</span>{!busy && <span className="internal-action-arrow" aria-hidden="true">→</span>}
+            </button>
+            {!configured && <p className="internal-login-error">Supabase is not configured.</p>}
+            {error && <p role="alert" className="internal-login-error">{error}</p>}
+          </form>
+          <Link href="/" className="mt-7 inline-block text-sm text-[#9AD3E0]/70 transition-colors duration-200 hover:text-[#9AD3E0]">← Back to home</Link>
+        </section>
+      </div>
     </main>
   );
 }

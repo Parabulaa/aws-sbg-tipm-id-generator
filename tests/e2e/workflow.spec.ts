@@ -195,15 +195,15 @@ test('public home → login → five-field import → officer review → generat
     }),
     'base64',
   );
-  await page.getByRole('link', { name: 'Officer Login' }).click();
+  await page.getByRole('link', { name: 'Login', exact: true }).first().click();
   await page.waitForFunction(() =>
     Object.keys(document.querySelector('form') ?? {}).some((key) =>
       key.startsWith('__reactProps$'),
     ),
   );
-  await page.getByLabel('T.I.P./Officer Email').fill('admin@example.org');
+  await page.getByLabel('Officer Email').fill('admin@example.org');
   await page.getByLabel('Password').fill('isolated-test-password');
-  await page.getByRole('button', { name: 'Sign in' }).click();
+  await page.getByRole('button', { name: 'Login' }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
   await page.getByRole('link', { name: 'Members', exact: true }).click();
 
