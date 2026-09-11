@@ -88,11 +88,7 @@ body {
 
 /* Authenticated workspace: compact, high-contrast continuation of the public UI. */
 .internal-app {
-  background:
-    linear-gradient(rgb(154 211 224 / 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(154 211 224 / 0.035) 1px, transparent 1px),
-    #071113;
-  background-size: 40px 40px;
+  background: linear-gradient(115deg, #061313 0%, #081116 52%, #111329 100%);
   color: #e0f2f5;
 }
 .internal-app header.border-b { border-color: rgb(154 211 224 / 0.16); }
@@ -244,7 +240,7 @@ body {
 }
 
 .internal-public-page {
-  background: radial-gradient(circle at 75% 45%, rgba(88, 67, 197, 0.14), transparent 38%), radial-gradient(circle at 25% 70%, rgba(154, 211, 224, 0.07), transparent 35%), #040d0e;
+  background: linear-gradient(115deg, #061313 0%, #081116 52%, #111329 100%);
   color: #e0f2f5;
 }
 .internal-public-page a:focus-visible,

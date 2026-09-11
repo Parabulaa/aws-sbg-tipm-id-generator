@@ -7,6 +7,7 @@ import {
   FolderCog,
   LayoutDashboard,
   Menu,
+  LogOut,
   PanelLeftClose,
   PanelLeftOpen,
   Sparkles,
@@ -37,7 +38,7 @@ export function Sidebar({ collapsed = false, onToggle }: { collapsed?: boolean; 
     return (
       <>
         <div className={`flex items-center ${compact ? 'justify-center' : 'justify-between gap-2'}`}>
-          <Brand compact={compact} />
+          <Brand compact={compact} onExpand={compact ? onToggle : undefined} />
           {!compact && onToggle && <CollapseButton collapsed={collapsed} onClick={onToggle} />}
         </div>
         {compact && onToggle && <div className="mt-3 flex justify-center"><CollapseButton collapsed={collapsed} onClick={onToggle} /></div>}
@@ -49,7 +50,7 @@ export function Sidebar({ collapsed = false, onToggle }: { collapsed?: boolean; 
               onClick={() => setOpen(false)}
               aria-current={pathname === href ? 'page' : undefined}
               title={compact ? label : undefined}
-              className={`flex min-h-11 items-center rounded-lg border px-3 text-sm font-semibold transition-colors ${compact ? 'justify-center' : 'gap-3'} ${pathname === href ? 'border-cyan-300/40 bg-cyan-300 text-slate-950' : 'border-transparent text-slate-300 hover:border-slate-600 hover:bg-slate-800'}`}
+              className={`flex min-h-10 items-center rounded-lg border px-3 text-sm font-semibold transition-colors ${compact ? 'justify-center' : 'gap-3'} ${pathname === href ? 'border-cyan-300/25 bg-[#182d35] text-cyan-100' : 'border-transparent text-slate-300 hover:border-slate-600 hover:bg-slate-800'}`}
             >
               <Icon className="size-[18px] shrink-0" />
               {!compact && label}
@@ -57,7 +58,7 @@ export function Sidebar({ collapsed = false, onToggle }: { collapsed?: boolean; 
           ))}
         </nav>
         <div className="mt-auto border-t border-slate-200 pt-4">
-          <div className={`rounded-lg border border-slate-700 bg-slate-900 ${compact ? 'p-2 text-center' : 'p-3'}`}>
+          <div className={compact ? 'text-center' : 'rounded-lg border border-slate-700 bg-slate-900 p-3'}>
             {!compact && <>
             <p className="break-words text-sm font-semibold">{user}</p>
             <p className="mt-0.5 text-xs capitalize text-slate-500">{role}</p>
@@ -76,7 +77,7 @@ export function Sidebar({ collapsed = false, onToggle }: { collapsed?: boolean; 
                 }
               }}
             >
-              {compact ? '↗' : 'Sign out'}
+              {compact ? <LogOut className="size-4" /> : 'Sign out'}
             </button>
           </div>
           {error && (
@@ -120,12 +121,11 @@ function CollapseButton({ collapsed, onClick }: { collapsed: boolean; onClick: (
   const Icon = collapsed ? PanelLeftOpen : PanelLeftClose;
   return <button type="button" className="hidden size-10 shrink-0 place-items-center rounded-lg border border-slate-700 bg-slate-900 text-cyan-200 hover:bg-slate-800 lg:grid" aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'} onClick={onClick}><Icon className="size-5" /></button>;
 }
-function Brand({ compact = false }: { compact?: boolean }) {
+function Brand({ compact = false, onExpand }: { compact?: boolean; onExpand?: () => void }) {
+  const badge = <span className="grid size-10 shrink-0 place-items-center rounded-lg border border-cyan-300/30 bg-[#18313a] text-sm font-black text-cyan-100">AWS</span>;
   return (
     <div className="flex min-w-0 items-center gap-3">
-      <span className="grid size-10 shrink-0 place-items-center rounded-lg border border-cyan-300/40 bg-cyan-300 text-sm font-black text-[#040d0e]">
-        AWS
-      </span>
+      {onExpand ? <button type="button" aria-label="Expand navigation" title="Expand navigation" onClick={onExpand}>{badge}</button> : badge}
       {!compact && <div className="min-w-0">
         <p className="truncate text-sm font-bold">AWS SBG TIP Manila</p>
         <p className="text-xs text-cyan-200/70">ID Generator</p>

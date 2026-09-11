@@ -19,7 +19,7 @@ export default function LoginPage() {
   }, [configured, router]);
   return (
     <main className="internal-public-page flex min-h-screen flex-col px-6 sm:px-10">
-      <header className="mx-auto flex w-full max-w-7xl items-center py-7 sm:py-8">
+      <header className="mx-auto flex w-full max-w-7xl items-center border-b border-[#9AD3E0]/15 py-4 sm:py-5">
         <Link href="/" className="leading-tight text-[#E0F2F5]">
           <span className="block text-base font-semibold">AWS SBG TIP Manila</span>
           <span className="mt-1 block text-sm text-[#9AD3E0]/70">ID Generator</span>
