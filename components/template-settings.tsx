@@ -1,277 +1,562 @@
-/* oxlint-disable next/no-img-element -- Private authenticated and local object URLs must bypass image optimization. */
+/* oxlint-disable next/no-img-element -- Local object URLs cannot use the image optimizer. */
 'use client';
-import { useEffect, useState } from 'react';
+
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Check,
+  Circle,
+  Eye,
+  FileJson,
+  FolderCog,
+  Image as ImageIcon,
+  Loader2,
+  Settings,
+  Upload,
+  Users,
+} from 'lucide-react';
 import { useData } from './data-provider';
 import { api, errorText } from '@/lib/client';
-import { categories } from '@/lib/domain';
 import { PrivateImage } from './private-image';
 import { officerDesigns } from '@/lib/templates';
-import type { Template } from '@/lib/templates';
+import type { Side, Template } from '@/lib/templates';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+
+type WorkspaceCategory = 'Officer' | 'Associate' | 'Member';
+const categories: Array<{ value: WorkspaceCategory; label: string }> = [
+  { value: 'Officer', label: 'Officer Designs' },
+  { value: 'Associate', label: 'Associate Design' },
+  { value: 'Member', label: 'Member Design' },
+];
+
 export function TemplateSettings() {
   const { templates, refresh, role } = useData();
+  const [category, setCategory] = useState<WorkspaceCategory>('Officer');
+  const [team, setTeam] = useState<string>(officerDesigns[0].team);
+  const [configureSide, setConfigureSide] = useState<Side>('front');
+  const [configureOpen, setConfigureOpen] = useState(false);
+  const [previewSide, setPreviewSide] = useState<Side | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [mappingFile, setMappingFile] = useState<File | null>(null);
+  const [approved, setApproved] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
-  const [category, setCategory] = useState('Member');
-  const [side, setSide] = useState<'front' | 'back'>('front');
-  const [officers, setOfficers] = useState<OfficerAccess[]>([]);
-  useEffect(() => {
-    if (role !== 'admin') return;
-    void api<OfficerAccess[]>('officers')
-      .then(setOfficers)
-      .catch(() => {});
-  }, [role]);
+  const formRef = useRef<HTMLFormElement>(null);
+  const design = officerDesigns.find((item) => item.team === team);
+  const title =
+    category === 'Officer' ? (design?.label ?? 'Officer') : category;
+  const description =
+    category === 'Officer'
+      ? `Approved ID design for ${title.toLowerCase()} officers.`
+      : category === 'Associate'
+        ? 'Approved ID design for associate members.'
+        : 'Approved ID design for regular members.';
+  const selected = useMemo(
+    () =>
+      Object.fromEntries(
+        (['front', 'back'] as const).map((side) => [
+          side,
+          templates.find(
+            (template) =>
+              template.category === category &&
+              template.side === side &&
+              (category !== 'Officer' || template.team === team),
+          ),
+        ]),
+      ) as Record<Side, Template | undefined>,
+    [category, team, templates],
+  );
+
+  function openConfigure(side: Side) {
+    setConfigureSide(side);
+    setImageFile(null);
+    setMappingFile(null);
+    setApproved(false);
+    setError('');
+    setMessage('');
+    setConfigureOpen(true);
+  }
+  async function saveTemplate(event: React.SubmitEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!imageFile) return setError('Choose the approved PNG.');
+    if (configureSide === 'front' && !mappingFile)
+      return setError('Choose the field mapping JSON.');
+    setBusy(true);
+    setError('');
+    try {
+      const form = new FormData();
+      form.set('category', category);
+      form.set('side', configureSide);
+      form.set('image', imageFile);
+      if (category === 'Officer') form.set('team', team);
+      form.set(
+        'layout',
+        configureSide === 'front'
+          ? await mappingFile!.text()
+          : JSON.stringify({ fields: [], accents: [] }),
+      );
+      form.set('approved', approved ? 'true' : 'false');
+      await api('templates', { method: 'POST', body: form });
+      await refresh();
+      setMessage(`${title} ${configureSide} template saved.`);
+      setConfigureOpen(false);
+      formRef.current?.reset();
+    } catch (caught) {
+      setError(errorText(caught));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
-    <div className="mt-4 space-y-5">
-      <section className="space-y-3">
-        <h2 className="text-xl font-semibold">Officer designs</h2>
-        <p className="text-xs text-slate-500">Eight office designs · front and back</p>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {officerDesigns.map(design => (
-            <article key={design.team} className="rounded-2xl border bg-white p-4">
-              <h3 className="font-semibold">{design.label}</h3>
-              <div className="mt-3 grid grid-cols-2 gap-3">
-                {(['front', 'back'] as const).map(side => (
-                  <TemplateBackground key={side} side={side} label={design.label}
-                    template={templates.find(t => t.category === 'Officer' && t.team === design.team && t.side === side)} />
-                ))}
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
-      <section className="space-y-4">
-      <h2 className="text-xl font-semibold">Member front and back</h2>
-      <div className="grid gap-4 sm:grid-cols-2">
-        {(['front', 'back'] as const).map(side => (
-          <div key={side} className="rounded-2xl border bg-white p-4">
-            <TemplateBackground side={side} label="Member"
-              template={templates.find(t => t.category === 'Member' && !t.team && t.side === side)} />
-          </div>
-        ))}
-      </div>
-      </section>
-      {role === 'admin' ? (
-        <details className="rounded-2xl border bg-white p-5">
-          <summary className="cursor-pointer font-semibold">
-            Configure an approved template
-          </summary>
-          <p className="mt-3 text-sm text-slate-600">
-            Initial setup: upload the approved PNG and its coordinate mapping
-            JSON. This replaces the selected side. Keep text, logos, and fixed
-            graphics outside colorable regions. Review each output before
-            confirming members.
-          </p>
-          <form
-            className="mt-4 grid gap-4 sm:grid-cols-2"
-            onSubmit={async (event) => {
-              event.preventDefault();
-              const form = new FormData(event.currentTarget);
-              const mapping = form.get('mapping');
-              setError('');
-              setMessage('');
-              setBusy(true);
-              try {
-                if (side === 'front' && !(mapping instanceof File))
-                  throw new Error('Choose the field mapping JSON.');
-                form.set(
-                  'layout',
-                  side === 'front'
-                    ? await (mapping as File).text()
-                    : JSON.stringify({ fields: [], accents: [] }),
-                );
-                form.delete('mapping');
-                await api('templates', { method: 'POST', body: form });
-                await refresh();
-                setMessage('Approved template saved.');
-              } catch (error) {
-                setError(errorText(error));
-              } finally {
-                setBusy(false);
-              }
-            }}
+    <div className="templates-workspace">
+      <nav className="template-category-tabs" aria-label="Template category">
+        {categories.map((item) => (
+          <button
+            key={item.value}
+            type="button"
+            className={category === item.value ? 'is-active' : ''}
+            aria-pressed={category === item.value}
+            onClick={() => setCategory(item.value)}
           >
-            <label className="field">
-              Membership
-              <select name="category" aria-label="Membership" value={category} onChange={event => setCategory(event.target.value)}>
-                {categories.map((category) => (
-                  <option key={category}>{category}</option>
-                ))}
-              </select>
-            </label>
-            {category === 'Officer' && (
-              <label className="field">
-                Officer design
-                <select name="team" aria-label="Officer design">
-                  {officerDesigns.map(design => <option key={design.team} value={design.team}>{design.label}</option>)}
-                </select>
-              </label>
-            )}
-            <label className="field">
-              Side
-              <select name="side" aria-label="Side" value={side} onChange={event => setSide(event.target.value as 'front' | 'back')}>
-                <option value="front">Front</option>
-                <option value="back">Back</option>
-              </select>
-            </label>
-            <label className="field">
-              Approved PNG
-              <input name="image" type="file" accept="image/png" required />
-            </label>
-            {side === 'front' && (
-              <label className="field">
-                Front field mapping JSON
-                <input name="mapping" type="file" accept=".json" required />
-              </label>
-            )}
-            <label className="flex items-start gap-2 text-sm sm:col-span-2">
-              <input name="approved" type="checkbox" value="true" required />I
-              confirm that this background and its front mapping, when needed,
-              have been approved.
-            </label>
-            <button className="btn-primary" disabled={busy}>
-              Save approved template
-            </button>
-          </form>
-        </details>
-      ) : (
-        <p className="notice">Templates are read-only for Officer accounts.</p>
-      )}
-      {role === 'admin' && (
-        <section className="space-y-3 rounded-2xl border bg-white p-5">
+            {item.label}
+          </button>
+        ))}
+      </nav>
+      {category === 'Officer' && (
+        <section className="template-team-panel">
           <div>
-            <h2 className="font-semibold">Officer access</h2>
-            <p className="text-sm text-slate-600">
-              New Supabase Auth users remain inactive until an administrator
-              enables them.
-            </p>
+            <h2>Officer Teams</h2>
+            <p>Select a team to manage its approved template.</p>
           </div>
-          {officers.map((officer) => (
-            <div
-              key={officer.id}
-              className="grid gap-2 rounded-xl border p-3 sm:grid-cols-[1fr_10rem_auto_auto] sm:items-end"
-            >
-              <label className="field">
-                Name
-                <input
-                  value={officer.display_name}
-                  onChange={(event) =>
-                    setOfficers((items) =>
-                      items.map((item) =>
-                        item.id === officer.id
-                          ? { ...item, display_name: event.target.value }
-                          : item,
-                      ),
-                    )
-                  }
-                />
-                <span className="text-xs text-slate-500">{officer.email}</span>
-              </label>
-              <label className="field">
-                Role
-                <select
-                  value={officer.role}
-                  onChange={(event) =>
-                    setOfficers((items) =>
-                      items.map((item) =>
-                        item.id === officer.id
-                          ? {
-                              ...item,
-                              role: event.target.value as OfficerAccess['role'],
-                            }
-                          : item,
-                      ),
-                    )
-                  }
-                >
-                  <option value="officer">Officer</option>
-                  <option value="admin">Admin</option>
-                </select>
-              </label>
-              <label className="flex gap-2 py-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={officer.is_active}
-                  onChange={(event) =>
-                    setOfficers((items) =>
-                      items.map((item) =>
-                        item.id === officer.id
-                          ? { ...item, is_active: event.target.checked }
-                          : item,
-                      ),
-                    )
-                  }
-                />
-                Active
-              </label>
+          <div className="template-team-grid">
+            {officerDesigns.map((item) => (
               <button
-                className="btn"
-                disabled={busy}
-                onClick={async () => {
-                  setBusy(true);
-                  setError('');
-                  setMessage('');
-                  try {
-                    const saved = await api<OfficerAccess>(
-                      `officers/${officer.id}`,
-                      { method: 'PUT', body: JSON.stringify(officer) },
-                    );
-                    setOfficers((items) =>
-                      items.map((item) =>
-                        item.id === saved.id ? saved : item,
-                      ),
-                    );
-                    setMessage(`Access updated for ${saved.email}.`);
-                  } catch (error) {
-                    setError(errorText(error));
-                  } finally {
-                    setBusy(false);
-                  }
-                }}
+                key={item.team}
+                type="button"
+                className={team === item.team ? 'is-active' : ''}
+                aria-pressed={team === item.team}
+                onClick={() => setTeam(item.team)}
               >
-                Save access
+                <Users className="size-4" />
+                {teamLabel(item.label)}
               </button>
-            </div>
-          ))}
+            ))}
+          </div>
         </section>
       )}
-      {busy && <output className="block">Saving configuration…</output>}
+      <section className="template-selected-panel">
+        <header className="template-selected-header">
+          <div className="template-heading-copy">
+            <span className="template-heading-icon">
+              <FolderCog className="size-5" />
+            </span>
+            <div>
+              <h2>{title} Template</h2>
+              <p>{description}</p>
+            </div>
+          </div>
+          <div className="template-overall-status">
+            {(['front', 'back'] as const).map((side) => (
+              <Status
+                key={side}
+                configured={!!selected[side]}
+                text={`${capitalize(side)} ${selected[side] ? 'configured' : 'not configured'}`}
+              />
+            ))}
+          </div>
+        </header>
+        <div className="template-card-grid">
+          {(['front', 'back'] as const).map((side) => (
+            <TemplateCard
+              key={`${category}-${team}-${side}`}
+              side={side}
+              label={title}
+              template={selected[side]}
+              editable={role === 'admin'}
+              onConfigure={() => openConfigure(side)}
+              onPreview={() => setPreviewSide(side)}
+            />
+          ))}
+        </div>
+        {role === 'admin' ? (
+          <div className="template-main-actions">
+            <button
+              className="btn"
+              type="button"
+              onClick={() => openConfigure('front')}
+            >
+              <FileJson className="size-4" /> Field Mapping
+            </button>
+            <button
+              className="btn-primary"
+              type="button"
+              onClick={() => openConfigure('front')}
+            >
+              <Settings className="size-4" /> Configure Selected Template
+            </button>
+          </div>
+        ) : (
+          <p className="template-readonly">
+            Templates are read-only for Officer accounts.
+          </p>
+        )}
+      </section>
+      <section className="template-about-card">
+        <ImageIcon className="size-5" />
+        <div>
+          <h2>About approved templates</h2>
+          <p>
+            Templates remain private and must use the production size of 1200 ×
+            1950 px.
+          </p>
+        </div>
+      </section>
       {message && <output className="notice block">{message}</output>}
-      {error && (
-        <p className="notice-error" role="alert">
-          {error}
-        </p>
-      )}
+
+      <Dialog
+        open={configureOpen}
+        onOpenChange={(open) => {
+          if (!busy) setConfigureOpen(open);
+        }}
+      >
+        <DialogContent className="member-dialog template-configure-dialog sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Configure Approved Template</DialogTitle>
+            <DialogDescription>
+              Upload the approved PNG and configure its field mapping.
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            ref={formRef}
+            id="template-configure-form"
+            onSubmit={saveTemplate}
+          >
+            <div className="template-context-summary">
+              <FolderCog className="size-5" />
+              <div>
+                <strong>
+                  {title} · {capitalize(configureSide)}
+                </strong>
+                <small>
+                  You can change the template group or side if needed.
+                </small>
+              </div>
+            </div>
+            <div className="template-configure-fields">
+              <label className="field">
+                Template Group
+                <select
+                  value={category}
+                  onChange={(event) =>
+                    setCategory(event.target.value as WorkspaceCategory)
+                  }
+                >
+                  {categories.map((item) => (
+                    <option key={item.value} value={item.value}>
+                      {item.value}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="field">
+                Side
+                <select
+                  value={configureSide}
+                  onChange={(event) => {
+                    setConfigureSide(event.target.value as Side);
+                    setMappingFile(null);
+                  }}
+                >
+                  <option value="front">Front</option>
+                  <option value="back">Back</option>
+                </select>
+              </label>
+            </div>
+            {category === 'Officer' && (
+              <label className="field template-officer-select">
+                Officer Team
+                <select
+                  value={team}
+                  onChange={(event) => setTeam(event.target.value)}
+                >
+                  {officerDesigns.map((item) => (
+                    <option key={item.team} value={item.team}>
+                      {teamLabel(item.label)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            <div className="template-upload-grid">
+              <UploadField
+                label="Approved PNG"
+                accept="image/png"
+                file={imageFile}
+                onFile={setImageFile}
+              />
+              <UploadField
+                label="Field Mapping JSON"
+                accept=".json,application/json"
+                file={mappingFile}
+                onFile={setMappingFile}
+                optional={configureSide === 'back'}
+              />
+            </div>
+            <div className="template-configure-preview">
+              <div>
+                <h3>Template Preview</h3>
+                <div className="template-local-preview">
+                  {imageFile ? (
+                    <LocalPreview file={imageFile} />
+                  ) : selected[configureSide] ? (
+                    <PrivateImage
+                      path={selected[configureSide]!.image}
+                      alt={`${title} ${configureSide} template`}
+                    />
+                  ) : (
+                    <ImageIcon className="size-8" />
+                  )}
+                </div>
+              </div>
+              <div className="template-upload-status">
+                <Status
+                  configured={!!imageFile}
+                  text={imageFile ? 'PNG selected' : 'PNG required'}
+                  detail={imageFile?.name ?? '1200 × 1950 px'}
+                />
+                <Status
+                  configured={!!mappingFile || configureSide === 'back'}
+                  text={
+                    configureSide === 'back'
+                      ? 'Mapping not required'
+                      : mappingFile
+                        ? 'Mapping selected'
+                        : 'Mapping required'
+                  }
+                  detail={
+                    mappingFile?.name ??
+                    (configureSide === 'back'
+                      ? 'Back design is fixed artwork'
+                      : 'JSON field coordinates')
+                  }
+                />
+              </div>
+            </div>
+            <label className="template-confirmation">
+              <input
+                type="checkbox"
+                checked={approved}
+                onChange={(event) => setApproved(event.target.checked)}
+                required
+              />
+              <span>
+                I confirm that this background and its field mapping, when
+                needed, have been approved.
+              </span>
+            </label>
+            {error && (
+              <p className="notice-error" role="alert">
+                {error}
+              </p>
+            )}
+          </form>
+          <DialogFooter>
+            <button
+              className="btn"
+              type="button"
+              disabled={busy}
+              onClick={() => setConfigureOpen(false)}
+            >
+              Cancel
+            </button>
+            <button
+              className="btn-primary"
+              type="submit"
+              form="template-configure-form"
+              disabled={busy}
+            >
+              {busy ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" /> Saving...
+                </>
+              ) : (
+                <>
+                  <Check className="size-4" /> Save Approved Template
+                </>
+              )}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={previewSide !== null}
+        onOpenChange={(open) => {
+          if (!open) setPreviewSide(null);
+        }}
+      >
+        <DialogContent className="member-dialog template-preview-dialog sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>
+              {title} {previewSide ? capitalize(previewSide) : ''} Preview
+            </DialogTitle>
+            <DialogDescription>
+              Approved template · 1200 × 1950 px
+            </DialogDescription>
+          </DialogHeader>
+          {previewSide && selected[previewSide] && (
+            <PrivateImage
+              path={selected[previewSide]!.image}
+              alt={`${title} ${previewSide} full preview`}
+              className="template-full-preview"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
-interface OfficerAccess {
-  id: string;
-  email: string;
-  display_name: string;
-  role: 'admin' | 'officer';
-  is_active: boolean;
+function TemplateCard({
+  side,
+  label,
+  template,
+  editable,
+  onConfigure,
+  onPreview,
+}: {
+  side: Side;
+  label: string;
+  template?: Template;
+  editable: boolean;
+  onConfigure: () => void;
+  onPreview: () => void;
+}) {
+  return (
+    <article className="template-side-card">
+      <header>
+        <div>
+          <h3>{capitalize(side)}</h3>
+          <p>1200 × 1950 px</p>
+        </div>
+        <Status
+          configured={!!template}
+          text={template ? 'Configured' : 'Not configured'}
+        />
+      </header>
+      <div className="template-thumbnail-frame">
+        {template ? (
+          <PrivateImage
+            path={template.image}
+            alt={`${label} ${side} template`}
+            className="template-thumbnail"
+          />
+        ) : (
+          <div className="template-empty">
+            <ImageIcon className="size-8" />
+            <span>Template not configured</span>
+          </div>
+        )}
+      </div>
+      <div className="template-card-actions">
+        {editable && (
+          <button className="btn" type="button" onClick={onConfigure}>
+            <Upload className="size-4" />
+            {template ? 'Replace' : `Configure ${capitalize(side)}`}
+          </button>
+        )}
+        <button
+          className="btn"
+          type="button"
+          disabled={!template}
+          onClick={onPreview}
+        >
+          <Eye className="size-4" /> Preview
+        </button>
+      </div>
+    </article>
+  );
 }
-
-function TemplateBackground({ template, label, side }: { template?: Template; label: string; side: string }) {
-  return <div>
-    <h3 className="font-medium capitalize">{side}</h3>
-    {template ? <>
-      <a href={`#preview-${template.key}`} className="block" onClick={event => {
-        event.preventDefault();
-        (document.getElementById(`preview-${template.key}`) as HTMLDialogElement)?.showModal();
-      }}>
-        <PrivateImage path={template.image} alt={`${label} ${side} template`} className="mx-auto my-3 aspect-[1200/1950] w-full max-w-64 object-contain" />
-        <span className="text-sm text-blue-700">Enlarge preview</span>
-      </a>
-      <p className="mt-2 text-xs text-emerald-800">{template.approved ? 'Approved' : 'Not approved'} · 1200 × 1950 px</p>
-      <dialog id={`preview-${template.key}`} className="fixed inset-0 m-auto max-h-[95vh] w-[min(90vw,600px)] overflow-auto rounded-2xl p-4 backdrop:bg-black/60">
-        <form method="dialog" className="flex items-center justify-between gap-3">
-          <h3 className="font-semibold capitalize">{label} {side}</h3><button className="btn">Close</button>
-        </form>
-        <PrivateImage path={template.image} alt={`${label} ${side} enlarged template`} className="mt-3 w-full" />
-      </dialog>
-    </> : <div className="mt-3 flex aspect-[1200/1950] max-h-96 items-center justify-center rounded-xl border border-dashed bg-slate-50 p-3 text-center text-sm text-slate-500">No {side} design uploaded</div>}
-  </div>;
+function UploadField({
+  label,
+  accept,
+  file,
+  onFile,
+  optional = false,
+}: {
+  label: string;
+  accept: string;
+  file: File | null;
+  onFile: (file: File | null) => void;
+  optional?: boolean;
+}) {
+  return (
+    <label className="template-upload-field">
+      <span>{label}</span>
+      <input
+        type="file"
+        accept={accept}
+        required={!optional}
+        onChange={(event) => onFile(event.target.files?.[0] ?? null)}
+      />
+      <span className="template-upload-box">
+        <Upload className="size-6" />
+        <strong>{file ? file.name : 'Click to upload or drag and drop'}</strong>
+        <small>
+          {optional
+            ? 'Not required for completed Back artwork'
+            : accept.includes('png')
+              ? 'PNG · 1200 × 1950 px'
+              : 'JSON file'}
+        </small>
+      </span>
+    </label>
+  );
+}
+function Status({
+  configured,
+  text,
+  detail,
+}: {
+  configured: boolean;
+  text: string;
+  detail?: string;
+}) {
+  return (
+    <span className={`template-status ${configured ? 'is-configured' : ''}`}>
+      {configured ? (
+        <Check className="size-4" />
+      ) : (
+        <Circle className="size-4" />
+      )}
+      <span>
+        {text}
+        {detail && <small>{detail}</small>}
+      </span>
+    </span>
+  );
+}
+function LocalPreview({ file }: { file: File }) {
+  const url = useMemo(() => URL.createObjectURL(file), [file]);
+  useEffect(() => () => URL.revokeObjectURL(url), [url]);
+  return <img src={url} alt="Selected template preview" />;
+}
+function capitalize(value: string) {
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+function teamLabel(value: string) {
+  return value === 'Buildhers'
+    ? 'BuildHers+'
+    : value === 'Relation'
+      ? 'Relations'
+      : value === 'Operation'
+        ? 'Operations'
+        : value;
 }

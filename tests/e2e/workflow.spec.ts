@@ -70,6 +70,13 @@ test('public home → login → five-field import → officer review → generat
     await route.fulfill({ status: 204, body: '' });
   });
 
+  await page.route('**/storage/v1/object/generated-ids/**', async (route) => {
+    expect(route.request().headers().authorization).toBe(
+      'Bearer isolated-e2e-access-token',
+    );
+    await route.fulfill({ status: 200, json: { Key: route.request().url() } });
+  });
+
   await page.route('**/api/**', async (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -78,12 +85,14 @@ test('public home → login → five-field import → officer review → generat
       route.fulfill({ status, json: value });
     if (path === 'session') return json({ user: 'Test Admin', role: 'admin' });
     if (path === 'members' && request.method() === 'GET')
-      return json(members.map((member) => ({
-        ...member,
-        // PostgreSQL stores absent officer fields as NULL, not empty strings.
-        officer_position: member.officer_position || null,
-        team: member.team || null,
-      })));
+      return json(
+        members.map((member) => ({
+          ...member,
+          // PostgreSQL stores absent officer fields as NULL, not empty strings.
+          officer_position: member.officer_position || null,
+          team: member.team || null,
+        })),
+      );
     if (path === 'members/import' && request.method() === 'POST') {
       const rows = (request.postDataJSON() as { members: MemberRecord[] })
         .members;
@@ -141,13 +150,16 @@ test('public home → login → five-field import → officer review → generat
     if (path === 'generations' && request.method() === 'GET')
       return json(generations);
     if (path === 'generations' && request.method() === 'POST') {
-      const payload = await new Response(Uint8Array.from(request.postDataBuffer()!), {
-        headers: { 'Content-Type': request.headers()['content-type'] },
-      }).formData();
-      expect(payload.get('side')).toBe('front');
-      expect(payload.has('back')).toBe(false);
+      const payload = request.postDataJSON() as {
+        side: string;
+        generation_id: string;
+        files: { front: string; back?: string };
+      };
+      expect(payload.side).toBe('front');
+      expect(payload.files.front).toContain('/front.png');
+      expect(payload.files.back).toBeUndefined();
       const member = members[0];
-      const id = '10000000-0000-4000-8000-000000000001';
+      const id = payload.generation_id;
       const record: Generation = {
         id,
         member_id: member.id,
@@ -168,7 +180,9 @@ test('public home → login → five-field import → officer review → generat
       return json(record, 201);
     }
     if (path.startsWith('files/')) {
-      if (request.headers().authorization !== 'Bearer isolated-e2e-access-token')
+      if (
+        request.headers().authorization !== 'Bearer isolated-e2e-access-token'
+      )
         return json({ error: 'Sign in to access officer records.' }, 401);
       return route.fulfill({
         status: 200,
@@ -230,17 +244,32 @@ test('public home → login → five-field import → officer review → generat
   await expect(page.getByText(/assigned AWS SBG IDs/)).toBeVisible();
   await page.getByLabel('Select JAMES LEBRON').check();
   await page.getByRole('button', { name: 'Delete Selected' }).click();
-  await expect(page.getByRole('dialog', { name: 'Delete selected members?' })).toBeVisible();
+  await expect(
+    page.getByRole('dialog', { name: 'Delete selected members?' }),
+  ).toBeVisible();
   await page.getByRole('button', { name: 'Cancel' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await page.getByRole('link', { name: 'Review / Edit ID' }).click();
-  await expect(page.getByLabel('Full Name', { exact: true })).toHaveValue('JAMES LEBRON');
+  await expect(page.getByLabel('Full Name', { exact: true })).toHaveValue(
+    'JAMES LEBRON',
+  );
   await page.reload();
-  await expect(page.getByLabel('Full Name', { exact: true })).toHaveValue('JAMES LEBRON');
+  await expect(page.getByLabel('Full Name', { exact: true })).toHaveValue(
+    'JAMES LEBRON',
+  );
   const frontCanvas = page.getByLabel('front ID preview for AWSSBG-TIPM-26001');
-  await expect.poll(() => frontCanvas.evaluate((node: HTMLCanvasElement) => node.getContext('2d')!.getImageData(0, 0, 1, 1).data[3])).toBe(255);
+  await expect
+    .poll(() =>
+      frontCanvas.evaluate(
+        (node: HTMLCanvasElement) =>
+          node.getContext('2d')!.getImageData(0, 0, 1, 1).data[3],
+      ),
+    )
+    .toBe(255);
   // Preview must work before confirmation, including Member rows with NULLs.
-  await expect(page.getByRole('button', { name: 'Generate ID', exact: true })).toBeDisabled();
+  await expect(
+    page.getByRole('button', { name: 'Generate ID', exact: true }),
+  ).toBeDisabled();
   await page.getByLabel('Membership Type').selectOption('Officer');
   await page.getByLabel('Officer Position').selectOption('AI/ML LEAD');
   await expect(page.getByLabel('Team / Office')).toHaveValue(
@@ -254,7 +283,13 @@ test('public home → login → five-field import → officer review → generat
   });
   await page.getByLabel('Zoom', { exact: true }).fill('1.5');
   await page.getByRole('button', { name: 'Apply uploaded photo' }).click();
-  await expect.poll(() => page.getByAltText('Position adjustment').evaluate((node: HTMLImageElement) => node.naturalWidth)).toBe(1200);
+  await expect
+    .poll(() =>
+      page
+        .getByAltText('Position adjustment')
+        .evaluate((node: HTMLImageElement) => node.naturalWidth),
+    )
+    .toBe(1200);
   await page.getByRole('button', { name: 'Confirm ID', exact: true }).click();
   await expect(
     page.getByText('ID confirmed and Ready for generation.'),
@@ -267,37 +302,93 @@ test('public home → login → five-field import → officer review → generat
   await expect(page.getByText('AWSSBG-TIPM-26001')).toBeVisible();
   await expect(page.getByRole('cell', { name: 'Test Admin' })).toBeVisible();
   await page.getByText('Preview front', { exact: true }).click();
-  const savedPreview = page.getByAltText('Generated front ID for AWSSBG-TIPM-26001');
+  const savedPreview = page.getByAltText(
+    'Generated front ID for AWSSBG-TIPM-26001',
+  );
   await expect(savedPreview).toBeVisible();
-  await expect.poll(() => savedPreview.evaluate((node: HTMLImageElement) => node.naturalWidth)).toBe(1200);
+  await expect
+    .poll(() =>
+      savedPreview.evaluate((node: HTMLImageElement) => node.naturalWidth),
+    )
+    .toBe(1200);
   const download = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Download front.png', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Download front.png', exact: true })
+    .click();
   expect((await download).suggestedFilename()).toContain('front.png');
   await page.getByLabel('Select all displayed generations').check();
   const zipDownload = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Download selected ZIP' }).click();
   expect((await zipDownload).suggestedFilename()).toBe('AWS-SBG-IDs.zip');
   await page.getByRole('link', { name: 'Review / Regenerate' }).click();
-  await expect(page.getByLabel('Full Name', { exact: true })).toHaveValue('JAMES LEBRON');
+  await expect(page.getByLabel('Full Name', { exact: true })).toHaveValue(
+    'JAMES LEBRON',
+  );
   await page.getByRole('link', { name: 'Templates', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Officer designs', exact: true })).toBeVisible();
-  for (const name of ['Executive', 'Buildhers', 'Relation', 'Operation', 'Marketing', 'Finance', 'Creatives', 'Technology'])
-    await expect(page.getByRole('heading', { name, exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Member front and back', exact: true })).toBeVisible();
-  await page.getByText('Enlarge preview', { exact: true }).first().click();
+  await expect(
+    page.getByRole('button', { name: 'Officer Designs', exact: true }),
+  ).toHaveAttribute('aria-pressed', 'true');
+  for (const name of [
+    'Executive',
+    'BuildHers+',
+    'Relations',
+    'Operations',
+    'Marketing',
+    'Finance',
+    'Creatives',
+    'Technology',
+  ])
+    await expect(page.getByRole('button', { name, exact: true })).toBeVisible();
+  await page
+    .getByRole('button', { name: 'Associate Design', exact: true })
+    .click();
+  await expect(
+    page.getByRole('heading', { name: 'Associate Template', exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole('button', { name: 'Member Design', exact: true })
+    .click();
+  await expect(
+    page.getByRole('heading', { name: 'Member Template', exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole('button', { name: 'Preview', exact: true })
+    .first()
+    .click();
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.getByRole('button', { name: 'Close', exact: true }).click();
   await expect(page.getByRole('dialog')).not.toBeVisible();
-  await page.getByText('Configure an approved template', { exact: true }).click();
-  await page.getByLabel('Membership', { exact: true }).selectOption('Officer');
-  await page.getByLabel('Officer design', { exact: true }).selectOption('Technology / CTO Office');
-  await expect(page.getByText('Shared Officer and Associate templates')).toHaveCount(0);
+  await page
+    .getByRole('button', { name: 'Configure Selected Template', exact: true })
+    .click();
+  await expect(
+    page.getByRole('dialog', { name: 'Configure Approved Template' }),
+  ).toBeVisible();
+  await page
+    .getByLabel('Template Group', { exact: true })
+    .selectOption('Officer');
+  await page
+    .getByLabel('Officer Team', { exact: true })
+    .selectOption('Technology / CTO Office');
+  await expect(
+    page.getByText('Shared Officer and Associate templates'),
+  ).toHaveCount(0);
   await expect(page.getByText('Officer team colors')).toHaveCount(0);
-  await expect(page.getByLabel('Front field mapping JSON')).toBeVisible();
+  await expect(
+    page.getByText('Field Mapping JSON', { exact: true }),
+  ).toBeVisible();
   await page.getByLabel('Side', { exact: true }).selectOption('back');
-  await expect(page.getByLabel('Front field mapping JSON')).toHaveCount(0);
+  await expect(
+    page.getByText('Mapping not required', { exact: true }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(page.getByText('Officer Access', { exact: true })).toHaveCount(
+    0,
+  );
   await page.getByRole('button', { name: 'Sign out' }).click();
-  await expect(page.getByRole('dialog', { name: 'Log out of AWS SBG ID Generator?' })).toBeVisible();
+  await expect(
+    page.getByRole('dialog', { name: 'Log out of AWS SBG ID Generator?' }),
+  ).toBeVisible();
   await page.getByRole('button', { name: 'Log out', exact: true }).click();
   await expect(page).toHaveURL(/\/login$/);
 });
