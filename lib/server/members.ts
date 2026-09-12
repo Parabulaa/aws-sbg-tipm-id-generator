@@ -169,12 +169,6 @@ export async function confirmMember(
         ...(!previous.photo_path ? ['Upload and review a photo first.'] : []),
       ].join('; '),
     );
-  const photoObject = previous.photo_path.replace(/^member-photos\//, '');
-  const photoCheck = await client.storage
-    .from('member-photos')
-    .download(photoObject);
-  if (photoCheck.error)
-    throw new AppError('Photo is missing. Please upload it again.');
   const issue = previous.date_issued ?? new Date().toISOString().slice(0, 10);
   let validityMonths = 12;
   const setting = await client

@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ImagePlus, Loader2, RotateCcw, Trash2, Upload } from 'lucide-react';
 import type { MemberRecord, Crop } from '@/lib/domain';
 import { defaultCrop } from '@/lib/domain';
-import { fileUrl, api, errorText } from '@/lib/client';
+import { fileUrl, api, errorText, invalidatePrivateBlob } from '@/lib/client';
 import { normalizePhoto } from '@/lib/render-id';
 import { PrivateImage } from './private-image';
 import type { TemplateLayout } from '@/lib/templates';
@@ -46,6 +46,7 @@ export function PhotoEditor({
         method: 'DELETE',
         body: JSON.stringify({ revision: member.revision }),
       });
+      if (member.photo_path) invalidatePrivateBlob(member.photo_path);
       onMember(updated);
       onPreview(undefined);
       onNotify?.('Photo removed');
@@ -204,6 +205,8 @@ export function PhotoEditor({
                 form.set('revision', String(member.revision));
                 form.set('crop', JSON.stringify(crop));
                 const updated = await api<MemberRecord>(`members/${member.id}/photo`, { method: 'POST', body: form });
+                if (member.photo_path && member.photo_path !== updated.photo_path)
+                  invalidatePrivateBlob(member.photo_path);
                 onMember({ ...updated, photo_crop_data: crop });
                 setPending(null);
                 setUrl(undefined);

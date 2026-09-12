@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { officerDesigns, selectTemplate } from '../lib/templates';
+import { localTemplateAsset } from '../lib/local-template-assets';
 import type { Template } from '../lib/templates';
 import { blankMember, officerPositionTeams } from '../lib/domain';
 
@@ -15,6 +16,17 @@ void test('officer positions select their own approved design, including technol
     assert.equal(selectTemplate([fallback, ...designs], member, 'front')?.version,
       team);
   }
+});
+
+test('approved static templates resolve locally without changing unknown uploads', () => {
+  assert.equal(
+    localTemplateAsset('id-templates/member/front/e9c5d981-2b66-4df4-9a9a-76cbfad591bb.png'),
+    '/assets/id/member/front.png',
+  );
+  assert.equal(
+    localTemplateAsset('id-templates/member/front/future-upload.png'),
+    'id-templates/member/front/future-upload.png',
+  );
 });
 void test('missing designs use only shared fallback and never another office or side', () => {
   const member = { ...blankMember, membership_type: 'Officer' as const, officer_position: 'AI/ML LEAD' };

@@ -5,6 +5,7 @@ import { validateLayout, officerDesigns } from '../templates';
 import type { Template } from '../templates';
 import { AppError, json, getColors, logActivity } from './database';
 import { pngDimensions } from './members';
+import { localTemplateAsset } from '../local-template-assets';
 
 function toTemplate(row: Record<string, unknown>): Template {
   const category = row.category as Template['category'];
@@ -15,7 +16,7 @@ function toTemplate(row: Record<string, unknown>): Template {
     team,
     category,
     side,
-    image: row.image_path as string,
+    image: localTemplateAsset(row.image_path as string),
     layout: row.layout as Template['layout'],
     version: row.version as string,
     approved: row.approved as boolean,

@@ -51,6 +51,25 @@ export function fileUrl(key: string) {
   return `/api/files/${key.split('/').map(encodeURIComponent).join('/')}`;
 }
 
+const privateBlobCache = new Map<string, Promise<Blob>>();
+
+export function fetchPrivateBlob(key: string) {
+  const cached = privateBlobCache.get(key);
+  if (cached) return cached;
+  const pending = fetchPrivateFile(key)
+    .then((response) => response.blob())
+    .catch((error) => {
+      privateBlobCache.delete(key);
+      throw error;
+    });
+  privateBlobCache.set(key, pending);
+  return pending;
+}
+
+export function invalidatePrivateBlob(key: string) {
+  privateBlobCache.delete(key);
+}
+
 // Storage stays private. Image elements and downloads need the same bearer
 // session as JSON requests; a plain URL does not carry that session.
 export async function fetchPrivateFile(key: string, signal?: AbortSignal) {

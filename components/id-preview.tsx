@@ -4,9 +4,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Eye, Loader2, Search } from 'lucide-react';
 import type { MemberRecord, ColorSettings } from '@/lib/domain';
 import type { Template, Side } from '@/lib/templates';
-import { renderID } from '@/lib/render-id';
+import { releaseImage, renderID } from '@/lib/render-id';
 import { selectTemplate } from '@/lib/templates';
 import { errorText } from '@/lib/client';
+import { fileUrl } from '@/lib/client';
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -64,6 +65,13 @@ export function IDPreview({
       });
     return () => { cancelled = true; };
   }, [member, template, colors, photoOverride]);
+
+  useEffect(() => {
+    const photo = member.photo_path ? fileUrl(member.photo_path) : '';
+    return () => {
+      if (photo) releaseImage(photo);
+    };
+  }, [member.id, member.photo_path]);
 
   useEffect(() => {
     if (!zoomed) return;

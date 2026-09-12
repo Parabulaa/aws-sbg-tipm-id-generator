@@ -2,31 +2,45 @@ import { displayName, accentColor, contrastText } from './domain';
 import type { MemberRecord, ColorSettings, Crop } from './domain';
 import { WIDTH, HEIGHT } from './templates';
 import type { Template, TextBox } from './templates';
-import { fileUrl } from './client';
+import { fetchPrivateBlob, fileUrl } from './client';
+
+type CachedImage = { promise: Promise<HTMLImageElement>; objectUrl?: string };
+const imageCache = new Map<string, CachedImage>();
+
 export async function loadImage(src: string) {
-  const image = new Image();
-  let objectUrl = '';
-  if (src.startsWith('/api/files/')) {
-    const { getAccessToken } = await import('./supabase/client');
-    const token = await getAccessToken();
-    const response = await fetch(src, {
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-    });
-    if (!response.ok)
-      throw new Error('The private template or photo could not be loaded.');
-    objectUrl = URL.createObjectURL(await response.blob());
-    image.src = objectUrl;
-  } else image.src = src;
-  try {
+  // Uploaded-photo previews already have an owner-managed object URL. Decode
+  // them directly instead of retaining a one-off blob URL in the shared cache.
+  if (src.startsWith('blob:')) {
+    const image = new Image();
+    image.src = src;
     await image.decode();
-  } catch {
-    throw new Error(
-      'Image could not be loaded. Check the photo and approved template files.',
-    );
-  } finally {
-    if (objectUrl) URL.revokeObjectURL(objectUrl);
+    return image;
   }
-  return image;
+  const cached = imageCache.get(src);
+  if (cached) return cached.promise;
+  const entry: CachedImage = { promise: Promise.resolve(null as unknown as HTMLImageElement) };
+  entry.promise = (async () => {
+    const image = new Image();
+    if (src.startsWith('/api/files/')) {
+      const key = decodeURIComponent(src.slice('/api/files/'.length));
+      entry.objectUrl = URL.createObjectURL(await fetchPrivateBlob(key));
+      image.src = entry.objectUrl;
+    } else image.src = src;
+    await image.decode();
+    return image;
+  })().catch(() => {
+    imageCache.delete(src);
+    if (entry.objectUrl) URL.revokeObjectURL(entry.objectUrl);
+    throw new Error('Image could not be loaded. Check the photo and approved template files.');
+  });
+  imageCache.set(src, entry);
+  return entry.promise;
+}
+
+export function releaseImage(src: string) {
+  const cached = imageCache.get(src);
+  if (cached?.objectUrl) URL.revokeObjectURL(cached.objectUrl);
+  imageCache.delete(src);
 }
 export function photoSource(
   width: number,
@@ -131,7 +145,7 @@ export async function renderID(
       ),
     );
   }
-  const background = await loadImage(fileUrl(template.image));
+  const background = await loadImage(template.image.startsWith('/') ? template.image : fileUrl(template.image));
   if (background.naturalWidth !== WIDTH || background.naturalHeight !== HEIGHT)
     throw new Error('Approved template dimensions do not match 1200 × 1950.');
   ctx.fillStyle = '#fff';

@@ -2,22 +2,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import type { CSSProperties } from 'react';
-import { errorText, fetchPrivateFile } from '@/lib/client';
-
-const privateImageCache = new Map<string, Promise<Blob>>();
-
-function cachedPrivateImage(path: string) {
-  const existing = privateImageCache.get(path);
-  if (existing) return existing;
-  const pending = fetchPrivateFile(path)
-    .then((response) => response.blob())
-    .catch((error) => {
-      privateImageCache.delete(path);
-      throw error;
-    });
-  privateImageCache.set(path, pending);
-  return pending;
-}
+import { errorText, fetchPrivateBlob } from '@/lib/client';
 
 interface PrivateImageProps {
   path: string;
@@ -27,6 +12,9 @@ interface PrivateImageProps {
 }
 
 export function PrivateImage(props: PrivateImageProps) {
+  if (props.path.startsWith('/')) {
+    return <img src={props.path} alt={props.alt} className={props.className} style={props.style} draggable={false} loading="lazy" />;
+  }
   return <LoadedPrivateImage key={props.path} {...props} />;
 }
 
@@ -41,7 +29,7 @@ function LoadedPrivateImage({
   useEffect(() => {
     let cancelled = false;
     let objectUrl = '';
-    void cachedPrivateImage(path)
+    void fetchPrivateBlob(path)
       .then((blob) => {
         if (!cancelled) {
           objectUrl = URL.createObjectURL(blob);
