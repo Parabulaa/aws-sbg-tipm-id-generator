@@ -208,11 +208,11 @@ body {
 .generate-main-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.18fr) minmax(25rem, .82fr);
-  align-items: start;
+  align-items: stretch;
   gap: .75rem;
 }
 .generate-left-column,
-.generate-right-column { display: flex; min-width: 0; flex-direction: column; gap: .75rem; }
+.generate-right-column { display: flex; min-width: 0; height: 100%; flex-direction: column; gap: .75rem; }
 .generate-form-wrap { padding: 0 .9rem .9rem; }
 .generate-form-wrap > fieldset { gap: .65rem .85rem; }
 .generate-form-wrap .field { gap: .3rem; font-size: .75rem; }
@@ -243,7 +243,7 @@ body {
 .generate-color-picker input { width: 2.75rem; height: 2.35rem; cursor: pointer; border: 1px solid rgb(154 211 224 / .25); border-radius: .5rem; background: #071419; padding: .2rem; }
 .generate-reset-color { min-height: 2.5rem; white-space: nowrap; }
 .generate-information-card > .notice-error { margin: 0 .9rem .9rem; }
-.generate-photo-card { padding-bottom: .9rem; }
+.generate-photo-card { flex: 1 1 auto; padding-bottom: .9rem; }
 .generate-photo-grid {
   display: grid;
   grid-template-columns: minmax(8.5rem, .75fr) minmax(8rem, .7fr) minmax(15rem, 1.4fr);
@@ -290,7 +290,13 @@ body {
 .generate-dialog { border-color: rgb(34 211 238 / .35); background: #091827; color: #e0f2f5; }
 .generate-workflow-card { padding-bottom: .9rem; }
 .generate-workflow-actions { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .55rem; margin-top: .7rem; padding: 0 .9rem; }
-.generate-workflow-actions > * { width: 100%; min-height: 2.5rem; }
+.generate-workflow-actions > * {
+  width: 100%;
+  height: 2.5rem;
+  min-height: 2.5rem;
+  padding-block: 0;
+  padding-inline: .65rem;
+}
 .generate-selection-card > .notice-error { margin: .7rem .9rem 0; }
 .generate-workflow-card > .notice-error { margin: .75rem .9rem 0; }
 .generate-preview-card { position: relative; }
@@ -339,7 +345,7 @@ body {
 .generate-export-info-grid p svg { color: #22d3ee; }
 .generate-export-info-grid p.is-ready { color: #a7f3d0; }
 .generate-export-info-grid p.is-ready svg { color: #34d399; }
-.generate-summary-card { padding-bottom: .75rem; }
+.generate-summary-card { flex: 1 1 auto; padding-bottom: .75rem; }
 .generate-view-files { min-height: 2rem; padding: .25rem .65rem; font-size: .72rem; }
 .generate-summary-card dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .65rem; padding: 0 .75rem; }
 .generate-summary-card dl > div { min-width: 0; }

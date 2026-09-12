@@ -302,7 +302,7 @@ function ReviewEditor({
               />
             </label>
             <label className="field">
-              <span>Select member</span>
+              <span className="sr-only">Select member</span>
               <select
                 aria-label="Select member"
                 value={member.id}
