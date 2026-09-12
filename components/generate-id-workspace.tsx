@@ -6,7 +6,7 @@ import Link from 'next/link';
 import {
   Check, CheckCircle2, ChevronLeft, ChevronRight, Download, Eye,
   FileDown, FileText, Image as ImageIcon, Info, Loader2, Palette,
-  RotateCcw, Save, Search, ShieldCheck, UserRound, Users,
+  RotateCcw, Save, Search, UserRound, Users,
 } from 'lucide-react';
 import { PDFDocument } from 'pdf-lib';
 import { useData } from './data-provider';
@@ -86,50 +86,15 @@ export function GenerateIdWorkspace() {
   return (
     <Toaster>
       <div className="generate-workspace">
-        <section className="generate-card generate-selection-card">
-          <CardHeading
-            icon={<Users className="size-4" />}
-            title="Member Selection"
-            description="Search for a member or select from the list."
-            trailing={
-              <div className="generate-member-state">
-                <StatusBadge status={member.status} />
-                <span>Member {index + 1} of {members.length}</span>
-              </div>
-            }
-          />
-          <div className="generate-selection-fields">
-            <label className="field generate-search-field">
-              <span className="sr-only">Search member</span>
-              <Search className="generate-input-icon size-4" />
-              <input
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search name, ID, or email..."
-              />
-            </label>
-            <label className="field">
-              <span>Select member</span>
-              <select
-                aria-label="Select member"
-                value={member.id}
-                onChange={(event) => setSelected(event.target.value)}
-              >
-                {(filtered.some((record) => record.id === member.id) ? filtered : [member, ...filtered])
-                  .filter((record, position, list) => list.findIndex((item) => item.id === record.id) === position)
-                  .map((record) => (
-                    <option key={record.id} value={record.id}>
-                      {displayName(record)} — {record.status}
-                    </option>
-                  ))}
-              </select>
-            </label>
-          </div>
-        </section>
-
         <ReviewEditor
           key={member.id}
           initial={member}
+          query={query}
+          onQueryChange={setQuery}
+          choices={filtered}
+          index={index}
+          total={members.length}
+          onSelect={setSelected}
           previous={() => setSelected(members[Math.max(0, index - 1)].id)}
           next={() => setSelected(members[Math.min(members.length - 1, index + 1)].id)}
           first={index === 0}
@@ -141,9 +106,16 @@ export function GenerateIdWorkspace() {
 }
 
 function ReviewEditor({
-  initial, previous, next, first, last,
+  initial, query, onQueryChange, choices, index, total, onSelect,
+  previous, next, first, last,
 }: {
   initial: MemberRecord;
+  query: string;
+  onQueryChange: (value: string) => void;
+  choices: MemberRecord[];
+  index: number;
+  total: number;
+  onSelect: (value: string) => void;
   previous: () => void;
   next: () => void;
   first: boolean;
@@ -312,6 +284,64 @@ function ReviewEditor({
   return (
     <div className="generate-main-grid">
       <div className="generate-left-column">
+        <section className="generate-card generate-selection-card">
+          <CardHeading
+            icon={<Users className="size-4" />}
+            title="Member Selection"
+            description="Search for a member or select from the list."
+            trailing={<span className="generate-member-count">Member {index + 1} of {total}</span>}
+          />
+          <div className="generate-selection-fields">
+            <label className="field generate-search-field">
+              <span className="sr-only">Search member</span>
+              <Search className="generate-input-icon size-4" />
+              <input
+                value={query}
+                onChange={(event) => onQueryChange(event.target.value)}
+                placeholder="Search name, ID, or email..."
+              />
+            </label>
+            <label className="field">
+              <span>Select member</span>
+              <select
+                aria-label="Select member"
+                value={member.id}
+                onChange={(event) => onSelect(event.target.value)}
+              >
+                {(choices.some((record) => record.id === member.id) ? choices : [member, ...choices])
+                  .filter((record, position, list) => list.findIndex((item) => item.id === record.id) === position)
+                  .map((record) => (
+                    <option key={record.id} value={record.id}>
+                      {displayName(record)} — {record.status}
+                    </option>
+                  ))}
+              </select>
+            </label>
+          </div>
+          <div className="generate-workflow-actions">
+            <button className="btn" type="button" disabled={!!busy || first} onClick={previous}>
+              <ChevronLeft className="size-4" /> Previous
+            </button>
+            <button className="btn" type="button" disabled={!!busy || !dirty} onClick={() => void action('save', async () => {
+              await save();
+              notify('Member information saved');
+            })}>
+              <ActionLabel busy={busy === 'save'} busyText="Saving..."><Save className="size-4" /> Save Information</ActionLabel>
+            </button>
+            <button className="btn" type="button" disabled={!!busy || last} onClick={() => void action('next', async () => {
+              await save();
+              notify('Member information saved');
+              next();
+            })}>
+              <ActionLabel busy={busy === 'next'} busyText="Saving...">Save &amp; Next <ChevronRight className="size-4" /></ActionLabel>
+            </button>
+            <button className="btn-primary" type="button" disabled={!!busy} onClick={() => void action('confirm', async () => { await confirm(); })}>
+              <ActionLabel busy={busy === 'confirm'} busyText="Confirming..."><Check className="size-4" /> Confirm ID</ActionLabel>
+            </button>
+          </div>
+          {error && <p role="alert" className="notice-error">{error}</p>}
+        </section>
+
         <section className="generate-card generate-information-card">
           <CardHeading
             icon={<UserRound className="size-4" />}
@@ -322,36 +352,37 @@ function ReviewEditor({
           <fieldset disabled={!!busy} className="generate-form-wrap">
             <MemberForm value={member} onChange={(value) => setMember({ ...member, ...value })} />
           </fieldset>
-          <div className="generate-appearance">
-            <CardHeading icon={<Palette className="size-4" />} title="ID Appearance" description="Assigned team color is applied live." />
-            <div className="generate-color-row">
-              <div className="generate-color-label">
-                <span className="generate-color-swatch" style={{ backgroundColor: currentColor }} />
-                <span><strong>{assignedName}</strong><small>{currentColor.toUpperCase()}</small></span>
-              </div>
-              {member.membership_type === 'Officer' && (
-                <label className="generate-color-picker">
-                  <span>Adjust</span>
-                  <input
-                    type="color" value={member.color_override || assignedColor}
-                    aria-label="Temporarily adjust assigned team color"
-                    onChange={(event) => setMember({ ...member, color_override: event.target.value })}
-                  />
-                </label>
-              )}
-              <button
-                className="btn generate-reset-color" type="button"
-                disabled={!member.color_override}
-                onClick={() => {
-                  setMember({ ...member, color_override: null });
-                  notify('Team color restored');
-                }}
-              >
-                <RotateCcw className="size-4" /> Reset to Assigned Team Color
-              </button>
-            </div>
-          </div>
           {!!errors.length && <p className="notice-error" role="alert">{errors.join('; ')}</p>}
+        </section>
+
+        <section className="generate-card generate-appearance-card">
+          <CardHeading icon={<Palette className="size-4" />} title="ID Appearance" description="Assigned team color is applied live." />
+          <div className="generate-color-row">
+            <div className="generate-color-label">
+              <span className="generate-color-swatch" style={{ backgroundColor: currentColor }} />
+              <span><strong>{assignedName}</strong><small>{currentColor.toUpperCase()}</small></span>
+            </div>
+            {member.membership_type === 'Officer' && (
+              <label className="generate-color-picker">
+                <span>Adjust</span>
+                <input
+                  type="color" value={member.color_override || assignedColor}
+                  aria-label="Temporarily adjust assigned team color"
+                  onChange={(event) => setMember({ ...member, color_override: event.target.value })}
+                />
+              </label>
+            )}
+            <button
+              className="btn generate-reset-color" type="button"
+              disabled={!member.color_override}
+              onClick={() => {
+                setMember({ ...member, color_override: null });
+                notify('Team color restored');
+              }}
+            >
+              <RotateCcw className="size-4" /> Reset to Assigned Team Color
+            </button>
+          </div>
         </section>
 
         <section className="generate-card generate-photo-card">
@@ -376,49 +407,25 @@ function ReviewEditor({
             }}
           />
         </section>
-
-        <section className="generate-card generate-workflow-card">
-          <CardHeading icon={<ShieldCheck className="size-4" />} title="Confirmation / Workflow" description="Save and confirm this member before generation." />
-          <div className="generate-workflow-actions">
-            <button className="btn" type="button" disabled={!!busy || first} onClick={previous}>
-              <ChevronLeft className="size-4" /> Previous
-            </button>
-            <button className="btn" type="button" disabled={!!busy || !dirty} onClick={() => void action('save', async () => {
-              await save();
-              notify('Member information saved');
-            })}>
-              <ActionLabel busy={busy === 'save'} busyText="Saving..."><Save className="size-4" /> Save Information</ActionLabel>
-            </button>
-            <button className="btn" type="button" disabled={!!busy || last} onClick={() => void action('next', async () => {
-              await save();
-              notify('Member information saved');
-              next();
-            })}>
-              <ActionLabel busy={busy === 'next'} busyText="Saving...">Save &amp; Next <ChevronRight className="size-4" /></ActionLabel>
-            </button>
-            <button className="btn-primary" type="button" disabled={!!busy} onClick={() => void action('confirm', async () => { await confirm(); })}>
-              <ActionLabel busy={busy === 'confirm'} busyText="Confirming..."><Check className="size-4" /> Confirm ID</ActionLabel>
-            </button>
-          </div>
-          {error && <p role="alert" className="notice-error">{error}</p>}
-        </section>
       </div>
 
       <div className="generate-right-column">
         <IDPreview
           member={member} templates={templates} colors={colors}
           photoOverride={photoPreview} side={side} onSideChange={setSide}
+          footer={
+            <button
+              className="btn-primary generate-main-action" type="button"
+              aria-label="Generate ID"
+              disabled={!!busy || dirty || !!photoPreview || !['Ready', 'Generated'].includes(member.status)}
+              onClick={() => void action('generate', generateCurrentSide)}
+            >
+              <ActionLabel busy={busy === 'generate'} busyText="Generating...">
+                <ImageIcon className="size-4" /> Generate ID
+              </ActionLabel>
+            </button>
+          }
         />
-        <button
-          className="btn-primary generate-main-action" type="button"
-          aria-label="Generate ID"
-          disabled={!!busy || dirty || !!photoPreview || !['Ready', 'Generated'].includes(member.status)}
-          onClick={() => void action('generate', generateCurrentSide)}
-        >
-          <ActionLabel busy={busy === 'generate'} busyText="Generating...">
-            <ImageIcon className="size-4" /> Generate {side === 'front' ? 'Front' : 'Back'} ID
-          </ActionLabel>
-        </button>
 
         <section className="generate-card generate-export-card">
           <CardHeading icon={<Download className="size-4" />} title="Export & Print" description="Export production-ready ID files." />
@@ -467,12 +474,12 @@ function ReviewEditor({
             trailing={<Link className="btn generate-view-files" href="/generated-ids">View Files</Link>}
           />
           <dl>
-            <div><dt>Front file name</dt><dd><input aria-label="Front file name" readOnly value={`${safeFilename(member)}_front.png`} /></dd></div>
-            <div><dt>Back file name</dt><dd><input aria-label="Back file name" readOnly value={`${safeFilename(member)}_back.png`} /></dd></div>
-            <div><dt>Member ID</dt><dd><input aria-label="Member ID" readOnly value={member.aws_sbg_id} /></dd></div>
+            <div><dt>Front file name</dt><dd><input aria-label="Front file name" readOnly title={`${safeFilename(member)}_front.png`} value={`${safeFilename(member)}_front.png`} /></dd></div>
+            <div><dt>Back file name</dt><dd><input aria-label="Back file name" readOnly title={`${safeFilename(member)}_back.png`} value={`${safeFilename(member)}_back.png`} /></dd></div>
+            <div><dt>Member ID</dt><dd><input aria-label="Member ID" readOnly title={member.aws_sbg_id} value={member.aws_sbg_id} /></dd></div>
             <div><dt>Validity</dt><dd>{member.valid_until || 'Not issued'}</dd></div>
             <div><dt>Date Generated</dt><dd>{generatedAt}</dd></div>
-            <div><dt>Current status</dt><dd><StatusBadge status={member.status} /></dd></div>
+            <div><dt>Current status</dt><dd className="generate-current-status"><span />{member.status}</dd></div>
           </dl>
         </section>
       </div>

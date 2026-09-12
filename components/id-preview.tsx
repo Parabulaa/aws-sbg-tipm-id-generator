@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/dialog';
 
 export function IDPreview({
-  member, templates, colors, photoOverride, side, onSideChange,
+  member, templates, colors, photoOverride, side, onSideChange, footer,
 }: {
   member: MemberRecord;
   templates: Template[];
@@ -20,6 +20,7 @@ export function IDPreview({
   photoOverride?: string;
   side: Side;
   onSideChange: (side: Side) => void;
+  footer?: React.ReactNode;
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const zoomCanvas = useRef<HTMLCanvasElement>(null);
@@ -102,6 +103,7 @@ export function IDPreview({
         {template && <button type="button" className="generate-click-zoom" onClick={() => setZoomed(true)}><Search className="size-3.5" /> Click ID to zoom</button>}
         {error && <p className="notice-error" role="alert">{error}</p>}
       </div>
+      {footer && <div className="generate-preview-footer">{footer}</div>}
 
       <Dialog open={zoomed} onOpenChange={setZoomed}>
         <DialogContent className="generate-zoom-dialog">
