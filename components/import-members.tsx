@@ -6,7 +6,7 @@ import { categories } from '@/lib/domain';
 import type { Category } from '@/lib/domain';
 import type { ImportRow } from '@/lib/import-xlsx';
 
-export function ImportMembers() {
+export function ImportMembers({ onImported }: { onImported?: (count: number) => void }) {
   const { members, refresh } = useData();
   const [rows, setRows] = useState<ImportRow[]>([]);
   const [classification, setClassification] = useState<Category>('Member');
@@ -135,6 +135,7 @@ export function ImportMembers() {
                 setMessage(
                   `${result.imported} members imported as Draft with assigned AWS SBG IDs.`,
                 );
+                onImported?.(result.imported);
                 setRows([]);
               } catch (error) {
                 setError(errorText(error));

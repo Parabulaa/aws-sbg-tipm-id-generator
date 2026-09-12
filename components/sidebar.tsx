@@ -6,6 +6,7 @@ import {
   FileBadge2,
   FolderCog,
   LayoutDashboard,
+  Loader2,
   Menu,
   LogOut,
   PanelLeftClose,
@@ -34,6 +35,7 @@ export function Sidebar({ collapsed = false, onToggle }: { collapsed?: boolean; 
   const { user, role } = useData();
   const [open, setOpen] = useState(false);
   const [error, setError] = useState('');
+  const [signingOut, setSigningOut] = useState(false);
   function content(compact = collapsed) {
     return (
       <>
@@ -65,7 +67,9 @@ export function Sidebar({ collapsed = false, onToggle }: { collapsed?: boolean; 
             <button
               className={`btn ${compact ? 'size-10 px-0' : 'mt-2 w-full'}`}
               title="Sign out"
+              disabled={signingOut}
               onClick={async () => {
+                setSigningOut(true);
                 try {
                   const { error } =
                     await getSupabaseBrowserClient().auth.signOut();
@@ -73,10 +77,11 @@ export function Sidebar({ collapsed = false, onToggle }: { collapsed?: boolean; 
                   window.location.assign('/');
                 } catch (error) {
                   setError(errorText(error));
+                  setSigningOut(false);
                 }
               }}
             >
-              {compact ? <LogOut className="size-4" /> : 'Sign out'}
+              {signingOut ? <Loader2 className="size-4 animate-spin" /> : compact ? <LogOut className="size-4" /> : 'Sign out'}
             </button>
           </div>
           {error && (

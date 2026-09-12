@@ -7,10 +7,12 @@ export function GenerationControls({
   selectedIds,
   filteredIds,
   buttonClassName = '',
+  onNotify,
 }: {
   selectedIds?: string[];
   filteredIds?: string[];
   buttonClassName?: string;
+  onNotify?: (message: string, type?: 'success' | 'error') => void;
 }) {
   const { members, colors, templates, refresh } = useData();
   const [progress, setProgress] = useState('');
@@ -47,9 +49,12 @@ export function GenerationControls({
       setGenerated(results);
       await refresh();
       setProgress(`${results.length} generated; ${failures.length} failed.`);
+      if (results.length) onNotify?.('IDs generated');
       if (failures.length) setError(failures.join('\n'));
     } catch (error) {
-      setError(errorText(error));
+      const message = errorText(error);
+      setError(message);
+      onNotify?.(message, 'error');
     } finally {
       setBusy(false);
     }
@@ -64,7 +69,7 @@ export function GenerationControls({
             disabled={busy || !selectedIds.length}
             onClick={() => void run(selectedIds)}
           >
-            Generate Selected
+            {busy ? 'Generating...' : 'Generate Selected'}
           </button>
         )}
         {filteredIds && (
@@ -73,7 +78,7 @@ export function GenerationControls({
             disabled={busy || !filteredIds.length}
             onClick={() => void run(filteredIds)}
           >
-            Generate Ready in Filter
+            {busy ? 'Generating...' : 'Generate Ready in Filter'}
           </button>
         )}
         <button
@@ -83,7 +88,7 @@ export function GenerationControls({
           }
           onClick={() => void run()}
         >
-          Generate All Ready
+          {busy ? 'Generating...' : 'Generate All Ready'}
         </button>
         {!!generated.length && (
           <button

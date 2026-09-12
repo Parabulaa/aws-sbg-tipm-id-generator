@@ -147,6 +147,47 @@ body {
   border-radius: .5rem;
   white-space: nowrap;
 }
+.member-metric-card { transition: border-color 180ms ease, background-color 180ms ease; }
+.member-metric-card:hover { border-color: rgb(34 211 238 / .3); background-color: rgb(17 31 47 / .96); }
+.member-search { position: relative; }
+.member-search > svg { position: absolute; top: 50%; left: .8rem; z-index: 1; color: #8ea8b0; transform: translateY(-50%); pointer-events: none; }
+.member-search input { padding-left: 2.35rem; }
+.member-status { display: inline-flex; min-height: 1.6rem; align-items: center; gap: .4rem; border: 1px solid transparent; border-radius: 999px; padding: .2rem .55rem; font-size: .72rem; font-weight: 650; line-height: 1; white-space: nowrap; }
+.member-status > span { width: .42rem; height: .42rem; flex: none; border-radius: 999px; background: currentColor; }
+.member-status.status-ready { border-color: rgb(52 211 153 / .3); background: rgb(6 78 59 / .28); color: #6ee7b7; }
+.member-status.status-generated { border-color: rgb(34 211 238 / .3); background: rgb(8 145 178 / .18); color: #67e8f9; }
+.member-status.status-draft { border-color: rgb(148 163 184 / .2); background: rgb(51 65 85 / .35); color: #a8bac4; }
+.member-status.status-pending { border-color: rgb(251 191 36 / .24); background: rgb(120 53 15 / .22); color: #fcd34d; }
+.member-checkbox { position: relative; display: inline-grid; width: 1.05rem; height: 1.05rem; cursor: pointer; place-items: center; vertical-align: middle; }
+.member-checkbox input { position: absolute; inset: 0; margin: 0; cursor: inherit; opacity: 0; }
+.member-checkbox > span { display: grid; width: 100%; height: 100%; pointer-events: none; place-items: center; border: 1px solid rgb(103 232 249 / .42); border-radius: .25rem; background: #071419; color: #041015; transition: border-color 160ms ease, background-color 160ms ease, opacity 160ms ease, transform 160ms ease; }
+.member-checkbox svg { width: .75rem; height: .75rem; opacity: 0; transform: scale(.65); transition: opacity 140ms ease, transform 140ms ease; }
+.member-checkbox:hover > span { border-color: #67e8f9; }
+.member-checkbox input:checked + span { border-color: #22d3ee; background: #22d3ee; }
+.member-checkbox input:checked + span svg { opacity: 1; transform: scale(1); }
+.member-checkbox input:focus-visible + span { outline: 2px solid #67e8f9; outline-offset: 2px; }
+.member-checkbox:active > span { transform: scale(.92); }
+.member-checkbox input:disabled + span { cursor: not-allowed; opacity: .4; }
+.member-table tbody tr { transition: background-color 170ms ease, color 170ms ease; }
+.member-table tbody tr:hover { background: rgb(34 211 238 / .045); }
+.member-table tbody tr[data-selected] { background: rgb(34 211 238 / .09); box-shadow: inset 2px 0 #22d3ee; }
+.member-table .member-archived-row { color: #91a7ae; }
+.internal-app aside nav a { transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease, transform 160ms ease; }
+.internal-app aside nav a:active { transform: scale(.98); }
+.member-dialog { border: 1px solid rgb(34 211 238 / .3); background: #091827; color: #e0f2f5; box-shadow: 0 24px 80px rgb(0 0 0 / .5); }
+.member-dialog [data-slot='dialog-title'] { color: #f2fbfc; font-size: 1.05rem; font-weight: 700; }
+.member-dialog [data-slot='dialog-description'] { color: #8ea8b0; }
+.member-dialog [data-slot='dialog-footer'] { border-color: rgb(34 211 238 / .14); background: rgb(5 18 29 / .7); }
+.member-dialog .field { color: #c2d7dc; }
+.member-dialog .field input, .member-dialog .field select { border-color: rgb(154 211 224 / .25); background: #071419; color: #e0f2f5; }
+.member-dialog .btn { border-color: rgb(154 211 224 / .3); background: #181a33; color: #e0f2f5; }
+.member-dialog .btn:hover { background: #24264a; }
+.member-archive-dialog { max-height: min(90vh, 52rem); }
+[data-slot='dialog-overlay'] { background: rgb(0 0 0 / .62); backdrop-filter: blur(3px); }
+@media (prefers-reduced-motion: reduce) {
+  .member-metric-card, .member-table tbody tr, .internal-app aside, .internal-app aside nav a,
+  .member-checkbox > span, .member-checkbox svg, [data-slot='dialog-content'], [data-slot='dialog-overlay'] { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+}
 .internal-app .notice {
   border-color: rgb(88 67 197 / 0.55);
   background: rgb(88 67 197 / 0.16);
