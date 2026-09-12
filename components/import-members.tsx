@@ -6,7 +6,7 @@ import { categories } from '@/lib/domain';
 import type { Category } from '@/lib/domain';
 import type { ImportRow } from '@/lib/import-xlsx';
 
-export function ImportMembers({ onImported }: { onImported?: (count: number) => void }) {
+export function ImportMembers({ onImported, embedded = false }: { onImported?: (count: number) => void; embedded?: boolean }) {
   const { members, refresh } = useData();
   const [rows, setRows] = useState<ImportRow[]>([]);
   const [classification, setClassification] = useState<Category>('Member');
@@ -16,7 +16,7 @@ export function ImportMembers({ onImported }: { onImported?: (count: number) => 
   const valid = rows.filter((row) => !row.errors.length);
   const duplicates = rows.filter((row) => row.duplicate).length;
   return (
-    <section className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
+    <section className={embedded ? 'space-y-3' : 'space-y-3 rounded-xl border border-slate-200 bg-white p-4'}>
       <div className="flex flex-wrap items-baseline justify-between gap-2"><h2 className="font-semibold">Import XLSX</h2><p className="text-xs text-slate-500">Required: name, TIP email, student ID, program and year level</p></div>
       <div className="grid gap-3 md:grid-cols-[14rem_1fr]">
       <label className="field">

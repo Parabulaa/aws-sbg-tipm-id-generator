@@ -122,7 +122,7 @@ export function MemberDirectory() {
         <label className="field member-search"><span className="sr-only">Search members</span><Search className="size-4" /><input type="search" value={query} placeholder="Search name, ID number, email, position…" onChange={(event) => { setQuery(event.target.value); setPage(1); }} /></label>
         <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><Filter label="Course" value={course} setValue={(value) => { setCourse(value); setPage(1); }} options={courses} all="All courses" /><Filter label="Year Level" value={year} setValue={(value) => { setYear(value); setPage(1); }} options={years} all="All years" /><Filter label="Role / Team" value={roleTeam} setValue={(value) => { setRoleTeam(value); setPage(1); }} options={rolesAndTeams} all="All roles / teams" /><Filter label="Status" value={status} setValue={(value) => { setStatus(value); setPage(1); }} options={statuses} all="All statuses" /></div>
         <div className="member-action-grid mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-          <button className="btn member-action-button" onClick={() => setImporting(value => !value)}>{importing ? 'Close Import' : 'Import XLSX'}</button>
+          <button className="btn member-action-button" onClick={() => setImporting(true)}>Import XLSX</button>
           <button className="btn member-action-button" onClick={() => { setModalError(''); setAddOpen(true); }}>Add Member</button>
           {role === 'admin' && <button className="btn member-action-button" onClick={async () => { setArchivedOpen(true); await loadArchived(); }}>Show Archived</button>}
           <button className="btn-danger member-action-button" disabled={!selected.length || !!busy || role !== 'admin'} onClick={() => { setModalError(''); setDeleteOpen(true); }}>Delete Selected</button>
@@ -131,7 +131,6 @@ export function MemberDirectory() {
         </div>
       </section>
     </div>
-    {importing && <ImportMembers onImported={(count) => notify(`${count} member${count === 1 ? '' : 's'} imported`)} />}
     {error && <p className="notice-error" role="alert">{error}</p>}
 
     <section className="overflow-hidden rounded-xl border bg-white">
@@ -142,6 +141,8 @@ export function MemberDirectory() {
       {!visible.length && <p className="p-8 text-center text-slate-500">{members.length ? 'No members match these filters.' : 'No members imported yet.'}</p>}
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 px-4 py-3 text-xs text-slate-500"><span>Showing {visible.length ? (safePage - 1) * rowsPerPage + 1 : 0}–{Math.min(safePage * rowsPerPage, visible.length)} of {visible.length}</span><label className="flex items-center gap-2">Rows per page<select className="rounded-lg border bg-transparent px-2 py-1" value={rowsPerPage} onChange={(event) => { setRowsPerPage(Number(event.target.value)); setPage(1); }}>{[10, 25, 50, 100].map(value => <option key={value} value={value}>{value}</option>)}</select></label></div>
     </section>
+
+    <Dialog open={importing} onOpenChange={setImporting}><DialogContent className="member-dialog member-import-dialog sm:max-w-4xl"><DialogHeader><DialogTitle>Import XLSX</DialogTitle><DialogDescription>Upload and validate a membership spreadsheet before adding records.</DialogDescription></DialogHeader><ImportMembers embedded onImported={(count) => { setImporting(false); notify(`${count} member${count === 1 ? '' : 's'} imported`); }} /><DialogFooter><button className="btn" onClick={() => setImporting(false)}>Close</button></DialogFooter></DialogContent></Dialog>
 
     <Dialog open={addOpen} onOpenChange={(open) => { if (!busy) { setAddOpen(open); setModalError(''); } }}><DialogContent className="member-dialog sm:max-w-2xl"><DialogHeader><DialogTitle>Add Member</DialogTitle><DialogDescription>Create a new organization member.</DialogDescription></DialogHeader><form id="add-member-form" onSubmit={(event) => { event.preventDefault(); void addMember(); }}><MemberForm value={draft} onChange={setDraft} disabled={!!busy} />{modalError && <p className="notice-error mt-4" role="alert">{modalError}</p>}</form><DialogFooter><button className="btn" type="button" disabled={!!busy} onClick={() => setAddOpen(false)}>Cancel</button><button className="btn-primary" type="submit" form="add-member-form" disabled={!!busy}>{busy === 'add' ? <><Loader2 className="size-4 animate-spin" /> Adding...</> : 'Add Member'}</button></DialogFooter></DialogContent></Dialog>
 

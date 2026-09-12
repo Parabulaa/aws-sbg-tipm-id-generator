@@ -19,6 +19,7 @@ export function GenerationControls({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [generated, setGenerated] = useState<Generation[]>([]);
+  const readyIds = new Set(members.filter((member) => member.status === 'Ready').map((member) => member.id));
   async function run(ids?: string[]) {
     const ready = members.filter(
       (member) =>
@@ -66,7 +67,7 @@ export function GenerationControls({
         {selectedIds && (
           <button
             className={`btn-primary ${buttonClassName}`}
-            disabled={busy || !selectedIds.length}
+            disabled={busy || !selectedIds.some((id) => readyIds.has(id))}
             onClick={() => void run(selectedIds)}
           >
             {busy ? 'Generating...' : 'Generate Selected'}
@@ -75,7 +76,7 @@ export function GenerationControls({
         {filteredIds && (
           <button
             className={`btn ${buttonClassName}`}
-            disabled={busy || !filteredIds.length}
+            disabled={busy || !filteredIds.some((id) => readyIds.has(id))}
             onClick={() => void run(filteredIds)}
           >
             {busy ? 'Generating...' : 'Generate Ready in Filter'}
@@ -117,9 +118,9 @@ export function GenerationControls({
           produce category or team batches.
         </p>
       )}
-      {progress && <output className={`${embedded ? 'col-span-full' : ''} block`}>{progress}</output>}
-      {error && (
-        <p role="alert" className={`notice-error whitespace-pre-line ${embedded ? 'col-span-full' : ''}`}>
+      {!embedded && progress && <output className="block">{progress}</output>}
+      {!embedded && error && (
+        <p role="alert" className="notice-error whitespace-pre-line">
           {error}
         </p>
       )}
