@@ -345,7 +345,7 @@ function ReviewEditor({
           {error && <p role="alert" className="notice-error">{error}</p>}
         </section>
 
-        <section className="generate-card generate-member-workspace">
+        <section className={`generate-card generate-member-workspace is-${workspaceTab}`}>
           <CardHeading
             icon={<UserRound className="size-4" />}
             title="Member Workspace"
