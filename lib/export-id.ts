@@ -6,6 +6,7 @@ import type { MemberRecord, ColorSettings, Generation } from './domain';
 import type { Template } from './templates';
 import { selectTemplate } from './templates';
 import { api, fetchPrivateFile } from './client';
+import { getSupabaseBrowserClient } from './supabase/client';
 export async function generateMember(
   member: MemberRecord,
   templates: Template[],
@@ -30,19 +31,9 @@ export async function generateMember(
     canvas.width = 0;
     canvas.height = 0;
   }
-  const form = new FormData();
-  form.set('member_id', member.id);
-  form.set('revision', String(member.revision));
-  form.set('color_revision', String(colors.revision));
-  form.set(
-    'template_version',
-    selected.map((template) => template!.version).join(':'),
-  );
-  // Tell the API which output is being requested. Without this explicit
-  // value, a front-only request is interpreted as a both-sides generation
-  // and incorrectly requires a back template and PDF.
-  form.set('side', side);
-  form.set('front', images[0], 'front.png');
+  const files: Array<{ name: 'front' | 'back' | 'pdf'; blob: Blob; filename: string }> = [
+    { name: 'front', blob: images[0], filename: 'front.png' },
+  ];
   if (side === 'both') {
     const pdfDocument = await PDFDocument.create();
     for (const blob of images) {
@@ -51,14 +42,49 @@ export async function generateMember(
       page.drawImage(image, { x: 0, y: 0, width: 288, height: 468 });
     }
     const pdf = await pdfDocument.save();
-    form.set('back', images[1], 'back.png');
-    form.set(
-      'pdf',
-      new Blob([Uint8Array.from(pdf)], { type: 'application/pdf' }),
-      'ID.pdf',
+    files.push(
+      { name: 'back', blob: images[1], filename: 'back.png' },
+      {
+        name: 'pdf',
+        blob: new Blob([Uint8Array.from(pdf)], { type: 'application/pdf' }),
+        filename: 'ID.pdf',
+      },
     );
   }
-  return api<Generation>('generations', { method: 'POST', body: form });
+
+  // Upload large rendered files directly to private Supabase Storage. Sending
+  // the PNGs and PDF together through the deployed API can exceed its request
+  // body limit before our route is reached.
+  const generationId = crypto.randomUUID();
+  const base = `${member.id}/${generationId}`;
+  const client = getSupabaseBrowserClient();
+  const paths: Partial<Record<'front' | 'back' | 'pdf', string>> = {};
+  for (const file of files) {
+    const objectPath = `${base}/${file.filename}`;
+    const { error } = await client.storage.from('generated-ids').upload(
+      objectPath,
+      file.blob,
+      { contentType: file.blob.type, upsert: false },
+    );
+    if (error)
+      throw new Error(
+        `The generated ${file.name} file could not be uploaded. Please try again.`,
+      );
+    paths[file.name] = `generated-ids/${objectPath}`;
+  }
+
+  return api<Generation>('generations', {
+    method: 'POST',
+    body: JSON.stringify({
+      member_id: member.id,
+      revision: member.revision,
+      color_revision: colors.revision,
+      template_version: selected.map((template) => template!.version).join(':'),
+      side,
+      generation_id: generationId,
+      files: paths,
+    }),
+  });
 }
 export async function downloadFile(key: string, name: string) {
   const response = await fetchPrivateFile(key);

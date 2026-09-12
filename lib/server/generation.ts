@@ -47,9 +47,16 @@ export async function generate(
   actorName: string,
   request: Request,
 ) {
-  const form = await request.formData();
-  const member = await getMember(client, form.get('member_id') as string);
-  checkRevision(member, Number(form.get('revision')));
+  const contentType = request.headers.get('content-type') ?? '';
+  const direct = contentType.includes('application/json');
+  const jsonBody = direct
+    ? ((await request.json()) as Record<string, unknown>)
+    : null;
+  const formBody = direct ? null : await request.formData();
+  const field = (name: string) =>
+    jsonBody ? jsonBody[name] : formBody?.get(name);
+  const member = await getMember(client, field('member_id') as string);
+  checkRevision(member, Number(field('revision')));
   if (isArchived(member))
     throw new AppError('Archived members cannot generate IDs.');
   if (member.status !== 'Ready')
@@ -59,7 +66,7 @@ export async function generate(
   const templates = (await getTemplates(client)).filter(
     (item) => item.category === member.membership_type,
   );
-  const side = form.get('side') === 'front' ? 'front' : 'both';
+  const side = field('side') === 'front' ? 'front' : 'both';
   const requiredSides = side === 'front' ? (['front'] as const) : (['front', 'back'] as const);
   if (
     !requiredSides.every((templateSide) =>
@@ -80,19 +87,47 @@ export async function generate(
   const version = requiredSides.map((templateSide) => versions[templateSide]).join(':');
   const colors = await getColors(client);
   if (
-    form.get('template_version') !== version ||
-    Number(form.get('color_revision')) !== colors.revision
+    field('template_version') !== version ||
+    Number(field('color_revision')) !== colors.revision
   )
     throw new AppError(
       'Templates or colors changed. Refresh and regenerate.',
       409,
     );
+  const names = side === 'front' ? ['front'] : ['front', 'back', 'pdf'];
+  const requestedGenerationId = field('generation_id');
+  const generationId = direct && typeof requestedGenerationId === 'string'
+    ? requestedGenerationId
+    : direct
+      ? ''
+      : crypto.randomUUID();
+  if (!/^[0-9a-f-]{36}$/i.test(generationId))
+    throw new AppError('Invalid generation request.');
+  const base = `${member.id}/${generationId}`;
+  const objectPaths = names.map((name) => `${base}/${name === 'pdf' ? 'ID.pdf' : `${name}.png`}`);
+  const keys = objectPaths.map((path) => `generated-ids/${path}`);
+  const suppliedPaths = jsonBody?.files && typeof jsonBody.files === 'object'
+    ? (jsonBody.files as Record<string, unknown>)
+    : {};
+
   const files: Record<string, Uint8Array> = {};
-  for (const name of side === 'front' ? ['front'] : ['front', 'back', 'pdf']) {
-    const file = form.get(name);
-    if (!(file instanceof File) || !file.size || file.size > 20 * 1024 * 1024)
+  for (const [index, name] of names.entries()) {
+    let bytes: Uint8Array;
+    if (direct) {
+      if (suppliedPaths[name] !== keys[index])
+        throw new AppError('Invalid generated file reference.');
+      const download = await client.storage.from('generated-ids').download(objectPaths[index]);
+      if (download.error || !download.data)
+        throw new AppError(`The generated ${name} file was not uploaded. Please try again.`);
+      bytes = new Uint8Array(await download.data.arrayBuffer());
+    } else {
+      const file = field(name);
+      if (!(file instanceof File) || !file.size || file.size > 20 * 1024 * 1024)
+        throw new AppError('Generated files are missing or too large.');
+      bytes = new Uint8Array(await file.arrayBuffer());
+    }
+    if (!bytes.length || bytes.length > 20 * 1024 * 1024)
       throw new AppError('Generated files are missing or too large.');
-    const bytes = new Uint8Array(await file.arrayBuffer());
     if (name !== 'pdf') {
       const size = pngDimensions(bytes);
       if (size.width !== 1200 || size.height !== 1950)
@@ -101,27 +136,21 @@ export async function generate(
       throw new AppError('Invalid PDF output.');
     files[name] = bytes;
   }
-  const id = crypto.randomUUID();
+  const id = generationId;
   const now = new Date().toISOString();
-  const base = `${member.id}/${id}`;
-  const objectPaths = [`${base}/front.png`];
-  if (side === 'both') objectPaths.push(`${base}/back.png`, `${base}/ID.pdf`);
-  const keys = objectPaths.map((path) => `generated-ids/${path}`);
   try {
-    const uploads = await Promise.all(
-      objectPaths.map((objectPath, index) =>
-        client.storage
-          .from('generated-ids')
-          .upload(objectPath, files[side === 'front' ? 'front' : ['front', 'back', 'pdf'][index]], {
-            contentType: side === 'both' && index === 2 ? 'application/pdf' : 'image/png',
+    if (!direct) {
+      const uploads = await Promise.all(
+        objectPaths.map((objectPath, index) =>
+          client.storage.from('generated-ids').upload(objectPath, files[names[index]], {
+            contentType: names[index] === 'pdf' ? 'application/pdf' : 'image/png',
             upsert: false,
           }),
-      ),
-    );
-    if (uploads.some((upload) => upload.error))
-      throw new AppError(
-        'Generated files could not be saved to private storage.',
+        ),
       );
+      if (uploads.some((upload) => upload.error))
+        throw new AppError('Generated files could not be saved to private storage.');
+    }
     const accent = accentColor(member, colors);
     const { data, error } = await client.rpc('record_generation', {
       generation_id: id,
