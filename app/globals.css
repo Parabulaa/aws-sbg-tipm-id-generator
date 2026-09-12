@@ -1843,3 +1843,15 @@ body {
   background: #071419;
   color: #e0f2f5;
 }
+.internal-app select:not([multiple]) {
+  appearance: none;
+  background-color: #0a1519;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%2367e8f9' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E");
+  background-position: right .7rem center;
+  background-repeat: no-repeat;
+  background-size: 1rem;
+  padding-right: 2.4rem;
+}
+.template-upload-grid.is-back {
+  grid-template-columns: minmax(0, 1fr);
+}

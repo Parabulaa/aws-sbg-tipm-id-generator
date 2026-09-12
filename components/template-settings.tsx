@@ -231,7 +231,9 @@ export function TemplateSettings() {
           <DialogHeader>
             <DialogTitle>Configure Approved Template</DialogTitle>
             <DialogDescription>
-              Upload the approved PNG and configure its field mapping.
+              {configureSide === 'front'
+                ? 'Upload the approved PNG and configure its field mapping.'
+                : 'Upload the approved back PNG. Back templates use fixed artwork and do not need mapping JSON.'}
             </DialogDescription>
           </DialogHeader>
           <form
@@ -295,20 +297,21 @@ export function TemplateSettings() {
                 </select>
               </label>
             )}
-            <div className="template-upload-grid">
+            <div className={`template-upload-grid ${configureSide === 'back' ? 'is-back' : ''}`}>
               <UploadField
                 label="Approved PNG"
                 accept="image/png"
                 file={imageFile}
                 onFile={setImageFile}
               />
-              <UploadField
-                label="Field Mapping JSON"
-                accept=".json,application/json"
-                file={mappingFile}
-                onFile={setMappingFile}
-                optional={configureSide === 'back'}
-              />
+              {configureSide === 'front' && (
+                <UploadField
+                  label="Field Mapping JSON"
+                  accept=".json,application/json"
+                  file={mappingFile}
+                  onFile={setMappingFile}
+                />
+              )}
             </div>
             <div className="template-configure-preview">
               <div>
@@ -332,22 +335,13 @@ export function TemplateSettings() {
                   text={imageFile ? 'PNG selected' : 'PNG required'}
                   detail={imageFile?.name ?? '1200 × 1950 px'}
                 />
-                <Status
-                  configured={!!mappingFile || configureSide === 'back'}
-                  text={
-                    configureSide === 'back'
-                      ? 'Mapping not required'
-                      : mappingFile
-                        ? 'Mapping selected'
-                        : 'Mapping required'
-                  }
-                  detail={
-                    mappingFile?.name ??
-                    (configureSide === 'back'
-                      ? 'Back design is fixed artwork'
-                      : 'JSON field coordinates')
-                  }
-                />
+                {configureSide === 'front' && (
+                  <Status
+                    configured={!!mappingFile}
+                    text={mappingFile ? 'Mapping selected' : 'Mapping required'}
+                    detail={mappingFile?.name ?? 'JSON field coordinates'}
+                  />
+                )}
               </div>
             </div>
             <label className="template-confirmation">
@@ -358,8 +352,9 @@ export function TemplateSettings() {
                 required
               />
               <span>
-                I confirm that this background and its field mapping, when
-                needed, have been approved.
+                {configureSide === 'front'
+                  ? 'I confirm that this background and its field mapping have been approved.'
+                  : 'I confirm that this back background has been approved.'}
               </span>
             </label>
             {error && (
