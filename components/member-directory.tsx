@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { Archive, Check, Loader2, Search, ShieldCheck, UserRoundCheck, UsersRound } from 'lucide-react';
 import { useData } from './data-provider';
 import { MemberForm } from './member-form';
@@ -18,6 +19,7 @@ import { Toaster, toast } from '@/components/ui/toast';
 type BusyAction = '' | 'add' | 'delete' | 'restore' | 'archive';
 
 export function MemberDirectory() {
+  const searchParams = useSearchParams();
   const { members, refresh, role } = useData();
   const [query, setQuery] = useState('');
   const [course, setCourse] = useState('');
@@ -25,8 +27,8 @@ export function MemberDirectory() {
   const [roleTeam, setRoleTeam] = useState('');
   const [status, setStatus] = useState('');
   const [selected, setSelected] = useState<string[]>([]);
-  const [addOpen, setAddOpen] = useState(false);
-  const [importing, setImporting] = useState(false);
+  const [addOpen, setAddOpen] = useState(() => searchParams.get('add') === '1');
+  const [importing, setImporting] = useState(() => searchParams.get('import') === '1');
   const [draft, setDraft] = useState({ ...blankMember });
   const [error, setError] = useState('');
   const [modalError, setModalError] = useState('');
