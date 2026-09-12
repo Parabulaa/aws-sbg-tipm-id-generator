@@ -297,5 +297,7 @@ test('public home → login → five-field import → officer review → generat
   await page.getByLabel('Side', { exact: true }).selectOption('back');
   await expect(page.getByLabel('Front field mapping JSON')).toHaveCount(0);
   await page.getByRole('button', { name: 'Sign out' }).click();
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByRole('dialog', { name: 'Log out of AWS SBG ID Generator?' })).toBeVisible();
+  await page.getByRole('button', { name: 'Log out', exact: true }).click();
+  await expect(page).toHaveURL(/\/login$/);
 });

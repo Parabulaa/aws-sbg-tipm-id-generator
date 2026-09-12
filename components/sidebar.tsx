@@ -20,6 +20,14 @@ import {
   SheetTitle,
   SheetDescription,
 } from '@/components/ui/sheet';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { useData } from './data-provider';
 import { errorText } from '@/lib/client';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
@@ -36,6 +44,19 @@ export function Sidebar({ collapsed = false, onToggle }: { collapsed?: boolean; 
   const [open, setOpen] = useState(false);
   const [error, setError] = useState('');
   const [signingOut, setSigningOut] = useState(false);
+  const [logoutOpen, setLogoutOpen] = useState(false);
+  async function signOut() {
+    setSigningOut(true);
+    setError('');
+    try {
+      const { error } = await getSupabaseBrowserClient().auth.signOut();
+      if (error) throw error;
+      window.location.assign('/login');
+    } catch (caught) {
+      setError(errorText(caught));
+      setSigningOut(false);
+    }
+  }
   function content(compact = collapsed) {
     return (
       <>
@@ -68,18 +89,7 @@ export function Sidebar({ collapsed = false, onToggle }: { collapsed?: boolean; 
               className={`btn ${compact ? 'size-10 px-0' : 'mt-2 w-full'}`}
               title="Sign out"
               disabled={signingOut}
-              onClick={async () => {
-                setSigningOut(true);
-                try {
-                  const { error } =
-                    await getSupabaseBrowserClient().auth.signOut();
-                  if (error) throw error;
-                  window.location.assign('/');
-                } catch (error) {
-                  setError(errorText(error));
-                  setSigningOut(false);
-                }
-              }}
+              onClick={() => setLogoutOpen(true)}
             >
               {signingOut ? <Loader2 className="size-4 animate-spin" /> : compact ? <LogOut className="size-4" /> : 'Sign out'}
             </button>
@@ -118,6 +128,25 @@ export function Sidebar({ collapsed = false, onToggle }: { collapsed?: boolean; 
           {content(false)}
         </SheetContent>
       </Sheet>
+      <Dialog open={logoutOpen} onOpenChange={(next) => { if (!signingOut) setLogoutOpen(next); }}>
+        <DialogContent className="member-dialog logout-dialog sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Log out of AWS SBG ID Generator?</DialogTitle>
+            <DialogDescription>
+              Your current session will end, and you will return to the officer login page.
+            </DialogDescription>
+          </DialogHeader>
+          {error && <p className="notice-error" role="alert">{error}</p>}
+          <DialogFooter className="logout-dialog-actions">
+            <button className="btn" type="button" disabled={signingOut} onClick={() => setLogoutOpen(false)}>
+              Stay signed in
+            </button>
+            <button className="btn-primary" type="button" disabled={signingOut} onClick={() => void signOut()}>
+              {signingOut ? <><Loader2 className="size-4 animate-spin" /> Logging out...</> : <><LogOut className="size-4" /> Log out</>}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

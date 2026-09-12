@@ -183,6 +183,13 @@ body {
 .member-dialog .btn { border-color: rgb(154 211 224 / .3); background: #181a33; color: #e0f2f5; }
 .member-dialog .btn:hover { background: #24264a; }
 .member-archive-dialog { max-height: min(90vh, 52rem); }
+.logout-dialog { overflow: hidden; }
+.logout-dialog [data-slot='dialog-header'] { padding: .35rem .25rem .55rem; }
+.logout-dialog [data-slot='dialog-title'] { font-size: 1.35rem; line-height: 1.25; }
+.logout-dialog [data-slot='dialog-description'] { max-width: 27rem; font-size: .9rem; line-height: 1.65; }
+.logout-dialog-actions { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+.logout-dialog-actions > button { width: 100%; min-height: 2.8rem; }
+@media (max-width: 480px) { .logout-dialog-actions { grid-template-columns: 1fr; } }
 [data-slot='dialog-overlay'] { background: rgb(0 0 0 / .62); backdrop-filter: blur(3px); }
 @media (prefers-reduced-motion: reduce) {
   .member-metric-card, .member-table tbody tr, .internal-app aside, .internal-app aside nav a,
