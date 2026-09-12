@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   Check, CheckCircle2, ChevronLeft, ChevronRight, Download, Eye,
-  FileDown, FileText, Image as ImageIcon, Info, Loader2, Palette,
+  FileDown, FileText, Image as ImageIcon, Loader2, Palette,
   RotateCcw, Save, Search, UserRound, Users,
 } from 'lucide-react';
 import { PDFDocument } from 'pdf-lib';
@@ -28,6 +28,7 @@ import { Toaster, toast } from '@/components/ui/toast';
 type BusyAction =
   | '' | 'save' | 'next' | 'confirm' | 'generate' | 'front'
   | 'back' | 'pdf' | 'print';
+type WorkspaceTab = 'information' | 'photo' | 'appearance';
 
 function CardHeading({
   icon, title, description, trailing,
@@ -129,6 +130,7 @@ function ReviewEditor({
   const [photoPreview, setPhotoPreview] = useState<string>();
   const [side, setSide] = useState<Side>('front');
   const [generation, setGeneration] = useState<Generation>();
+  const [workspaceTab, setWorkspaceTab] = useState<WorkspaceTab>('information');
   const dirty = JSON.stringify(member) !== JSON.stringify(saved);
   const latestGeneration = generation || generations.find((record) => record.member_id === member.id);
   const assignedMember = { ...member, color_override: null };
@@ -188,7 +190,8 @@ function ReviewEditor({
   }
 
   function focusFirstInvalid() {
-    const firstInput = document.querySelector<HTMLElement>('.generate-information-card input, .generate-information-card select');
+    setWorkspaceTab('information');
+    const firstInput = document.querySelector<HTMLElement>('.generate-member-workspace input, .generate-member-workspace select');
     firstInput?.focus();
     firstInput?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
@@ -199,7 +202,8 @@ function ReviewEditor({
       throw new Error(errors[0]);
     }
     if (!member.photo_path || photoPreview) {
-      document.querySelector<HTMLElement>('.generate-photo-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setWorkspaceTab('photo');
+      document.querySelector<HTMLElement>('.generate-member-workspace')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       throw new Error(photoPreview ? 'Apply the uploaded photo first.' : 'Upload a member photo first.');
     }
     const updated = await save();
@@ -275,10 +279,9 @@ function ReviewEditor({
     ? new Date(latestGeneration.generated_at).toLocaleString()
     : 'Not generated';
   const statusItems = [
-    ['Information Saved', !dirty],
-    ['Photo Adjusted', !!member.photo_path && !photoPreview],
-    ['Front Ready', !!latestGeneration?.front_path],
-    ['Back Ready', !!latestGeneration?.back_path],
+    ['Front PNG', !!latestGeneration?.front_path],
+    ['Back PNG', !!latestGeneration?.back_path],
+    ['Print PDF', !!latestGeneration?.pdf_path],
   ] as const;
 
   return (
@@ -342,71 +345,33 @@ function ReviewEditor({
           {error && <p role="alert" className="notice-error">{error}</p>}
         </section>
 
-        <section className="generate-card generate-information-card">
+        <section className="generate-card generate-member-workspace">
           <CardHeading
             icon={<UserRound className="size-4" />}
-            title="Member Information"
-            description="Member details used on the ID."
+            title="Member Workspace"
+            description="Manage member details, photo, and appearance settings."
             trailing={<StatusBadge status={dirty ? 'Draft' : member.status} />}
           />
-          <fieldset disabled={!!busy} className="generate-form-wrap">
-            <MemberForm value={member} onChange={(value) => setMember({ ...member, ...value })} />
-          </fieldset>
-          {!!errors.length && <p className="notice-error" role="alert">{errors.join('; ')}</p>}
-        </section>
-
-        <section className="generate-card generate-appearance-card">
-          <CardHeading icon={<Palette className="size-4" />} title="ID Appearance" description="Assigned team color is applied live." />
-          <div className="generate-color-row">
-            <div className="generate-color-label">
-              <span className="generate-color-swatch" style={{ backgroundColor: currentColor }} />
-              <span><strong>{assignedName}</strong><small>{currentColor.toUpperCase()}</small></span>
-            </div>
-            {member.membership_type === 'Officer' && (
-              <label className="generate-color-picker">
-                <span>Adjust</span>
-                <input
-                  type="color" value={member.color_override || assignedColor}
-                  aria-label="Temporarily adjust assigned team color"
-                  onChange={(event) => setMember({ ...member, color_override: event.target.value })}
-                />
-              </label>
-            )}
-            <button
-              className="btn generate-reset-color" type="button"
-              disabled={!member.color_override}
-              onClick={() => {
-                setMember({ ...member, color_override: null });
-                notify('Team color restored');
-              }}
-            >
-              <RotateCcw className="size-4" /> Reset to Assigned Team Color
-            </button>
+          <div className="generate-workspace-tabs" role="tablist" aria-label="Member workspace">
+            <button type="button" role="tab" aria-selected={workspaceTab === 'information'} onClick={() => setWorkspaceTab('information')}><FileText className="size-4" /> Information</button>
+            <button type="button" role="tab" aria-selected={workspaceTab === 'photo'} onClick={() => setWorkspaceTab('photo')}><ImageIcon className="size-4" /> Photo Adjustment</button>
+            <button type="button" role="tab" aria-selected={workspaceTab === 'appearance'} onClick={() => setWorkspaceTab('appearance')}><Palette className="size-4" /> Appearance</button>
+          </div>
+          <div className="generate-workspace-panel" role="tabpanel">
+            {workspaceTab === 'information' && <>
+              <fieldset disabled={!!busy} className="generate-form-wrap"><MemberForm value={member} onChange={(value) => setMember({ ...member, ...value })} /></fieldset>
+              {!!errors.length && <p className="notice-error" role="alert">{errors.join('; ')}</p>}
+            </>}
+            {workspaceTab === 'appearance' && <div className="generate-color-row">
+              <div className="generate-color-label"><span className="generate-color-swatch" style={{ backgroundColor: currentColor }} /><span><strong>{assignedName}</strong><small>{currentColor.toUpperCase()}</small></span></div>
+              {member.membership_type === 'Officer' && <label className="generate-color-picker"><span>Adjust</span><input type="color" value={member.color_override || assignedColor} aria-label="Temporarily adjust assigned team color" onChange={(event) => setMember({ ...member, color_override: event.target.value })} /></label>}
+              <button className="btn generate-reset-color" type="button" disabled={!member.color_override} onClick={() => { setMember({ ...member, color_override: null }); notify('Team color restored'); }}><RotateCcw className="size-4" /> Reset to Assigned Team Color</button>
+            </div>}
+            {workspaceTab === 'photo' && <div className="generate-photo-card"><PhotoEditor photoRegion={selectTemplate(templates, member, 'front')?.layout.photo} member={member} onCrop={(crop) => setMember({ ...member, photo_crop_data: crop })} onPreview={setPhotoPreview} onNotify={notify} onMember={(updated) => { setMember((current) => ({ ...current, photo_path: updated.photo_path, photo_crop_data: updated.photo_crop_data, revision: updated.revision, status: updated.status, updated_at: updated.updated_at })); setSaved(updated); void refresh().catch((caught) => setError(errorText(caught))); }} /></div>}
           </div>
         </section>
 
-        <section className="generate-card generate-photo-card">
-          <CardHeading icon={<ImageIcon className="size-4" />} title="Member Photo" description="Upload, crop, and position the member photo." />
-          <PhotoEditor
-            photoRegion={selectTemplate(templates, member, 'front')?.layout.photo}
-            member={member}
-            onCrop={(crop) => setMember({ ...member, photo_crop_data: crop })}
-            onPreview={setPhotoPreview}
-            onNotify={notify}
-            onMember={(updated) => {
-              setMember((current) => ({
-                ...current,
-                photo_path: updated.photo_path,
-                photo_crop_data: updated.photo_crop_data,
-                revision: updated.revision,
-                status: updated.status,
-                updated_at: updated.updated_at,
-              }));
-              setSaved(updated);
-              void refresh().catch((caught) => setError(errorText(caught)));
-            }}
-          />
-        </section>
+        <OutputSummary member={member} generatedAt={generatedAt} />
       </div>
 
       <div className="generate-right-column">
@@ -451,38 +416,29 @@ function ReviewEditor({
               <ActionLabel busy={busy === 'print'} busyText="Preparing..."><Eye className="size-4" /> Open Print Layout</ActionLabel>
             </button>
           </div>
-          <div className="generate-export-info-grid">
-            <div>
-              <h3><Info className="size-4" /> Export Information</h3>
-              {['1200 × 1950 px', 'High quality PNG export', '2-page PDF: Front and Back', 'File names use the member ID'].map((item) => (
-                <p key={item}><Check className="size-3.5" /> {item}</p>
-              ))}
-            </div>
-            <div>
-              <h3><CheckCircle2 className="size-4" /> Generation Status</h3>
-              {statusItems.map(([label, ready]) => (
-                <p key={label} className={ready ? 'is-ready' : ''}><CheckCircle2 className="size-3.5" /> {label}</p>
-              ))}
-            </div>
+          <div className="generate-export-status">
+            <h3>Generation Status</h3>
+            <div>{statusItems.map(([label, ready]) => (
+              <p key={label} className={ready ? 'is-ready' : ''}><CheckCircle2 className="size-5" /><span>{label}<small>{ready ? 'Ready' : 'Not generated'}</small></span></p>
+            ))}</div>
           </div>
         </section>
 
-        <section className="generate-card generate-summary-card">
-          <CardHeading
-            icon={<FileText className="size-4" />}
-            title="Output Summary"
-            trailing={<Link className="btn generate-view-files" href="/generated-ids">View Files</Link>}
-          />
-          <dl>
-            <div><dt>Front file name</dt><dd><input aria-label="Front file name" readOnly title={`${safeFilename(member)}_front.png`} value={`${safeFilename(member)}_front.png`} /></dd></div>
-            <div><dt>Back file name</dt><dd><input aria-label="Back file name" readOnly title={`${safeFilename(member)}_back.png`} value={`${safeFilename(member)}_back.png`} /></dd></div>
-            <div><dt>Member ID</dt><dd><input aria-label="Member ID" readOnly title={member.aws_sbg_id} value={member.aws_sbg_id} /></dd></div>
-            <div><dt>Validity</dt><dd>{member.valid_until || 'Not issued'}</dd></div>
-            <div><dt>Date Generated</dt><dd>{generatedAt}</dd></div>
-            <div><dt>Current status</dt><dd className="generate-current-status"><span />{member.status}</dd></div>
-          </dl>
-        </section>
       </div>
     </div>
   );
+}
+
+function OutputSummary({ member, generatedAt }: { member: MemberRecord; generatedAt: string }) {
+  return <section className="generate-card generate-summary-card">
+    <CardHeading icon={<FileText className="size-4" />} title="Output Summary" description="Summary of the generated ID files and details." trailing={<Link className="btn generate-view-files" href="/generated-ids">View Files</Link>} />
+    <dl>
+      <div><dt>Front file name</dt><dd><input aria-label="Front file name" readOnly title={`${safeFilename(member)}_front.png`} value={`${safeFilename(member)}_front.png`} /></dd></div>
+      <div><dt>Validity</dt><dd>{member.valid_until || 'Not issued'}</dd></div>
+      <div><dt>Back file name</dt><dd><input aria-label="Back file name" readOnly title={`${safeFilename(member)}_back.png`} value={`${safeFilename(member)}_back.png`} /></dd></div>
+      <div><dt>Date Generated</dt><dd>{generatedAt}</dd></div>
+      <div><dt>Member ID</dt><dd><input aria-label="Member ID" readOnly title={member.aws_sbg_id} value={member.aws_sbg_id} /></dd></div>
+      <div><dt>Current status</dt><dd className="generate-current-status"><span />{member.status}</dd></div>
+    </dl>
+  </section>;
 }
