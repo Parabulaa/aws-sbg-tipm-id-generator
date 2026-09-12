@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Eye, Loader2, Search } from 'lucide-react';
 import type { MemberRecord, ColorSettings } from '@/lib/domain';
 import type { Template, Side } from '@/lib/templates';
@@ -29,6 +29,18 @@ export function IDPreview({
   const [zoomed, setZoomed] = useState(false);
   const template = selectTemplate(templates, member, side);
 
+  const syncZoomCanvas = useCallback((target: HTMLCanvasElement | null) => {
+    if (!target || !canvas.current) return;
+    target.width = 1200;
+    target.height = 1950;
+    target.getContext('2d')?.drawImage(canvas.current, 0, 0);
+  }, []);
+
+  const attachZoomCanvas = useCallback((target: HTMLCanvasElement | null) => {
+    zoomCanvas.current = target;
+    syncZoomCanvas(target);
+  }, [syncZoomCanvas]);
+
   useEffect(() => {
     let cancelled = false;
     if (!template || !canvas.current) return;
@@ -54,11 +66,9 @@ export function IDPreview({
   }, [member, template, colors, photoOverride]);
 
   useEffect(() => {
-    if (!zoomed || !canvas.current || !zoomCanvas.current) return;
-    zoomCanvas.current.width = 1200;
-    zoomCanvas.current.height = 1950;
-    zoomCanvas.current.getContext('2d')!.drawImage(canvas.current, 0, 0);
-  }, [zoomed, side, loading]);
+    if (!zoomed) return;
+    syncZoomCanvas(zoomCanvas.current);
+  }, [zoomed, side, loading, syncZoomCanvas]);
 
   return (
     <section className="generate-card generate-preview-card">
@@ -112,7 +122,7 @@ export function IDPreview({
             <DialogDescription>{side === 'front' ? 'Front' : 'Back'} · 1200 × 1950 px</DialogDescription>
           </DialogHeader>
           <canvas
-            ref={zoomCanvas} width={1200} height={1950}
+            ref={attachZoomCanvas} width={1200} height={1950}
             aria-label={`Zoomed ${side} ID preview for ${member.aws_sbg_id}`}
             className="mx-auto max-h-[76vh] max-w-full object-contain"
           />

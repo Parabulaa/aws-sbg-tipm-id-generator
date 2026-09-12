@@ -324,9 +324,16 @@ body {
 .generate-segmented button { position: relative; z-index: 1; min-height: 1.85rem; color: #8ea8b0; font-size: .75rem; font-weight: 700; transition: color 180ms ease; }
 .generate-segmented button[aria-pressed='true'] { color: #041015; }
 .generate-preview-stage { display: flex; min-height: 23.25rem; flex-direction: column; align-items: center; justify-content: center; gap: .45rem; padding: .55rem .8rem .25rem; }
-.generate-preview-button { position: relative; cursor: zoom-in; border-radius: .45rem; transition: transform 180ms ease, box-shadow 180ms ease; }
+.generate-preview-button {
+  position: relative;
+  display: block;
+  width: min(100%, 14rem);
+  cursor: zoom-in;
+  border-radius: .45rem;
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
 .generate-preview-button:hover { transform: translateY(-1px); box-shadow: 0 0 0 2px rgb(34 211 238 / .38), 0 12px 32px rgb(0 0 0 / .3); }
-.generate-id-canvas { display: block; width: min(100%, 14rem); aspect-ratio: 1200/1950; background: white; object-fit: contain; transition: opacity 180ms ease; }
+.generate-id-canvas { display: block; width: 100%; aspect-ratio: 1200/1950; background: white; object-fit: contain; transition: opacity 180ms ease; }
 .generate-preview-zoom { position: absolute; right: .55rem; bottom: .55rem; display: inline-flex; width: 2.5rem; height: 2.5rem; align-items: center; justify-content: center; border: 1px solid rgb(255 255 255 / .65); border-radius: 999px; background: rgb(6 19 29 / .82); color: white; opacity: .85; transition: opacity 180ms ease, transform 180ms ease; }
 .generate-preview-button:hover .generate-preview-zoom { opacity: 1; transform: scale(1.05); }
 .generate-preview-loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: .4rem; background: rgb(4 13 14 / .55); color: white; font-size: .75rem; }
