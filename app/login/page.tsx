@@ -112,9 +112,8 @@ export default function LoginPage() {
             <span>It&apos;s always day one.</span>
           </div>
           <nav aria-label="Footer links">
-            <a href="mailto:privacy@tip.edu.ph">Privacy</a>
-            <a href="mailto:support@tip.edu.ph">Support</a>
-            <a href="mailto:contact@tip.edu.ph">Contact</a>
+            <a href="https://www.facebook.com/awssbgtip" target="_blank" rel="noreferrer">Facebook</a>
+            <a href="mailto:awslc.mnl@tip.edu.ph">Contact</a>
           </nav>
         </footer>
       </div>
