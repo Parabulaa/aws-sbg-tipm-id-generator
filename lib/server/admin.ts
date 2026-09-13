@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { AppError } from './errors';
+import { normalizeOfficerProfile } from './supabase';
 import type { OfficerProfile, SupabaseBindings } from './supabase';
 
 export type OfficerAccount = OfficerProfile & {
@@ -52,17 +53,20 @@ export async function listOfficers(client: SupabaseClient) {
       'id,email,display_name,role,is_active,must_change_password,password_changed_at,created_at,updated_at',
     )
     .order('display_name');
-  if (!preferred.error) return (preferred.data ?? []) as OfficerAccount[];
+  if (!preferred.error)
+    return ((preferred.data ?? []) as OfficerAccount[]).map(normalizeOfficerProfile);
   const fallback = await client
     .from('officer_profiles')
     .select('id,email,display_name,role,is_active,created_at,updated_at')
     .order('display_name');
   if (fallback.error) throw new AppError('Officer accounts could not be loaded.');
-  return (fallback.data ?? []).map((account) => ({
-    ...account,
-    must_change_password: false,
-    password_changed_at: null,
-  })) as OfficerAccount[];
+  return (fallback.data ?? []).map((account) =>
+    normalizeOfficerProfile({
+      ...account,
+      must_change_password: false,
+      password_changed_at: null,
+    } as OfficerAccount),
+  ) as OfficerAccount[];
 }
 
 async function preventNoActiveAdmin(
@@ -142,27 +146,47 @@ export async function updateOfficerAccount(
     throw new AppError('Enter a valid officer email.');
   await preventNoActiveAdmin(client, officerId, nextRole, isActive);
 
-  const admin = serviceClient(env);
-  const updatedAuth = await admin.auth.admin.updateUserById(officerId, { email });
-  if (updatedAuth.error)
-    throw new AppError(updatedAuth.error.message || 'Officer auth account could not be updated.', 400);
-
-  const { data, error } = await admin
+  const current = await client
     .from('officer_profiles')
-    .update({
-      display_name: displayName,
-      email,
-      role: nextRole,
-      is_active: isActive,
-      must_change_password: mustChangePassword,
-      updated_at: new Date().toISOString(),
-    })
+    .select('email')
     .eq('id', officerId)
-    .select('id,email,display_name,role,is_active,must_change_password,password_changed_at,created_at,updated_at')
+    .maybeSingle<{ email: string }>();
+  if (current.error || !current.data)
+    throw new AppError('Officer account could not be loaded.');
+  if (current.data.email.toLowerCase() !== email) {
+    const admin = serviceClient(env);
+    const updatedAuth = await admin.auth.admin.updateUserById(officerId, { email });
+    if (updatedAuth.error)
+      throw new AppError(updatedAuth.error.message || 'Officer auth account could not be updated.', 400);
+  }
+
+  const changes: Record<string, unknown> = {
+    display_name: displayName,
+    email,
+    role: nextRole,
+    is_active: isActive,
+    updated_at: new Date().toISOString(),
+  };
+  const passwordFields = await client
+    .from('officer_profiles')
+    .select('must_change_password')
+    .eq('id', officerId)
+    .maybeSingle<{ must_change_password: boolean }>();
+  if (!passwordFields.error) changes.must_change_password = mustChangePassword;
+
+  const { data, error } = await client
+    .from('officer_profiles')
+    .update(changes)
+    .eq('id', officerId)
+    .select('id,email,display_name,role,is_active,created_at,updated_at')
     .single();
   if (error) throw new AppError('Officer access could not be updated.');
   await logAdminActivity(client, actor, 'Updated officer access', 'Success', officerId);
-  return data as OfficerAccount;
+  return normalizeOfficerProfile({
+    ...data,
+    must_change_password: !passwordFields.error ? mustChangePassword : false,
+    password_changed_at: null,
+  } as OfficerAccount);
 }
 
 export async function changeOwnPassword(
@@ -199,7 +223,17 @@ export async function listAdminActivity(client: SupabaseClient) {
     .select('id,user_id,user_name,user_role,action,status,target_user_id,created_at')
     .order('created_at', { ascending: false })
     .limit(250);
-  if (error) throw new AppError('Activity logs could not be loaded.');
+  if (error) {
+    const message = `${error.message ?? ''} ${error.code ?? ''}`;
+    if (
+      message.includes('activity_logs') ||
+      message.includes('does not exist') ||
+      message.includes('PGRST') ||
+      message.includes('42P01')
+    )
+      return [];
+    throw new AppError('Activity logs could not be loaded.');
+  }
   return (data ?? []) as AdminActivityLog[];
 }
 

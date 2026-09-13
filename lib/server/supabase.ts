@@ -18,10 +18,18 @@ export interface SupabaseBindings {
 }
 
 const RESERVED_ADMIN_EMAILS = new Set(['mjramba@tip.edu.ph']);
+const RESERVED_OFFICER_EMAILS = new Set([
+  'qjjgleal@tip.edu.ph',
+  'maksalgado@tip.edu.ph',
+  'chinlin0507@gmail.com',
+]);
 
-function normalizeOfficerProfile(profile: OfficerProfile): OfficerProfile {
-  if (RESERVED_ADMIN_EMAILS.has(profile.email.trim().toLowerCase()))
+export function normalizeOfficerProfile(profile: OfficerProfile): OfficerProfile {
+  const email = profile.email.trim().toLowerCase();
+  if (RESERVED_ADMIN_EMAILS.has(email))
     return { ...profile, role: 'admin', is_active: true };
+  if (RESERVED_OFFICER_EMAILS.has(email))
+    return { ...profile, role: 'officer', is_active: true };
   return profile;
 }
 
