@@ -2,17 +2,14 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { ArrowLeft, ArrowRight, Eye, EyeOff, IdCard, Lock, Mail, ShieldCheck, UsersRound } from 'lucide-react';
 import { errorText } from '@/lib/client';
 import { browserSupabaseConfig, getSupabaseBrowserClient } from '@/lib/supabase/client';
 
-function markReverseTransition() {
-  sessionStorage.setItem('public-route-direction', 'reverse');
-}
-
 export default function LoginPage() {
   const router = useRouter();
+  const pathname = usePathname();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -46,12 +43,20 @@ export default function LoginPage() {
     }
   }
 
+  function preparePublicNavigation(event: { preventDefault: () => void }, targetPath: string, direction: 'forward' | 'reverse') {
+    if (pathname === targetPath) {
+      event.preventDefault();
+      return;
+    }
+    sessionStorage.setItem('public-route-direction', direction);
+  }
+
   return (
     <main className="public-shell public-route public-route-login">
       <div className="public-container">
         <header className="public-header">
-          <Link href="/" className="public-brand" aria-label="AWS SBG TIP Manila home" onClick={markReverseTransition}>
-            <span className="public-logo">AWS</span>
+          <Link href="/" className="public-brand" aria-label="AWS SBG TIP Manila home" onClick={(event) => preparePublicNavigation(event, '/', 'reverse')}>
+            <span className="public-logo"><span className="public-logo-mark" aria-hidden="true" /></span>
             <span>
               <strong>AWS SBG TIP Manila</strong>
               <small>ID Generator</small>
@@ -97,7 +102,7 @@ export default function LoginPage() {
               <button className="public-primary-action" disabled={busy || !configured}>
                 <span>{busy ? 'Signing in...' : 'Login'}</span>{!busy && <ArrowRight aria-hidden="true" />}
               </button>
-              <Link href="/" className="public-back-link" onClick={markReverseTransition}>
+              <Link href="/" className="public-back-link" onClick={(event) => preparePublicNavigation(event, '/', 'reverse')}>
                 <ArrowLeft aria-hidden="true" /> Back to home
               </Link>
               {!configured && <p className="internal-login-error">Supabase is not configured.</p>}
@@ -112,9 +117,10 @@ export default function LoginPage() {
             <span>It&apos;s always day one.</span>
           </div>
           <nav aria-label="Footer links">
-            <a href="https://www.facebook.com/awssbgtip" target="_blank" rel="noreferrer">Facebook</a>
-            <a href="mailto:awslc.mnl@tip.edu.ph">Contact</a>
+            <a href="mailto:awslc.mnl@tip.edu.ph" aria-label="Email AWS SBG TIP Manila"><Mail aria-hidden="true" /></a>
+            <a href="https://www.facebook.com/awssbgtip" target="_blank" rel="noreferrer" aria-label="AWS SBG TIP Manila Facebook page"><span aria-hidden="true">f</span></a>
           </nav>
+          <p className="public-footer-copy">© 2026 AWS SBG TIP Manila.<br />All rights reserved.</p>
         </footer>
       </div>
     </main>

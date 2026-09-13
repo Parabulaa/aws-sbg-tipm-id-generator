@@ -1753,6 +1753,13 @@ body {
   height: 3rem;
   font-size: 1.05rem;
 }
+.public-logo-mark {
+  display: block;
+  width: 1.85rem;
+  height: 1.85rem;
+  background: linear-gradient(135deg, #35d8e8, #5b8def);
+  mask: url('/assets/microchip-logo.svg') center / contain no-repeat;
+}
 .public-brand strong,
 .public-brand small {
   display: block;
@@ -2024,16 +2031,20 @@ body {
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: repeat(4, 1.9rem);
+  grid-template-columns: repeat(8, .95rem);
   justify-content: center;
   gap: .65rem;
   margin-top: .85rem;
 }
 .public-slots i {
+  grid-column: span 2;
   width: 1.9rem;
   height: 1.9rem;
   border: 1px solid rgb(53 216 232 / .55);
   border-radius: .45rem;
+}
+.public-slots i:nth-child(5) {
+  grid-column-start: 2;
 }
 .public-id-back small {
   max-width: 15rem;
@@ -2160,10 +2171,10 @@ body {
   height: 1rem;
 }
 .public-footer {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   min-height: 5rem;
   align-items: center;
-  justify-content: space-between;
   gap: 2rem;
   border-top: 1px solid rgb(53 216 232 / .18);
   color: #8eb6c8;
@@ -2182,15 +2193,36 @@ body {
 }
 .public-footer nav {
   display: flex;
-  gap: 1.8rem;
+  gap: .75rem;
+  justify-self: center;
 }
 .public-footer a {
+  display: grid;
+  width: 3rem;
+  height: 3rem;
+  place-items: center;
+  border: 1px solid rgb(53 216 232 / .24);
+  border-radius: 0;
+  background: rgb(4 13 14 / .24);
   color: #9dd1df;
-  font-size: .82rem;
+  font-size: 1rem;
+  font-weight: 850;
   transition: color 180ms ease;
 }
 .public-footer a:hover {
   color: #53eafd;
+}
+.public-footer a svg {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+.public-footer-copy {
+  justify-self: end;
+  color: #9fc2cf;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: .72rem;
+  line-height: 1.6;
+  text-align: right;
 }
 @keyframes public-slide-in {
   from {
@@ -2260,11 +2292,16 @@ body {
   }
   .public-footer {
     align-items: flex-start;
-    flex-direction: column;
+    grid-template-columns: 1fr;
     padding: 1.2rem 0;
   }
   .public-footer nav {
+    justify-self: start;
     flex-wrap: wrap;
+  }
+  .public-footer-copy {
+    justify-self: start;
+    text-align: left;
   }
 }
 @media (prefers-reduced-motion: reduce), (pointer: coarse) {

@@ -1,17 +1,25 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { KeyboardEvent, PointerEvent, useRef, useState } from 'react';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Mail } from 'lucide-react';
 
 function markForwardTransition() {
   sessionStorage.setItem('public-route-direction', 'forward');
 }
 
 export default function Home() {
+  const pathname = usePathname();
   const cardRef = useRef<HTMLButtonElement>(null);
   const rafRef = useRef<number | null>(null);
   const [flipped, setFlipped] = useState(false);
+
+  function guardSameRoute(event: { preventDefault: () => void }, targetPath: string) {
+    if (pathname !== targetPath) return false;
+    event.preventDefault();
+    return true;
+  }
 
   function handlePointerMove(event: PointerEvent<HTMLButtonElement>) {
     if (!cardRef.current || window.matchMedia('(pointer: coarse)').matches) return;
@@ -45,8 +53,8 @@ export default function Home() {
     <main className="public-shell public-route public-route-home">
       <div className="public-container">
         <header className="public-header">
-          <Link href="/" className="public-brand" aria-label="AWS SBG TIP Manila home">
-            <span className="public-logo">AWS</span>
+          <Link href="/" className="public-brand" aria-label="AWS SBG TIP Manila home" onClick={(event) => { guardSameRoute(event, '/'); }}>
+            <span className="public-logo"><span className="public-logo-mark" aria-hidden="true" /></span>
             <span>
               <strong>AWS SBG TIP Manila</strong>
               <small>ID Generator</small>
@@ -115,9 +123,10 @@ export default function Home() {
             <span>It&apos;s always day one.</span>
           </div>
           <nav aria-label="Footer links">
-            <a href="https://www.facebook.com/awssbgtip" target="_blank" rel="noreferrer">Facebook</a>
-            <a href="mailto:awslc.mnl@tip.edu.ph">Contact</a>
+            <a href="mailto:awslc.mnl@tip.edu.ph" aria-label="Email AWS SBG TIP Manila"><Mail aria-hidden="true" /></a>
+            <a href="https://www.facebook.com/awssbgtip" target="_blank" rel="noreferrer" aria-label="AWS SBG TIP Manila Facebook page"><span aria-hidden="true">f</span></a>
           </nav>
+          <p className="public-footer-copy">© 2026 AWS SBG TIP Manila.<br />All rights reserved.</p>
         </footer>
       </div>
     </main>
