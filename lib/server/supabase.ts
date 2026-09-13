@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { AppError } from './errors';
 
 export type OfficerRole = 'admin' | 'officer';
@@ -23,6 +23,40 @@ function normalizeOfficerProfile(profile: OfficerProfile): OfficerProfile {
   if (RESERVED_ADMIN_EMAILS.has(profile.email.trim().toLowerCase()))
     return { ...profile, role: 'admin', is_active: true };
   return profile;
+}
+
+async function loadOfficerProfile(
+  client: SupabaseClient,
+  userId: string,
+) {
+  const preferred = await client
+    .from('officer_profiles')
+    .select(
+      'id,email,display_name,role,is_active,must_change_password,password_changed_at',
+    )
+    .eq('id', userId)
+    .maybeSingle<OfficerProfile>();
+  if (!preferred.error) return preferred;
+  const fallback = await client
+    .from('officer_profiles')
+    .select('id,email,display_name,role,is_active')
+    .eq('id', userId)
+    .maybeSingle<
+      Omit<OfficerProfile, 'must_change_password' | 'password_changed_at'>
+    >();
+  if (fallback.error || !fallback.data)
+    return {
+      data: null,
+      error: fallback.error ?? preferred.error,
+    };
+  return {
+    data: {
+      ...fallback.data,
+      must_change_password: false,
+      password_changed_at: null,
+    } satisfies OfficerProfile,
+    error: null,
+  };
 }
 
 export function bearerToken(request: Request) {
@@ -64,11 +98,10 @@ export async function requireOfficer(
   const { data: authData, error: authError } = await client.auth.getUser(token);
   if (authError || !authData.user)
     throw new AppError('Your session has expired. Sign in again.', 401);
-  const { data: profile, error: profileError } = await client
-    .from('officer_profiles')
-    .select('id,email,display_name,role,is_active,must_change_password,password_changed_at')
-    .eq('id', authData.user.id)
-    .maybeSingle<OfficerProfile>();
+  const { data: profile, error: profileError } = await loadOfficerProfile(
+    client,
+    authData.user.id,
+  );
   if (profileError)
     throw new AppError('Officer access could not be verified.', 403);
   if (!profile)

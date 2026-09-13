@@ -46,14 +46,23 @@ export function serviceClient(env: SupabaseBindings) {
 }
 
 export async function listOfficers(client: SupabaseClient) {
-  const { data, error } = await client
+  const preferred = await client
     .from('officer_profiles')
     .select(
       'id,email,display_name,role,is_active,must_change_password,password_changed_at,created_at,updated_at',
     )
     .order('display_name');
-  if (error) throw new AppError('Officer accounts could not be loaded.');
-  return (data ?? []) as OfficerAccount[];
+  if (!preferred.error) return (preferred.data ?? []) as OfficerAccount[];
+  const fallback = await client
+    .from('officer_profiles')
+    .select('id,email,display_name,role,is_active,created_at,updated_at')
+    .order('display_name');
+  if (fallback.error) throw new AppError('Officer accounts could not be loaded.');
+  return (fallback.data ?? []).map((account) => ({
+    ...account,
+    must_change_password: false,
+    password_changed_at: null,
+  })) as OfficerAccount[];
 }
 
 async function preventNoActiveAdmin(
