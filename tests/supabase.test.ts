@@ -10,7 +10,7 @@ const sql = readdirSync(directory)
   .map((name) => readFileSync(join(directory, name), 'utf8'))
   .join('\n');
 const allocationSql = readFileSync(
-  join(directory, '20260913000100_reusable_membership_ids.sql'),
+  join(directory, '20260913000200_active_membership_slots.sql'),
   'utf8',
 );
 
@@ -43,8 +43,11 @@ void test('member creation uses the lowest free current-record slot under a tran
   assert.match(allocationSql, /generate_series\(1, 19\)/i);
   assert.match(allocationSql, /generate_series\(20, 9999\)/i);
   assert.match(allocationSql, /where not exists[\s\S]*public\.members/i);
+  assert.match(allocationSql, /where archived_at is null/i);
   assert.match(allocationSql, /lpad\(next_sequence::text, 4, '0'\)/i);
-  assert.match(allocationSql, /members_membership_slot_unique/i);
+  assert.match(allocationSql, /members_membership_slot_current_unique/i);
+  assert.match(allocationSql, /where archived_at is null/i);
+  assert.match(allocationSql, /members_aws_sbg_id_current_unique/i);
   assert.doesNotMatch(allocationSql, /id_counters|max\s*\(/i);
 });
 
@@ -62,7 +65,12 @@ function allocateLowest(occupied: number[], count = 1) {
 
 void test('member slots reserve 0001-0019 and fill the lowest gaps', () => {
   assert.deepEqual(allocateLowest([], 1), [20]);
+  assert.deepEqual(
+    allocateLowest([], 77),
+    Array.from({ length: 77 }, (_, index) => index + 20),
+  );
   assert.deepEqual(allocateLowest([20, 21, 22, 24], 1), [23]);
+  assert.deepEqual(allocateLowest([20, 22, 25], 4), [21, 23, 24, 26]);
   assert.deepEqual(
     allocateLowest(
       Array.from({ length: 81 }, (_, index) => index + 20).filter(
