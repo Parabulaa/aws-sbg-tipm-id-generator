@@ -1828,7 +1828,7 @@ body {
 /* Generated ID archive */
 .generated-archive { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; margin-top: 1rem; color: #dceef2; }
 .generated-archive.has-details { grid-template-columns: minmax(42rem, 1fr) minmax(18rem, 22rem); }
-.generated-main-column { min-width: 0; }
+.generated-main-column { display: flex; min-width: 0; height: 100%; flex-direction: column; }
 .generated-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; }
 .generated-metric { display: flex; min-height: 7.2rem; align-items: center; gap: 1rem; border: 1px solid rgb(72 176 204 / .3); border-radius: .75rem; background: linear-gradient(135deg, rgb(6 27 40 / .94), rgb(10 25 43 / .9)); padding: 1rem 1.35rem; box-shadow: inset 0 1px 0 rgb(255 255 255 / .025); }
 .generated-metric > span { display: grid; width: 4rem; height: 4rem; place-items: center; flex: none; border-radius: 999px; }
@@ -1848,8 +1848,8 @@ body {
 .internal-app .generated-toolbar select { height: 3rem; min-height: 3rem; }
 .generated-zip-button { display: flex; min-height: 3rem; align-items: center; justify-content: center; gap: .55rem; border-radius: .6rem; }
 .generated-notice { margin-top: .75rem; border: 1px solid rgb(34 211 238 / .2); border-radius: .6rem; background: rgb(6 42 54 / .7); padding: .65rem .8rem; color: #a9dae2; font-size: .75rem; }
-.generated-table-card { margin-top: .9rem; overflow: hidden; border: 1px solid rgb(72 176 204 / .3); border-radius: .8rem; background: rgb(5 21 33 / .88); }
-.generated-table-scroll { overflow-x: auto; }
+.generated-table-card { display: flex; min-height: 0; flex: 1; flex-direction: column; margin-top: .9rem; overflow: hidden; border: 1px solid rgb(72 176 204 / .3); border-radius: .8rem; background: rgb(5 21 33 / .88); }
+.generated-table-scroll { flex: 1; overflow-x: auto; }
 .generated-table { width: 100%; min-width: 48rem; border-collapse: collapse; table-layout: auto; font-size: .72rem; }
 .generated-table th { height: 3rem; background: #101f35; padding: 0 .8rem; color: #a7c2d4; font-size: .68rem; font-weight: 650; text-align: left; }
 .generated-table th:first-child, .generated-table td:first-child { width: 3rem; text-align: center; }
