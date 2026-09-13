@@ -10,8 +10,10 @@ type Log = {
   user_role: 'admin' | 'officer';
   action: string;
   status: string;
+  target_name?: string | null;
   created_at: string;
 };
+type Notice = { type: 'success' | 'error'; message: string } | null;
 
 export function AdminActivityLogs() {
   const { role } = useData();
@@ -20,15 +22,17 @@ export function AdminActivityLogs() {
   const [action, setAction] = useState('');
   const [range, setRange] = useState('');
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
+  const [notice, setNotice] = useState<Notice>(null);
+  const [now, setNow] = useState(() => Date.now());
 
   async function load() {
     setBusy(true);
-    setError('');
+    setNotice(null);
     try {
       setLogs(await api<Log[]>('activity-logs'));
+      setNow(Date.now());
     } catch (caught) {
-      setError(errorText(caught));
+      setNotice({ type: 'error', message: errorText(caught) });
     } finally {
       setBusy(false);
     }
@@ -39,22 +43,28 @@ export function AdminActivityLogs() {
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    const cutoff = range === 'today' ? new Date().toDateString() : '';
+    const today = new Date().toDateString();
     return logs.filter((log) => {
       const matchesSearch = !needle || `${log.user_name} ${log.action}`.toLowerCase().includes(needle);
       const matchesAction = !action || log.action === action;
-      const matchesRange = !cutoff || new Date(log.created_at).toDateString() === cutoff;
+      const created = new Date(log.created_at);
+      const age = now - created.getTime();
+      const matchesRange =
+        !range ||
+        (range === 'today' && created.toDateString() === today) ||
+        (range === '7' && age <= 7 * 24 * 60 * 60 * 1000) ||
+        (range === '30' && age <= 30 * 24 * 60 * 60 * 1000);
       return matchesSearch && matchesAction && matchesRange;
     });
-  }, [action, logs, query, range]);
+  }, [action, logs, now, query, range]);
   const actions = Array.from(new Set(logs.map((log) => log.action))).sort();
   const today = logs.filter((log) => new Date(log.created_at).toDateString() === new Date().toDateString()).length;
   const adminActions = logs.filter((log) => log.user_role === 'admin').length;
   const officerActions = logs.filter((log) => log.user_role === 'officer').length;
 
   function exportCsv() {
-    const header = ['Date / Time', 'User', 'Role', 'Action', 'Status'];
-    const rows = filtered.map((log) => [new Date(log.created_at).toLocaleString(), log.user_name, log.user_role, log.action, log.status]);
+    const header = ['Date / Time', 'User', 'Role', 'Action', 'Status', 'Target'];
+    const rows = filtered.map((log) => [new Date(log.created_at).toLocaleString(), log.user_name, log.user_role, log.action, log.status, log.target_name ?? '']);
     const csv = [header, ...rows].map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(',')).join('\n');
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
     const anchor = document.createElement('a');
@@ -62,18 +72,26 @@ export function AdminActivityLogs() {
     anchor.download = 'aws-sbg-activity-logs.csv';
     anchor.click();
     URL.revokeObjectURL(url);
+    setNotice({ type: 'success', message: 'Activity logs exported.' });
   }
 
   if (role !== 'admin')
     return <p className="notice-error mt-4">Administrator rights are required for Activity Logs.</p>;
+  const securityLogs = logs
+    .filter((log) =>
+      /admin|role|account|password|failed|deactivated|activated/i.test(
+        log.action,
+      ),
+    )
+    .slice(0, 4);
 
   return (
-    <div className="admin-page">
+    <div className="admin-page activity-logs-page">
+      <AdminNotice notice={notice} />
       <div className="admin-top-action">
         <button className="btn" onClick={exportCsv} disabled={!filtered.length}><Download className="size-4" /> Export Logs</button>
         <button className="btn-primary" onClick={() => void load()} disabled={busy}><RefreshCw className={`size-4 ${busy ? 'animate-spin' : ''}`} /> Refresh</button>
       </div>
-      {error && <p className="notice-error" role="alert">{error}</p>}
       <section className="admin-metrics four">
         <Metric icon={<FileText />} label="Total Logs" value={logs.length} />
         <Metric icon={<Clock3 />} label="Today's Activity" value={today} />
@@ -95,6 +113,8 @@ export function AdminActivityLogs() {
             <select value={range} onChange={(event) => setRange(event.target.value)}>
               <option value="">All Time</option>
               <option value="today">Today</option>
+              <option value="7">Last 7 Days</option>
+              <option value="30">Last 30 Days</option>
             </select>
           </div>
         </header>
@@ -117,14 +137,14 @@ export function AdminActivityLogs() {
       <article className="admin-panel security-events">
         <header><h2>Recent Security Events</h2></header>
         <div>
-          {logs.slice(0, 4).map((log) => (
+          {securityLogs.map((log) => (
             <section key={log.id}>
               <strong>{log.action}</strong>
               <p>{log.user_name}</p>
               <small>{new Date(log.created_at).toLocaleString()}</small>
             </section>
           ))}
-          {!logs.length && <p className="text-sm text-slate-500">No security events recorded yet.</p>}
+          {!securityLogs.length && <p className="text-sm text-slate-500">No security events recorded yet.</p>}
         </div>
       </article>
     </div>
@@ -133,4 +153,14 @@ export function AdminActivityLogs() {
 
 function Metric({ icon, label, value, tone = 'cyan' }: { icon: React.ReactNode; label: string; value: number; tone?: string }) {
   return <article className={`admin-metric ${tone}`}><span>{icon}</span><div><p>{label}</p><strong>{value}</strong></div></article>;
+}
+
+function AdminNotice({ notice }: { notice: Notice }) {
+  if (!notice) return null;
+  return (
+    <output className={`app-toast-${notice.type}`}>
+      <strong>{notice.type === 'success' ? 'Done' : 'Action needed'}</strong>
+      <span>{notice.message}</span>
+    </output>
+  );
 }

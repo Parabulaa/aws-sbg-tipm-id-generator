@@ -23,6 +23,7 @@ type OfficerAccount = {
   password_changed_at: string | null;
 };
 type FormSubmit = { preventDefault(): void; currentTarget: HTMLFormElement };
+type Notice = { type: 'success' | 'error'; message: string } | null;
 const formText = (form: FormData, key: string) => {
   const value = form.get(key);
   return typeof value === 'string' ? value : '';
@@ -35,7 +36,7 @@ export function AdminAccessManagement() {
   const [query, setQuery] = useState('');
   const [filterRole, setFilterRole] = useState('');
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
+  const [notice, setNotice] = useState<Notice>(null);
   const [addOpen, setAddOpen] = useState(false);
 
   const selected = accounts.find((account) => account.id === selectedId) ?? accounts[0];
@@ -53,13 +54,13 @@ export function AdminAccessManagement() {
 
   async function load() {
     setBusy(true);
-    setError('');
+    setNotice(null);
     try {
       const data = await api<OfficerAccount[]>('officers');
       setAccounts(data);
       setSelectedId((current) => current || data[0]?.id || '');
     } catch (caught) {
-      setError(errorText(caught));
+      setNotice({ type: 'error', message: errorText(caught) });
     } finally {
       setBusy(false);
     }
@@ -71,7 +72,7 @@ export function AdminAccessManagement() {
 
   async function save(account: OfficerAccount) {
     setBusy(true);
-    setError('');
+    setNotice(null);
     try {
       const saved = await api<OfficerAccount>(`officers/${account.id}`, {
         method: 'PUT',
@@ -79,8 +80,9 @@ export function AdminAccessManagement() {
       });
       setAccounts((items) => items.map((item) => item.id === saved.id ? saved : item));
       setSelectedId(saved.id);
+      setNotice({ type: 'success', message: 'Account updated successfully.' });
     } catch (caught) {
-      setError(errorText(caught));
+      setNotice({ type: 'error', message: errorText(caught) });
     } finally {
       setBusy(false);
     }
@@ -90,7 +92,7 @@ export function AdminAccessManagement() {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     setBusy(true);
-    setError('');
+    setNotice(null);
     try {
       const created = await api<OfficerAccount>('officers', {
         method: 'POST',
@@ -103,8 +105,9 @@ export function AdminAccessManagement() {
       setAccounts((items) => [...items, created].sort((a, b) => a.display_name.localeCompare(b.display_name)));
       setSelectedId(created.id);
       setAddOpen(false);
+      setNotice({ type: 'success', message: 'Officer account created successfully.' });
     } catch (caught) {
-      setError(errorText(caught));
+      setNotice({ type: 'error', message: errorText(caught) });
     } finally {
       setBusy(false);
     }
@@ -115,7 +118,7 @@ export function AdminAccessManagement() {
 
   return (
     <div className="admin-page">
-      {error && <p className="notice-error" role="alert">{error}</p>}
+      <AdminNotice notice={notice} />
       <div className="admin-top-action">
         <button className="btn-primary" onClick={() => setAddOpen(true)}><Plus className="size-4" /> Add Officer</button>
       </div>
@@ -197,7 +200,7 @@ function SelectedUser({ account, busy, onSave }: { account?: OfficerAccount; bus
       <label className="field">Role<select value={draft.role} onChange={(e) => setDraft({ ...draft, role: e.target.value as OfficerRole })}><option value="admin">Admin</option><option value="officer">Officer</option></select></label>
       <Toggle label="Active Account" checked={draft.is_active} onChange={(checked) => setDraft({ ...draft, is_active: checked })} />
       <Toggle label="Require Password Change" checked={draft.must_change_password} onChange={(checked) => setDraft({ ...draft, must_change_password: checked })} />
-      <button className="btn-primary" disabled={busy} onClick={() => void onSave(draft)}>{busy ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />} Save Changes</button>
+      <button className="btn-primary" disabled={busy} onClick={() => void onSave(draft)}>{busy ? <><Loader2 className="size-4 animate-spin" /> Saving...</> : <><Save className="size-4" /> Save Changes</>}</button>
     </aside>
   );
 }
@@ -210,4 +213,14 @@ function Status({ active }: { active: boolean }) {
 }
 function Toggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: (checked: boolean) => void }) {
   return <label className="admin-toggle"><span>{label}</span><input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} /><i /></label>;
+}
+
+function AdminNotice({ notice }: { notice: Notice }) {
+  if (!notice) return null;
+  return (
+    <output className={`app-toast-${notice.type}`}>
+      <strong>{notice.type === 'success' ? 'Saved' : 'Action needed'}</strong>
+      <span>{notice.message}</span>
+    </output>
+  );
 }

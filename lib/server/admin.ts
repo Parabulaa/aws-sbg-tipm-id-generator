@@ -16,6 +16,8 @@ export interface AdminActivityLog {
   action: string;
   status: string;
   target_user_id: string | null;
+  target_name?: string | null;
+  details?: Record<string, unknown>;
   created_at: string;
 }
 
@@ -148,9 +150,14 @@ export async function updateOfficerAccount(
 
   const current = await client
     .from('officer_profiles')
-    .select('email')
+    .select('email,display_name,role,is_active')
     .eq('id', officerId)
-    .maybeSingle<{ email: string }>();
+    .maybeSingle<{
+      email: string;
+      display_name: string;
+      role: 'admin' | 'officer';
+      is_active: boolean;
+    }>();
   if (current.error || !current.data)
     throw new AppError('Officer account could not be loaded.');
   if (current.data.email.toLowerCase() !== email) {
@@ -180,13 +187,80 @@ export async function updateOfficerAccount(
     .eq('id', officerId)
     .select('id,email,display_name,role,is_active,created_at,updated_at')
     .single();
-  if (error) throw new AppError('Officer access could not be updated.');
-  await logAdminActivity(client, actor, 'Updated officer access', 'Success', officerId);
+  if (error) {
+    console.error('Admin operation failed:', {
+      operation: 'update_officer_profile',
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+    });
+    await logAdminActivity(
+      client,
+      actor,
+      `Failed to update ${displayName}'s account`,
+      'Failed',
+      officerId,
+      displayName,
+    );
+    throw new AppError(
+      error.code === '42501'
+        ? 'Supabase rejected this update. Confirm your admin role migration is applied.'
+        : 'Officer access could not be updated.',
+    );
+  }
+  const actions = describeOfficerChanges(current.data, {
+    display_name: displayName,
+    role: nextRole,
+    is_active: isActive,
+    previous_must_change_password: !passwordFields.error
+      ? passwordFields.data?.must_change_password ?? false
+      : false,
+    must_change_password: mustChangePassword,
+  });
+  await Promise.all(
+    actions.map((message) =>
+      logAdminActivity(client, actor, message, 'Success', officerId, displayName),
+    ),
+  );
   return normalizeOfficerProfile({
     ...data,
     must_change_password: !passwordFields.error ? mustChangePassword : false,
     password_changed_at: null,
   } as OfficerAccount);
+}
+
+function displayRole(value: 'admin' | 'officer') {
+  return value === 'admin' ? 'Admin' : 'Officer';
+}
+
+function describeOfficerChanges(
+  previous: {
+    display_name: string;
+    role: 'admin' | 'officer';
+    is_active: boolean;
+  },
+  next: {
+    display_name: string;
+    role: 'admin' | 'officer';
+    is_active: boolean;
+    previous_must_change_password: boolean;
+    must_change_password: boolean;
+  },
+) {
+  const name = next.display_name || previous.display_name || 'User';
+  const messages: string[] = [];
+  if (previous.display_name !== next.display_name)
+    messages.push(`Changed ${previous.display_name || 'user'}'s display name to ${next.display_name}`);
+  if (previous.role !== next.role)
+    messages.push(`Changed ${name}'s role from ${displayRole(previous.role)} to ${displayRole(next.role)}`);
+  if (previous.is_active !== next.is_active)
+    messages.push(`${next.is_active ? 'Activated' : 'Deactivated'} ${name}'s account`);
+  if (next.previous_must_change_password !== next.must_change_password)
+    messages.push(
+      `${next.must_change_password ? 'Required' : 'Cleared requirement for'} ${name} to change password`,
+    );
+  return messages.length ? messages : [`Updated ${name}'s account`];
 }
 
 export async function changeOwnPassword(
@@ -220,7 +294,7 @@ export async function changeOwnPassword(
 export async function listAdminActivity(client: SupabaseClient) {
   const { data, error } = await client
     .from('activity_logs')
-    .select('id,user_id,user_name,user_role,action,status,target_user_id,created_at')
+    .select('id,user_id,user_name,user_role,action,status,target_user_id,target_name,details,created_at')
     .order('created_at', { ascending: false })
     .limit(250);
   if (error) {
@@ -243,6 +317,8 @@ export async function logAdminActivity(
   action: string,
   status = 'Success',
   targetUserId: string | null = null,
+  targetName: string | null = null,
+  details: Record<string, unknown> = {},
 ) {
   const { error } = await client.from('activity_logs').insert({
     user_id: actor.id,
@@ -251,6 +327,14 @@ export async function logAdminActivity(
     action,
     status,
     target_user_id: targetUserId,
+    target_name: targetName,
+    details,
   });
-  if (error) console.warn('Admin activity could not be logged', error);
+  if (error)
+    console.warn('Admin activity could not be logged', {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+    });
 }
