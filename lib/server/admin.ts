@@ -296,23 +296,73 @@ export async function changeOwnPassword(
 }
 
 export async function listAdminActivity(client: SupabaseClient) {
-  const { data, error } = await client
+  const adminLogs = await client
     .from('activity_logs')
     .select('id,user_id,user_name,user_role,action,status,target_user_id,target_name,details,created_at')
     .order('created_at', { ascending: false })
     .limit(250);
-  if (error) {
-    const message = `${error.message ?? ''} ${error.code ?? ''}`;
+  let adminRows: AdminActivityLog[] = [];
+  if (adminLogs.error) {
+    const message = `${adminLogs.error.message ?? ''} ${adminLogs.error.code ?? ''}`;
     if (
       message.includes('activity_logs') ||
       message.includes('does not exist') ||
       message.includes('PGRST') ||
       message.includes('42P01')
     )
-      return [];
+      adminRows = [];
+    else throw new AppError('Activity logs could not be loaded.');
+  } else adminRows = (adminLogs.data ?? []) as AdminActivityLog[];
+
+  const activities = await client
+    .from('activities')
+    .select('id,action,metadata,created_at,actor_id,member_id')
+    .order('created_at', { ascending: false })
+    .limit(250);
+  let rawActivityRows = activities.data ?? [];
+  if (activities.error) {
+    const message = `${activities.error.message ?? ''} ${activities.error.code ?? ''}`;
+    if (
+      message.includes('activities') ||
+      message.includes('does not exist') ||
+      message.includes('PGRST') ||
+      message.includes('42P01')
+    )
+      rawActivityRows = [];
+    else
     throw new AppError('Activity logs could not be loaded.');
   }
-  return (data ?? []) as AdminActivityLog[];
+
+  const activityRows: AdminActivityLog[] = rawActivityRows.map((row) => {
+    const metadata =
+      row.metadata && typeof row.metadata === 'object' && !Array.isArray(row.metadata)
+        ? (row.metadata as Record<string, unknown>)
+        : {};
+    const message =
+      typeof metadata.message === 'string' && metadata.message.trim()
+        ? metadata.message.trim()
+        : String(row.action).replaceAll('_', ' ');
+    return {
+      id: `activity-${row.id as string}`,
+      user_id: (row.actor_id as string | null) ?? null,
+      user_name: 'Officer',
+      user_role: 'officer',
+      action: message,
+      status: 'Success',
+      target_user_id: null,
+      target_name: (row.member_id as string | null) ?? null,
+      details: metadata,
+      created_at: row.created_at as string,
+    };
+  });
+
+  return [...adminRows, ...activityRows]
+    .sort(
+      (left, right) =>
+        new Date(right.created_at).getTime() -
+        new Date(left.created_at).getTime(),
+    )
+    .slice(0, 250);
 }
 
 export async function logAdminActivity(
