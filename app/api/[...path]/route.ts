@@ -62,7 +62,6 @@ async function handle(request: Request) {
       if (request.method === 'GET' && !path[1]) {
         const includeArchived =
           new URL(request.url).searchParams.get('archived') === 'true';
-        if (includeArchived) assertOfficerRole(auth.profile, 'admin');
         return json(await getMembers(auth.client, includeArchived));
       }
       if (request.method === 'POST' && (!path[1] || path[1] === 'import')) {
@@ -93,7 +92,6 @@ async function handle(request: Request) {
           request,
         );
       if (path[2] === 'restore' && request.method === 'POST') {
-        assertOfficerRole(auth.profile, 'admin');
         return await restoreMember(
           auth.client,
           auth.profile.id,

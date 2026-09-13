@@ -45,7 +45,6 @@ export function MemberDirectory() {
   }, []);
 
   const loadArchived = useCallback(async () => {
-    if (role !== 'admin') return;
     try {
       const rows = await api<MemberRecord[]>('members?archived=true');
       setArchived(rows.filter((member) => member.archived_at));
@@ -54,7 +53,7 @@ export function MemberDirectory() {
       setError(message);
       notify(message, 'error');
     }
-  }, [role, notify]);
+  }, [notify]);
   useEffect(() => { queueMicrotask(() => { void loadArchived(); }); }, [loadArchived]);
 
   const courses = useMemo(() => [...new Set(members.map(member => member.program).filter(Boolean))].sort(), [members]);
@@ -88,7 +87,7 @@ export function MemberDirectory() {
     try {
       await api('members', { method: 'POST', body: JSON.stringify({ members: [draft] }) });
       await refresh(); setDraft({ ...blankMember }); setAddOpen(false); notify('Member added');
-    } catch (caught) { setModalError(errorText(caught)); }
+    } catch (caught) { const message = errorText(caught); setModalError(message); notify(message, 'error'); }
     finally { setBusy(''); }
   }
 
@@ -140,7 +139,7 @@ export function MemberDirectory() {
       <div className="member-action-grid">
         <button className="btn-primary member-action-button" onClick={() => setImporting(true)}><Upload className="size-4" /> Import XLSX</button>
         <button className="btn member-action-button" onClick={() => { setModalError(''); setAddOpen(true); }}><UserRoundPlus className="size-4" /> Add Member</button>
-        {role === 'admin' && <button className="btn member-action-button" onClick={async () => { setArchivedOpen(true); await loadArchived(); }}><Archive className="size-4" /> Show Archived</button>}
+        <button className="btn member-action-button" onClick={async () => { setArchivedOpen(true); await loadArchived(); }}><Archive className="size-4" /> Show Archived</button>
         <button className="btn member-action-button" onClick={clearFilters}><FilterX className="size-4" /> Clear Filters</button>
         <GenerationControls selectedIds={selected} filteredIds={visible.map(member => member.id)} buttonClassName="member-action-button" onNotify={notify} />
         <button className="btn-danger member-action-button" disabled={!selected.length || !!busy || role !== 'admin'} onClick={() => { setModalError(''); setDeleteOpen(true); }}><Trash2 className="size-4" /> Delete Selected</button>

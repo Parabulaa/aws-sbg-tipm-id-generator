@@ -38,6 +38,7 @@ export function AdminAccessManagement() {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<Notice>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [addMustChangePassword, setAddMustChangePassword] = useState(true);
 
   const selected = accounts.find((account) => account.id === selectedId) ?? accounts[0];
   const filtered = useMemo(() => {
@@ -100,11 +101,13 @@ export function AdminAccessManagement() {
           display_name: formText(form, 'display_name'),
           email: formText(form, 'email'),
           password: formText(form, 'password'),
+          must_change_password: addMustChangePassword,
         }),
       });
       setAccounts((items) => [...items, created].sort((a, b) => a.display_name.localeCompare(b.display_name)));
       setSelectedId(created.id);
       setAddOpen(false);
+      setAddMustChangePassword(true);
       setNotice({ type: 'success', message: 'Officer account created successfully.' });
     } catch (caught) {
       setNotice({ type: 'error', message: errorText(caught) });
@@ -174,6 +177,11 @@ export function AdminAccessManagement() {
               <label className="field">Display name<input name="display_name" required maxLength={120} /></label>
               <label className="field">Email<input name="email" type="email" required /></label>
               <label className="field">Temporary password<input name="password" type="password" required minLength={8} /></label>
+              <Toggle
+                label="Require password change on first login"
+                checked={addMustChangePassword}
+                onChange={setAddMustChangePassword}
+              />
             </div>
             <DialogFooter>
               <button type="button" className="btn" onClick={() => setAddOpen(false)}>Cancel</button>

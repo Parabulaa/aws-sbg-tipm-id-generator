@@ -98,6 +98,7 @@ export async function createOfficerAccount(
   const displayName = text(body.display_name, 'Display name', 120);
   const email = text(body.email, 'Email', 180).toLowerCase();
   const password = text(body.password, 'Temporary password', 120);
+  const mustChangePassword = body.must_change_password !== false;
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
     throw new AppError('Enter a valid officer email.');
   if (password.length < 8)
@@ -121,7 +122,7 @@ export async function createOfficerAccount(
       display_name: displayName,
       role: 'officer',
       is_active: true,
-      must_change_password: true,
+      must_change_password: mustChangePassword,
       updated_at: new Date().toISOString(),
     })
     .select('id,email,display_name,role,is_active,must_change_password,password_changed_at,created_at,updated_at')
