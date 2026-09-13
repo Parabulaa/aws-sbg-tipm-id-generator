@@ -3,8 +3,12 @@ import { createClient } from '@supabase/supabase-js';
 let browserClient: ReturnType<typeof createClient> | undefined;
 
 export function browserSupabaseConfig() {
-  const url = import.meta.env.VITE_SUPABASE_URL?.trim();
-  const publishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim();
+  const url =
+    import.meta.env.VITE_SUPABASE_URL?.trim() ||
+    import.meta.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const publishableKey =
+    import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim() ||
+    import.meta.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim();
   return { url, publishableKey, configured: Boolean(url && publishableKey) };
 }
 

@@ -36,7 +36,9 @@ function role(value: unknown) {
 }
 
 export function serviceClient(env: SupabaseBindings) {
-  const url = env.SUPABASE_URL?.trim();
+  const url =
+    env.SUPABASE_URL?.trim() ||
+    env.NEXT_PUBLIC_SUPABASE_URL?.trim();
   const key =
     env.SUPABASE_SECRET_KEY?.trim() ||
     env.SUPABASE_SERVICE_ROLE_KEY?.trim() ||

@@ -7,13 +7,18 @@ export { AppError } from './errors';
 export interface Bindings {
   SUPABASE_URL?: string;
   SUPABASE_PUBLISHABLE_KEY?: string;
+  NEXT_PUBLIC_SUPABASE_URL?: string;
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?: string;
   SUPABASE_SECRET_KEY?: string;
   SUPABASE_SERVICE_ROLE_KEY?: string;
   SUPABASE_SERVICE_KEY?: string;
 }
 
 export async function bindings(): Promise<Bindings> {
-  if (typeof process !== 'undefined' && process.env.SUPABASE_URL)
+  if (
+    typeof process !== 'undefined' &&
+    (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL)
+  )
     return process.env as unknown as Bindings;
   const cloudflareModule = 'cloudflare:workers';
   const { env } = (await import(/* @vite-ignore */ cloudflareModule)) as {

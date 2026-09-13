@@ -14,6 +14,8 @@ export interface OfficerProfile {
 export interface SupabaseBindings {
   SUPABASE_URL?: string;
   SUPABASE_PUBLISHABLE_KEY?: string;
+  NEXT_PUBLIC_SUPABASE_URL?: string;
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?: string;
   SUPABASE_SECRET_KEY?: string;
   SUPABASE_SERVICE_ROLE_KEY?: string;
   SUPABASE_SERVICE_KEY?: string;
@@ -85,8 +87,12 @@ export async function requireOfficer(
   env: SupabaseBindings,
   required?: OfficerRole,
 ) {
-  const url = env.SUPABASE_URL?.trim();
-  const key = env.SUPABASE_PUBLISHABLE_KEY?.trim();
+  const url =
+    env.SUPABASE_URL?.trim() ||
+    env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const key =
+    env.SUPABASE_PUBLISHABLE_KEY?.trim() ||
+    env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim();
   if (!url || !key)
     throw new AppError(
       'Supabase officer access is not configured for this installation.',
