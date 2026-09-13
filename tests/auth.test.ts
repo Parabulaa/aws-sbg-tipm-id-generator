@@ -10,6 +10,8 @@ const profile: OfficerProfile = {
   display_name: 'Officer Test',
   role: 'officer',
   is_active: true,
+  must_change_password: false,
+  password_changed_at: null,
 };
 
 void test('bearer authentication input and same-origin writes fail closed', () => {

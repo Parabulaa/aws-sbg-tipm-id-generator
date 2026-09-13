@@ -23,6 +23,14 @@ import {
   saveColors,
 } from '@/lib/server/configuration';
 import { generate, getGenerations } from '@/lib/server/generation';
+import {
+  changeOwnPassword,
+  createOfficerAccount,
+  listAdminActivity,
+  listOfficers,
+  logAdminActivity,
+  updateOfficerAccount,
+} from '@/lib/server/admin';
 async function handle(request: Request) {
   try {
     sameOrigin(request);
@@ -40,7 +48,12 @@ async function handle(request: Request) {
         email: auth.profile.email,
         role: auth.profile.role,
         id: auth.profile.id,
+        must_change_password: auth.profile.must_change_password,
       });
+    if (path[0] === 'account' && path[1] === 'password' && request.method === 'PUT')
+      return json(await changeOwnPassword(auth.client, env, auth.profile, request));
+    if (auth.profile.must_change_password)
+      throw new AppError('Change your temporary password before continuing.', 428);
     if (path[0] === 'members') {
       if (request.method === 'DELETE' && !path[1]) {
         assertOfficerRole(auth.profile, 'admin');
@@ -54,12 +67,14 @@ async function handle(request: Request) {
       }
       if (request.method === 'POST' && (!path[1] || path[1] === 'import')) {
         const data = (await request.json()) as { members: unknown };
-        return await importMembers(
+        const response = await importMembers(
           auth.client,
           auth.profile.id,
           data.members,
           !path[1],
         );
+        await logAdminActivity(auth.client, auth.profile, 'Imported members');
+        return response;
       }
       if (path[2] === 'photo' && ['POST', 'DELETE'].includes(request.method))
         return await photo(auth.client, auth.profile.id, path[1], request);
@@ -110,48 +125,24 @@ async function handle(request: Request) {
           : json({ error: 'Method not allowed' }, 405);
     if (path[0] === 'officers') {
       assertOfficerRole(auth.profile, 'admin');
-      if (request.method === 'GET') {
-        const { data, error } = await auth.client
-          .from('officer_profiles')
-          .select('id,email,display_name,role,is_active')
-          .order('email');
-        if (error) throw new AppError('Officer access could not be loaded.');
-        return json(data);
-      }
-      if (request.method === 'PUT' && path[1]) {
-        const body = (await request.json()) as {
-          display_name?: unknown;
-          role?: unknown;
-          is_active?: unknown;
-        };
-        if (
-          typeof body.display_name !== 'string' ||
-          body.display_name.trim().length > 120 ||
-          !['admin', 'officer'].includes(String(body.role)) ||
-          typeof body.is_active !== 'boolean'
-        )
-          throw new AppError('Invalid officer access settings.');
-        if (path[1] === auth.profile.id && !body.is_active)
-          throw new AppError('You cannot deactivate your own account.');
-        const { data, error } = await auth.client
-          .from('officer_profiles')
-          .update({
-            display_name: body.display_name.trim(),
-            role: body.role,
-            is_active: body.is_active,
-          })
-          .eq('id', path[1])
-          .select('id,email,display_name,role,is_active')
-          .single();
-        if (error) throw new AppError('Officer access could not be updated.');
-        return json(data);
-      }
+      if (request.method === 'GET') return json(await listOfficers(auth.client));
+      if (request.method === 'POST')
+        return json(await createOfficerAccount(auth.client, env, auth.profile, request));
+      if (request.method === 'PUT' && path[1])
+        return json(await updateOfficerAccount(auth.client, env, auth.profile, path[1], request));
+    }
+    if (path[0] === 'activity-logs') {
+      assertOfficerRole(auth.profile, 'admin');
+      if (request.method === 'GET') return json(await listAdminActivity(auth.client));
     }
     if (path[0] === 'activity' && request.method === 'GET')
       return json(await getActivity(auth.client));
     if (path[0] === 'generations') {
-      if (request.method === 'POST')
-        return await generate(auth.client, auth.profile.id, actor, request);
+      if (request.method === 'POST') {
+        const response = await generate(auth.client, auth.profile.id, actor, request);
+        await logAdminActivity(auth.client, auth.profile, 'Generated ID');
+        return response;
+      }
       if (request.method === 'GET')
         return json(await getGenerations(auth.client));
     }

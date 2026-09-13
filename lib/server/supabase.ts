@@ -8,6 +8,8 @@ export interface OfficerProfile {
   display_name: string;
   role: OfficerRole;
   is_active: boolean;
+  must_change_password: boolean;
+  password_changed_at: string | null;
 }
 export interface SupabaseBindings {
   SUPABASE_URL?: string;
@@ -56,7 +58,7 @@ export async function requireOfficer(
     throw new AppError('Your session has expired. Sign in again.', 401);
   const { data: profile, error: profileError } = await client
     .from('officer_profiles')
-    .select('id,email,display_name,role,is_active')
+    .select('id,email,display_name,role,is_active,must_change_password,password_changed_at')
     .eq('id', authData.user.id)
     .maybeSingle<OfficerProfile>();
   if (profileError)

@@ -11,7 +11,9 @@ import {
   LogOut,
   PanelLeftClose,
   PanelLeftOpen,
+  ShieldCheck,
   Sparkles,
+  Clock3,
   Users,
 } from 'lucide-react';
 import {
@@ -37,6 +39,10 @@ const navigation = [
   { label: 'Members', href: '/members', icon: Users },
   { label: 'Templates', href: '/templates', icon: FolderCog },
   { label: 'Generated IDs', href: '/generated-ids', icon: FileBadge2 },
+];
+const adminNavigation = [
+  { label: 'Access Management', href: '/admin/access-management', icon: ShieldCheck },
+  { label: 'Activity Logs', href: '/admin/activity-logs', icon: Clock3 },
 ];
 export function Sidebar({ collapsed = false, onToggle }: { collapsed?: boolean; onToggle?: () => void }) {
   const pathname = usePathname();
@@ -79,6 +85,28 @@ export function Sidebar({ collapsed = false, onToggle }: { collapsed?: boolean; 
             </Link>
           ))}
         </nav>
+        {role === 'admin' && (
+          <nav className="mt-6 space-y-1.5" aria-label="Admin navigation">
+            {!compact && (
+              <p className="px-1 pb-2 text-[0.65rem] font-bold uppercase tracking-[0.18em] text-cyan-100/70">
+                Admin
+              </p>
+            )}
+            {adminNavigation.map(({ label, href, icon: Icon }) => (
+              <Link
+                key={href}
+                href={href}
+                onClick={() => setOpen(false)}
+                aria-current={pathname === href ? 'page' : undefined}
+                title={compact ? label : undefined}
+                className={`flex min-h-10 items-center rounded-lg border px-3 text-sm font-semibold transition-colors ${compact ? 'justify-center' : 'gap-3'} ${pathname === href ? 'border-cyan-300/45 bg-[#0e4b56] text-cyan-100 shadow-[inset_3px_0_0_#22d3ee]' : 'border-transparent text-slate-300 hover:border-slate-600 hover:bg-slate-800'}`}
+              >
+                <Icon className="size-[18px] shrink-0" />
+                {!compact && label}
+              </Link>
+            ))}
+          </nav>
+        )}
         <div className="mt-auto border-t border-slate-200 pt-4">
           <div className={compact ? 'text-center' : 'rounded-lg border border-slate-700 bg-slate-900 p-3'}>
             {!compact && <>

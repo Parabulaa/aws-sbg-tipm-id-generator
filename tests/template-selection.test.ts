@@ -18,7 +18,7 @@ void test('officer positions select their own approved design, including technol
   }
 });
 
-test('approved static templates resolve locally without changing unknown uploads', () => {
+void test('approved static templates resolve locally without changing unknown uploads', () => {
   assert.equal(
     localTemplateAsset('id-templates/member/front/e9c5d981-2b66-4df4-9a9a-76cbfad591bb.png'),
     '/assets/id/member/front.png',

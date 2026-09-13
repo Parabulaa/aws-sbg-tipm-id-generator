@@ -25,6 +25,9 @@ interface Data {
   templates: Template[];
   user: string;
   role: 'admin' | 'officer';
+  email: string;
+  id: string;
+  mustChangePassword: boolean;
   loading: boolean;
   refresh: () => Promise<void>;
 }
@@ -37,6 +40,9 @@ const emptyData: Omit<Data, 'refresh'> = {
   templates: [],
   user: 'Officer',
   role: 'officer',
+  email: '',
+  id: '',
+  mustChangePassword: false,
   loading: true,
 };
 export function useData() {
@@ -47,7 +53,8 @@ export function useData() {
 export function DataProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const isPublic = pathname === '/' || pathname === '/login';
+  const isPublic =
+    pathname === '/' || pathname === '/login' || pathname === '/change-password';
   const [data, setData] = useState<Omit<Data, 'refresh'>>(emptyData);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -56,7 +63,23 @@ export function DataProvider({ children }: { children: ReactNode }) {
       const session = await api<{
         user: string;
         role: 'admin' | 'officer';
+        email: string;
+        id: string;
+        must_change_password: boolean;
       }>('session');
+      if (session.must_change_password && pathname !== '/change-password') {
+        router.replace('/change-password');
+        setData({
+          ...emptyData,
+          user: session.user,
+          role: session.role,
+          email: session.email,
+          id: session.id,
+          mustChangePassword: true,
+          loading: false,
+        });
+        return;
+      }
       const results = await Promise.allSettled([
         api<MemberRecord[]>('members'),
         api<ColorSettings>('colors'),
@@ -76,6 +99,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
         templates: templatesResult.status === 'fulfilled' ? templatesResult.value : [],
         user: session.user,
         role: session.role,
+        email: session.email,
+        id: session.id,
+        mustChangePassword: session.must_change_password,
         loading: false,
       });
       setError(firstError ? errorText(firstError) : '');
@@ -88,7 +114,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [router]);
+  }, [pathname, router]);
   useEffect(() => {
     if (isPublic) return;
     queueMicrotask(() => {
