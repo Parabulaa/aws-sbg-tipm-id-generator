@@ -1741,9 +1741,9 @@ body {
 .public-card-logo {
   display: grid;
   place-items: center;
-  border: 1px solid rgb(53 216 232 / .32);
+  border: 1px solid rgb(53 216 232 / .38);
   border-radius: .45rem;
-  background: linear-gradient(145deg, rgb(0 177 200 / .45), rgb(12 28 54 / .72));
+  background: linear-gradient(145deg, rgb(0 113 130 / .48), rgb(13 40 67 / .78));
   color: #f8fafc;
   font-weight: 850;
   box-shadow: inset 0 1px 0 rgb(255 255 255 / .08);
@@ -1755,8 +1755,8 @@ body {
 }
 .public-logo-mark {
   display: block;
-  width: 1.85rem;
-  height: 1.85rem;
+  width: 2.25rem;
+  height: 2.25rem;
   background: linear-gradient(135deg, #35d8e8, #5b8def);
   mask: url('/assets/microchip-logo.svg') center / contain no-repeat;
 }

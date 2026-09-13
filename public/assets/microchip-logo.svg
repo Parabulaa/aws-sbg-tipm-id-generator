@@ -6,5 +6,5 @@
       <stop offset="1" stop-color="#5B8DEF"/>
     </linearGradient>
   </defs>
-  <path fill="url(#chipGradient)" d="M23 4h6v10h6V4h6v10h5a4 4 0 0 1 4 4v5h10v6H50v6h10v6H50v5a4 4 0 0 1-4 4h-5v10h-6V50h-6v10h-6V50h-5a4 4 0 0 1-4-4v-5H4v-6h10v-6H4v-6h10v-5a4 4 0 0 1 4-4h5V4Zm-1 18v20h20V22H22Z"/>
+  <path fill="url(#chipGradient)" d="M25 4h6v10h4V4h6v10h5a4 4 0 0 1 4 4v5h10v6H50v4h10v6H50v5a4 4 0 0 1-4 4h-5v12h-6V48h-4v12h-6V48h-5a4 4 0 0 1-4-4v-5H4v-6h12v-4H4v-6h12v-5a4 4 0 0 1 4-4h5V4Zm-1 18v18h18V22H24Z"/>
 </svg>
