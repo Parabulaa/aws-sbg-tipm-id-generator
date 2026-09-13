@@ -99,7 +99,7 @@ test('public home → login → five-field import → officer review → generat
       members = rows.map((row, index) => ({
         ...row,
         id: `00000000-0000-4000-8000-${String(index + 2).padStart(12, '0')}`,
-        aws_sbg_id: `AWSSBG-TIPM-26${String(index + 1).padStart(3, '0')}`,
+        aws_sbg_id: `AWSSBG-TIPM-26${String(index + 20).padStart(4, '0')}`,
         photo_path: null,
         photo_crop_data: { x: 0.5, y: 0.5, zoom: 1 },
         color_override: null,
@@ -257,7 +257,7 @@ test('public home → login → five-field import → officer review → generat
   await expect(page.getByLabel('Full Name', { exact: true })).toHaveValue(
     'JAMES LEBRON',
   );
-  const frontCanvas = page.getByLabel('front ID preview for AWSSBG-TIPM-26001');
+  const frontCanvas = page.getByLabel('front ID preview for AWSSBG-TIPM-260020');
   await expect
     .poll(() =>
       frontCanvas.evaluate(
@@ -299,7 +299,7 @@ test('public home → login → five-field import → officer review → generat
     page.getByText('ID files generated and saved in history.'),
   ).toBeVisible();
   await page.getByRole('link', { name: 'Generated IDs' }).click();
-  await expect(page.getByText('AWSSBG-TIPM-26001')).toBeVisible();
+  await expect(page.getByText('AWSSBG-TIPM-260020')).toBeVisible();
   await expect(page.getByText('Test Admin', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Preview Front' }).click();
   const savedPreview = page.getByAltText(

@@ -9,6 +9,10 @@ const sql = readdirSync(directory)
   .sort()
   .map((name) => readFileSync(join(directory, name), 'utf8'))
   .join('\n');
+const allocationSql = readFileSync(
+  join(directory, '20260913000100_reusable_membership_ids.sql'),
+  'utf8',
+);
 
 void test('Supabase schema enables RLS and keeps application buckets private', () => {
   for (const table of [
@@ -33,16 +37,46 @@ void test('Supabase schema enables RLS and keeps application buckets private', (
   assert.match(sql, /storage_template_admin_insert/);
 });
 
-void test('member creation allocates IDs while holding the yearly counter lock', () => {
-  assert.match(sql, /function public\.create_members/i);
-  assert.match(
-    sql,
-    /from public\.id_counters where scope = year_scope for update/i,
+void test('member creation uses the lowest free current-record slot under a transaction lock', () => {
+  assert.match(allocationSql, /function public\.create_members/i);
+  assert.match(allocationSql, /pg_advisory_xact_lock/i);
+  assert.match(allocationSql, /generate_series\(1, 19\)/i);
+  assert.match(allocationSql, /generate_series\(20, 9999\)/i);
+  assert.match(allocationSql, /where not exists[\s\S]*public\.members/i);
+  assert.match(allocationSql, /lpad\(next_sequence::text, 4, '0'\)/i);
+  assert.match(allocationSql, /members_membership_slot_unique/i);
+  assert.doesNotMatch(allocationSql, /id_counters|max\s*\(/i);
+});
+
+function allocateLowest(occupied: number[], count = 1) {
+  const used = new Set(occupied);
+  const allocated: number[] = [];
+  for (let index = 0; index < count; index++) {
+    let candidate = 20;
+    while (used.has(candidate)) candidate++;
+    used.add(candidate);
+    allocated.push(candidate);
+  }
+  return allocated;
+}
+
+void test('member slots reserve 0001-0019 and fill the lowest gaps', () => {
+  assert.deepEqual(allocateLowest([], 1), [20]);
+  assert.deepEqual(allocateLowest([20, 21, 22, 24], 1), [23]);
+  assert.deepEqual(
+    allocateLowest(
+      Array.from({ length: 81 }, (_, index) => index + 20).filter(
+        (value) => value !== 55,
+      ),
+      1,
+    ),
+    [55],
   );
-  assert.match(sql, /lpad\(\(first_value \+ offset_value\)::text, 3, '0'\)/i);
-  assert.match(sql, /AWSSBG-TIPM/i);
-  assert.match(sql, /jsonb_array_length\(member_rows\)/i);
-  assert.match(sql, /aws_sbg_id text unique not null/i);
+  assert.deepEqual(
+    allocateLowest([], 200),
+    Array.from({ length: 200 }, (_, index) => index + 20),
+  );
+  assert.ok(allocateLowest([], 200).every((value) => value >= 20));
 });
 
 void test('generation and archive permissions are enforced below the UI', () => {

@@ -70,7 +70,7 @@ void test('database NULL officer fields can be reviewed and validated', () => {
   const row = { ...input, officer_position: null, team: null };
   assert.deepEqual(validateMember(row), []);
   assert.ok(validateMember({ ...row, membership_type: 'Officer' }).includes('Officer position is required'));
-  const stored = { ...row, id: 'existing-id', revision: 7, aws_sbg_id: 'AWSSBG-TIPM-26020' } as unknown as MemberRecord;
+  const stored = { ...row, id: 'existing-id', revision: 7, aws_sbg_id: 'AWSSBG-TIPM-260020' } as unknown as MemberRecord;
   const reviewed = memberForReview(stored);
   assert.equal(reviewed.officer_position, '');
   assert.equal(reviewed.team, '');
@@ -81,8 +81,8 @@ void test('database NULL officer fields can be reviewed and validated', () => {
 
 void test('filenames and contrast are deterministic', () => {
   assert.equal(
-    safeFilename({ ...input, aws_sbg_id: 'AWSSBG-TIPM-26001' }),
-    'AWSSBG-TIPM-26001_Test-de-la-Test',
+    safeFilename({ ...input, aws_sbg_id: 'AWSSBG-TIPM-260020' }),
+    'AWSSBG-TIPM-260020_Test-de-la-Test',
   );
   assert.equal(contrastText('#000000'), '#ffffff');
   assert.equal(contrastText('#ffffff'), '#000000');
@@ -91,8 +91,11 @@ void test('filenames and contrast are deterministic', () => {
 void test('AWS SBG IDs use the configured prefix and never collapse sequence values', () => {
   assert.equal(
     formatAwsSbgId('AWSSBG-TIPM', 2026, 1),
-    'AWSSBG-TIPM-26001',
+    'AWSSBG-TIPM-260001',
   );
+  assert.equal(formatAwsSbgId('AWSSBG-TIPM', 2026, 19), 'AWSSBG-TIPM-260019');
+  assert.equal(formatAwsSbgId('AWSSBG-TIPM', 2026, 20), 'AWSSBG-TIPM-260020');
+  assert.equal(formatAwsSbgId('AWSSBG-TIPM', 2026, 235), 'AWSSBG-TIPM-260235');
   assert.equal(
     formatAwsSbgId('AWSSBG-TIPM', 2026, 10000),
     'AWSSBG-TIPM-2610000',

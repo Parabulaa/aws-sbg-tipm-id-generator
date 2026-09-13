@@ -160,11 +160,9 @@ export function formatAwsSbgId(prefix: string, year: number, value: number) {
     value < 1
   )
     throw new Error('Invalid AWS SBG ID sequence value.');
-  // AWSSBG-TIPM-24000: two-digit school-year term followed immediately by a
-  // three-digit sequence (Captain = 001, next officer = 002, etc.). Values
-  // above 999 are kept intact rather than truncated.
+  // Two-digit membership year followed by the required four-digit sequence.
   const term = String(year).padStart(4, '0').slice(-2);
-  return `${prefix.trim()}-${term}${String(value).padStart(3, '0')}`;
+  return `${prefix.trim()}-${term}${String(value).padStart(4, '0')}`;
 }
 
 export function displayName(member: Pick<MemberInput, 'full_name'>) {
