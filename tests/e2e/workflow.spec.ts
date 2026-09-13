@@ -300,10 +300,10 @@ test('public home → login → five-field import → officer review → generat
   ).toBeVisible();
   await page.getByRole('link', { name: 'Generated IDs' }).click();
   await expect(page.getByText('AWSSBG-TIPM-26001')).toBeVisible();
-  await expect(page.getByRole('cell', { name: 'Test Admin' })).toBeVisible();
-  await page.getByText('Preview front', { exact: true }).click();
+  await expect(page.getByText('Test Admin', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Preview Front' }).click();
   const savedPreview = page.getByAltText(
-    'Generated front ID for AWSSBG-TIPM-26001',
+    'front ID for JAMES LEBRON',
   );
   await expect(savedPreview).toBeVisible();
   await expect
@@ -313,12 +313,12 @@ test('public home → login → five-field import → officer review → generat
     .toBe(1200);
   const download = page.waitForEvent('download');
   await page
-    .getByRole('button', { name: 'Download front.png', exact: true })
+    .getByRole('button', { name: 'Download Front PNG', exact: true })
     .click();
   expect((await download).suggestedFilename()).toContain('front.png');
-  await page.getByLabel('Select all displayed generations').check();
+  await page.getByLabel('Select all IDs on this page').check();
   const zipDownload = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Download selected ZIP' }).click();
+  await page.getByRole('button', { name: 'Download ZIP' }).click();
   expect((await zipDownload).suggestedFilename()).toBe('AWS-SBG-IDs.zip');
   await page.getByRole('link', { name: 'Review / Regenerate' }).click();
   await expect(page.getByLabel('Full Name', { exact: true })).toHaveValue(
