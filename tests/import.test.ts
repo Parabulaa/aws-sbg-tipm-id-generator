@@ -51,6 +51,18 @@ void test('five-field member import preserves values and flags duplicates', asyn
   assert.match(duplicate[0].errors.join(' '), /already exists/);
 });
 
+void test('mixed imports keep new members eligible when another row already exists', async () => {
+  const newRow = ['New Person', 'new@example.org', '009999', 'BSIT', '3'];
+  const parsed = await parseXlsx(await workbook([headers, row, newRow]), [
+    { tip_email: 'test@example.org', student_id_number: '001234' },
+  ]);
+
+  assert.equal(parsed[0].duplicate, true);
+  assert.ok(parsed[0].errors.length > 0);
+  assert.equal(parsed[1].duplicate, false);
+  assert.deepEqual(parsed[1].errors, []);
+});
+
 void test('header aliases, missing columns, and invalid workbooks are explicit', async () => {
   assert.equal(normalizeHeader('  Student_ID_Number '), 'student id number');
   await assert.rejects(() => parseXlsx(new ArrayBuffer(20)), /Invalid XLSX/);

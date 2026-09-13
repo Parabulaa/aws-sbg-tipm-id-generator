@@ -33,8 +33,34 @@ export async function importMembers(
       throw new AppError(`Row ${index + 1}: ${errors.join('; ')}`);
     return member;
   });
+  const { data: existing, error: lookupError } = await client
+    .from('members')
+    .select('tip_email,student_id_number');
+  if (lookupError)
+    throw new AppError('Existing members could not be checked before import.');
+
+  const existingEmails = new Set(
+    (existing ?? []).map((member) => String(member.tip_email).trim().toLowerCase()),
+  );
+  const existingStudentIds = new Set(
+    (existing ?? []).map((member) => String(member.student_id_number).trim()),
+  );
+  const seenEmails = new Set<string>();
+  const seenStudentIds = new Set<string>();
+  const newMembers = members.filter((member) => {
+    const email = member.tip_email.trim().toLowerCase();
+    const studentId = member.student_id_number.trim();
+    const duplicate = existingEmails.has(email) || existingStudentIds.has(studentId) || seenEmails.has(email) || seenStudentIds.has(studentId);
+    seenEmails.add(email);
+    seenStudentIds.add(studentId);
+    return !duplicate;
+  });
+  const skippedDuplicates = members.length - newMembers.length;
+  if (!newMembers.length)
+    return json({ imported: 0, skippedDuplicates, members: [] }, 200);
+
   const { data, error } = await client.rpc('create_members', {
-    member_rows: members,
+    member_rows: newMembers,
     actor: actorId,
     action_name: manual ? 'member_created' : 'member_imported',
   });
@@ -47,7 +73,7 @@ export async function importMembers(
     throw new AppError(error.message || 'Members could not be imported.');
   }
   return json(
-    { imported: (data as MemberRecord[]).length, members: data },
+    { imported: (data as MemberRecord[]).length, skippedDuplicates, members: data },
     201,
   );
 }

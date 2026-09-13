@@ -1697,6 +1697,18 @@ body {
 .member-import-dialog .import-members-heading { display: none; }
 .member-import-dialog .import-members-fields { grid-template-columns: minmax(11rem, 15rem) minmax(0, 1fr); align-items: end; }
 .member-import-dialog input[type='file'] { width: min(100%, 25rem); max-width: 25rem; }
+.member-import-dialog .import-summary-card { border: 1px solid rgb(34 211 238 / .18); background: #0b1d2b; color: #e5f5f7; }
+.member-import-dialog .import-summary-card p:first-child { color: #86aab5; }
+.member-import-dialog .import-summary-card p:last-child { color: #e9fbfd; }
+.member-import-dialog .import-validation { border: 1px solid rgb(34 211 238 / .16); border-radius: .7rem; background: rgb(5 18 29 / .5); overflow: hidden; }
+.member-import-dialog .import-validation > summary { padding: .7rem .8rem; color: #cce2e7; }
+.member-import-dialog .import-validation-table th { background: #102334; color: #b9d3d9; }
+.member-import-dialog .import-validation-table td { border-color: rgb(154 211 224 / .14); background: #081a28; color: #d6e9ed; }
+.member-import-dialog .import-row-duplicate { color: #f3c879; }
+.member-import-dialog .import-row-invalid { color: #ff9a9f; }
+.member-import-dialog .import-row-valid { color: #58ddb4; }
+.member-import-dialog .import-guidance { min-height: 2.8rem; border: 1px solid rgb(34 211 238 / .18); border-radius: .65rem; background: rgb(10 34 48 / .72); padding: .7rem .85rem; color: #bcd5da; }
+.member-import-dialog .import-confirm-button { width: auto; min-width: 13rem; }
 .dashboard-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .75rem; }
 .dashboard-metric-card { display: grid; min-height: 7rem; grid-template-columns: 3.15rem 1fr; align-items: center; gap: .85rem; border: 1px solid rgb(34 211 238 / .28); border-radius: .75rem; background: rgb(5 22 34 / .8); padding: .9rem 1rem; box-shadow: inset 0 1px 0 rgb(255 255 255 / .025); }
 .dashboard-metric-icon { display: grid; width: 3rem; height: 3rem; place-items: center; border-radius: .65rem; background: rgb(18 80 121 / .35); color: #4fb7ff; }

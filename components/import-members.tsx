@@ -15,6 +15,9 @@ export function ImportMembers({ onImported, embedded = false }: { onImported?: (
   const [error, setError] = useState('');
   const valid = rows.filter((row) => !row.errors.length);
   const duplicates = rows.filter((row) => row.duplicate).length;
+  const invalid = rows.filter(
+    (row) => row.errors.length > 0 && !row.duplicate,
+  ).length;
   return (
     <section className={embedded ? 'space-y-3' : 'space-y-3 rounded-xl border border-slate-200 bg-white p-4'}>
       <div className="import-members-heading flex flex-wrap items-baseline justify-between gap-2"><h2 className="font-semibold">Import XLSX</h2><p className="text-xs text-slate-500">Required: name, TIP email, student ID, program and year level</p></div>
@@ -70,26 +73,26 @@ export function ImportMembers({ onImported, embedded = false }: { onImported?: (
       </div>
       {!!rows.length && (
         <>
-          <div className="grid gap-2 sm:grid-cols-5">
+          <div className="import-summary-grid grid gap-2 sm:grid-cols-5">
             {[
               ['Total rows', rows.length],
               ['Valid rows', valid.length],
-              ['Invalid rows', rows.length - valid.length],
+              ['Invalid rows', invalid],
               ['Duplicate rows', duplicates],
               ['IDs to be assigned', valid.length],
             ].map(([label, value]) => (
-              <div key={label} className="rounded-xl bg-slate-50 p-3">
+              <div key={label} className="import-summary-card rounded-xl p-3">
                 <p className="text-xs text-slate-500">{label}</p>
                 <p className="text-lg font-semibold">{value}</p>
               </div>
             ))}
           </div>
-          <details open={rows.some((row) => row.errors.length > 0)}>
+          <details className="import-validation" open={rows.some((row) => row.errors.length > 0)}>
             <summary className="cursor-pointer font-medium">
               Row validation details
             </summary>
             <div className="max-h-64 overflow-auto">
-              <table className="data-table">
+              <table className="data-table import-validation-table">
                 <thead>
                   <tr>
                     <th>Row</th>
@@ -102,8 +105,10 @@ export function ImportMembers({ onImported, embedded = false }: { onImported?: (
                     <tr key={row.row}>
                       <td>{row.row}</td>
                       <td>{row.member.full_name}</td>
-                      <td>
-                        {row.errors.join('; ') || 'Valid — ID will be assigned'}
+                      <td className={row.duplicate ? 'import-row-duplicate' : row.errors.length ? 'import-row-invalid' : 'import-row-valid'}>
+                        {row.duplicate
+                          ? `Skipped — ${row.errors.join('; ')}`
+                          : row.errors.join('; ') || 'Ready — ID will be assigned'}
                       </td>
                     </tr>
                   ))}
@@ -111,18 +116,21 @@ export function ImportMembers({ onImported, embedded = false }: { onImported?: (
               </table>
             </div>
           </details>
-          <p className="text-sm">
-            Invalid or duplicate rows are never saved. Correct the spreadsheet
-            before importing so the batch remains complete and predictable.
+          <p className="import-guidance text-sm">
+            {valid.length
+              ? `${valid.length} new ${valid.length === 1 ? 'record is' : 'records are'} ready to import. ${duplicates ? `${duplicates} duplicate ${duplicates === 1 ? 'row will' : 'rows will'} be skipped. ` : ''}${invalid ? `${invalid} invalid ${invalid === 1 ? 'row also needs' : 'rows also need'} correction.` : ''}`
+              : duplicates && !invalid
+                ? 'No new records found. Every row already exists, so nothing will be imported.'
+                : 'No rows are ready to import. Correct the invalid rows and choose the spreadsheet again.'}
           </p>
-          <button
-            className="btn-primary"
-            disabled={!!busy || valid.length !== rows.length}
+          {valid.length > 0 && <button
+            className="btn-primary import-confirm-button"
+            disabled={!!busy}
             onClick={async () => {
               setBusy('Assigning IDs and importing members…');
               setError('');
               try {
-                const result = await api<{ imported: number }>(
+                const result = await api<{ imported: number; skippedDuplicates?: number }>(
                   'members/import',
                   {
                     method: 'POST',
@@ -132,9 +140,8 @@ export function ImportMembers({ onImported, embedded = false }: { onImported?: (
                   },
                 );
                 await refresh();
-                setMessage(
-                  `${result.imported} members imported as Draft with assigned AWS SBG IDs.`,
-                );
+                const skipped = duplicates + (result.skippedDuplicates ?? 0);
+                setMessage(`${result.imported} ${result.imported === 1 ? 'member' : 'members'} imported as Draft with assigned AWS SBG IDs.${skipped ? ` ${skipped} duplicate ${skipped === 1 ? 'row was' : 'rows were'} skipped.` : ''}`);
                 onImported?.(result.imported);
                 setRows([]);
               } catch (error) {
@@ -145,7 +152,7 @@ export function ImportMembers({ onImported, embedded = false }: { onImported?: (
             }}
           >
             Confirm import of {valid.length} rows
-          </button>
+          </button>}
         </>
       )}
       {busy && <output className="block">{busy}</output>}
