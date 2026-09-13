@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Clock3, Download, FileText, RefreshCw, Search, ShieldCheck, Users } from 'lucide-react';
 import { api, errorText } from '@/lib/client';
 import { useData } from './data-provider';
+import { AdminNotice, type AdminNoticeState } from './admin-notice';
 
 type Log = {
   id: string;
@@ -13,8 +14,6 @@ type Log = {
   target_name?: string | null;
   created_at: string;
 };
-type Notice = { type: 'success' | 'error'; message: string } | null;
-
 export function AdminActivityLogs() {
   const { role } = useData();
   const [logs, setLogs] = useState<Log[]>([]);
@@ -22,7 +21,7 @@ export function AdminActivityLogs() {
   const [action, setAction] = useState('');
   const [range, setRange] = useState('');
   const [busy, setBusy] = useState(false);
-  const [notice, setNotice] = useState<Notice>(null);
+  const [notice, setNotice] = useState<AdminNoticeState>(null);
   const [now, setNow] = useState(() => Date.now());
 
   async function load() {
@@ -87,7 +86,7 @@ export function AdminActivityLogs() {
 
   return (
     <div className="admin-page activity-logs-page">
-      <AdminNotice notice={notice} />
+      <AdminNotice notice={notice} onDismiss={() => setNotice(null)} successTitle="Done" />
       <div className="admin-top-action">
         <button className="btn" onClick={exportCsv} disabled={!filtered.length}><Download className="size-4" /> Export Logs</button>
         <button className="btn-primary" onClick={() => void load()} disabled={busy}><RefreshCw className={`size-4 ${busy ? 'animate-spin' : ''}`} /> Refresh</button>
@@ -153,14 +152,4 @@ export function AdminActivityLogs() {
 
 function Metric({ icon, label, value, tone = 'cyan' }: { icon: React.ReactNode; label: string; value: number; tone?: string }) {
   return <article className={`admin-metric ${tone}`}><span>{icon}</span><div><p>{label}</p><strong>{value}</strong></div></article>;
-}
-
-function AdminNotice({ notice }: { notice: Notice }) {
-  if (!notice) return null;
-  return (
-    <output className={`app-toast-${notice.type}`}>
-      <strong>{notice.type === 'success' ? 'Done' : 'Action needed'}</strong>
-      <span>{notice.message}</span>
-    </output>
-  );
 }

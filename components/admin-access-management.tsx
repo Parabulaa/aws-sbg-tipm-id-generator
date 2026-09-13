@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Loader2, Plus, Save, Search, ShieldCheck, Users } from 'lucide-react';
 import { api, errorText } from '@/lib/client';
 import { useData } from './data-provider';
+import { AdminNotice, type AdminNoticeState } from './admin-notice';
 import {
   Dialog,
   DialogContent,
@@ -23,7 +24,6 @@ type OfficerAccount = {
   password_changed_at: string | null;
 };
 type FormSubmit = { preventDefault(): void; currentTarget: HTMLFormElement };
-type Notice = { type: 'success' | 'error'; message: string } | null;
 const formText = (form: FormData, key: string) => {
   const value = form.get(key);
   return typeof value === 'string' ? value : '';
@@ -36,7 +36,7 @@ export function AdminAccessManagement() {
   const [query, setQuery] = useState('');
   const [filterRole, setFilterRole] = useState('');
   const [busy, setBusy] = useState(false);
-  const [notice, setNotice] = useState<Notice>(null);
+  const [notice, setNotice] = useState<AdminNoticeState>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [addMustChangePassword, setAddMustChangePassword] = useState(true);
 
@@ -121,7 +121,7 @@ export function AdminAccessManagement() {
 
   return (
     <div className="admin-page">
-      <AdminNotice notice={notice} />
+      <AdminNotice notice={notice} onDismiss={() => setNotice(null)} />
       <div className="admin-top-action">
         <button className="btn-primary" onClick={() => setAddOpen(true)}><Plus className="size-4" /> Add Officer</button>
       </div>
@@ -226,14 +226,4 @@ function Status({ active }: { active: boolean }) {
 }
 function Toggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: (checked: boolean) => void }) {
   return <label className="admin-toggle"><span>{label}</span><input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} /><i /></label>;
-}
-
-function AdminNotice({ notice }: { notice: Notice }) {
-  if (!notice) return null;
-  return (
-    <output className={`app-toast-${notice.type}`}>
-      <strong>{notice.type === 'success' ? 'Saved' : 'Action needed'}</strong>
-      <span>{notice.message}</span>
-    </output>
-  );
 }
