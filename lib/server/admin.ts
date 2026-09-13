@@ -150,8 +150,14 @@ export async function updateOfficerAccount(
   const nextRole = role(body.role);
   const isActive = Boolean(body.is_active);
   const mustChangePassword = Boolean(body.must_change_password);
+  const nextPassword =
+    typeof body.password === 'string' && body.password.trim()
+      ? body.password.trim()
+      : '';
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
     throw new AppError('Enter a valid officer email.');
+  if (nextPassword && nextPassword.length < 8)
+    throw new AppError('Temporary password must be at least 8 characters.');
   await preventNoActiveAdmin(client, officerId, nextRole, isActive);
 
   const current = await client
@@ -166,9 +172,15 @@ export async function updateOfficerAccount(
     }>();
   if (current.error || !current.data)
     throw new AppError('Officer account could not be loaded.');
-  if (current.data.email.toLowerCase() !== email) {
+  if (current.data.email.toLowerCase() !== email || nextPassword) {
     const admin = serviceClient(env);
-    const updatedAuth = await admin.auth.admin.updateUserById(officerId, { email });
+    const authChanges: { email?: string; password?: string; email_confirm?: boolean } = {};
+    if (current.data.email.toLowerCase() !== email) {
+      authChanges.email = email;
+      authChanges.email_confirm = true;
+    }
+    if (nextPassword) authChanges.password = nextPassword;
+    const updatedAuth = await admin.auth.admin.updateUserById(officerId, authChanges);
     if (updatedAuth.error)
       throw new AppError(updatedAuth.error.message || 'Officer auth account could not be updated.', 400);
   }
@@ -224,6 +236,8 @@ export async function updateOfficerAccount(
       : false,
     must_change_password: mustChangePassword,
   });
+  if (nextPassword)
+    actions.push(`Set a temporary password for ${displayName}`);
   await Promise.all(
     actions.map((message) =>
       logAdminActivity(client, actor, message, 'Success', officerId, displayName),

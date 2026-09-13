@@ -196,8 +196,12 @@ export function AdminAccessManagement() {
 
 function SelectedUser({ account, busy, onSave }: { account?: OfficerAccount; busy: boolean; onSave: (account: OfficerAccount) => Promise<void> }) {
   const [draft, setDraft] = useState<OfficerAccount | undefined>(account);
+  const [password, setPassword] = useState('');
   useEffect(() => {
-    queueMicrotask(() => setDraft(account));
+    queueMicrotask(() => {
+      setDraft(account);
+      setPassword('');
+    });
   }, [account]);
   if (!draft) return <aside className="admin-panel selected-user"><h2>Selected User</h2><p>No officer selected.</p></aside>;
   return (
@@ -206,9 +210,10 @@ function SelectedUser({ account, busy, onSave }: { account?: OfficerAccount; bus
       <label className="field">Display Name<input value={draft.display_name} onChange={(e) => setDraft({ ...draft, display_name: e.target.value })} /></label>
       <label className="field">Email<input value={draft.email} onChange={(e) => setDraft({ ...draft, email: e.target.value })} /></label>
       <label className="field">Role<select value={draft.role} onChange={(e) => setDraft({ ...draft, role: e.target.value as OfficerRole })}><option value="admin">Admin</option><option value="officer">Officer</option></select></label>
+      <label className="field">New temporary password<input value={password} onChange={(e) => setPassword(e.target.value)} type="password" minLength={8} placeholder="Leave blank to keep current" /></label>
       <Toggle label="Active Account" checked={draft.is_active} onChange={(checked) => setDraft({ ...draft, is_active: checked })} />
       <Toggle label="Require Password Change" checked={draft.must_change_password} onChange={(checked) => setDraft({ ...draft, must_change_password: checked })} />
-      <button className="btn-primary" disabled={busy} onClick={() => void onSave(draft)}>{busy ? <><Loader2 className="size-4 animate-spin" /> Saving...</> : <><Save className="size-4" /> Save Changes</>}</button>
+      <button className="btn-primary" disabled={busy} onClick={() => void onSave({ ...draft, ...(password ? { password } : {}) } as OfficerAccount & { password?: string })}>{busy ? <><Loader2 className="size-4 animate-spin" /> Saving...</> : <><Save className="size-4" /> Save Changes</>}</button>
     </aside>
   );
 }
