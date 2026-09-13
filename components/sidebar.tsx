@@ -99,7 +99,7 @@ export function Sidebar({ collapsed = false, onToggle }: { collapsed?: boolean; 
                 onClick={() => setOpen(false)}
                 aria-current={pathname === href ? 'page' : undefined}
                 title={compact ? label : undefined}
-                className={`flex min-h-10 items-center rounded-lg border px-3 text-sm font-semibold transition-colors ${compact ? 'justify-center' : 'gap-3'} ${pathname === href ? 'border-cyan-300/45 bg-[#0e4b56] text-cyan-100 shadow-[inset_3px_0_0_#22d3ee]' : 'border-transparent text-slate-300 hover:border-slate-600 hover:bg-slate-800'}`}
+                className={`flex min-h-10 items-center rounded-lg border px-3 text-sm font-semibold transition-colors ${compact ? 'justify-center' : 'gap-3'} ${pathname === href ? 'border-cyan-300/25 bg-[#182d35] text-cyan-100' : 'border-transparent text-slate-300 hover:border-slate-600 hover:bg-slate-800'}`}
               >
                 <Icon className="size-[18px] shrink-0" />
                 {!compact && label}
