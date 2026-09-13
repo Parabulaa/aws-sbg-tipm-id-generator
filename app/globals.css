@@ -1564,6 +1564,36 @@ body {
     linear-gradient(115deg, #061313 0%, #081116 52%, #0d152b 100%);
   color: #f8fafc;
 }
+
+.app-toast-error {
+  position: fixed;
+  right: 1rem;
+  top: 1rem;
+  z-index: 80;
+  display: grid;
+  max-width: min(28rem, calc(100vw - 2rem));
+  gap: .25rem;
+  border: 1px solid rgb(248 113 113 / .45);
+  border-radius: .85rem;
+  background: linear-gradient(145deg, rgb(39 13 18 / .96), rgb(9 24 34 / .96));
+  box-shadow: 0 20px 60px rgb(0 0 0 / .42), 0 0 0 1px rgb(255 255 255 / .025) inset;
+  color: #fecaca;
+  padding: .9rem 1rem;
+  animation: app-toast-enter 180ms ease both;
+}
+.app-toast-error strong {
+  color: #fff7f7;
+  font-size: .82rem;
+}
+.app-toast-error span {
+  color: #fecaca;
+  font-size: .78rem;
+  line-height: 1.45;
+}
+@keyframes app-toast-enter {
+  from { opacity: 0; transform: translateY(-.4rem) scale(.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
 .internal-public-page a:focus-visible,
 .internal-public-page button:focus-visible,
 .internal-public-page input:focus-visible,

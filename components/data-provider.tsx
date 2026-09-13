@@ -125,8 +125,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
   return (
     <Context.Provider value={{ ...data, loading, refresh }}>
       {error && (
-        <div role="alert" className="notice-error">
-          {error}
+        <div role="alert" className="app-toast-error">
+          <strong>Action needed</strong>
+          <span>{error}</span>
         </div>
       )}
       {children}

