@@ -15,6 +15,8 @@ export interface SupabaseBindings {
   SUPABASE_URL?: string;
   SUPABASE_PUBLISHABLE_KEY?: string;
   SUPABASE_SECRET_KEY?: string;
+  SUPABASE_SERVICE_ROLE_KEY?: string;
+  SUPABASE_SERVICE_KEY?: string;
 }
 
 const RESERVED_ADMIN_EMAILS = new Set(['mjramba@tip.edu.ph']);

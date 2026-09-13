@@ -8,6 +8,8 @@ export interface Bindings {
   SUPABASE_URL?: string;
   SUPABASE_PUBLISHABLE_KEY?: string;
   SUPABASE_SECRET_KEY?: string;
+  SUPABASE_SERVICE_ROLE_KEY?: string;
+  SUPABASE_SERVICE_KEY?: string;
 }
 
 export async function bindings(): Promise<Bindings> {
@@ -62,15 +64,20 @@ export async function getColors(
 }
 
 export async function getActivity(client: SupabaseClient) {
-  const { data, error } = await client
+  const activity = await client
     .from('activities')
     .select(
       'id,member_id,action,metadata,created_at,actor_id',
     )
     .order('created_at', { ascending: false })
     .limit(30);
-  if (error) throw new AppError('Activity could not be loaded.');
-  return (data ?? []).map((row) => {
+  if (activity.error) throw new AppError('Activity could not be loaded.');
+  const adminLogs = await client
+    .from('activity_logs')
+    .select('id,action,status,created_at,user_name,target_name')
+    .order('created_at', { ascending: false })
+    .limit(30);
+  const memberActivity = (activity.data ?? []).map((row) => {
     const actorName = 'Officer';
     const action =
       typeof row.metadata === 'object' &&
@@ -86,6 +93,22 @@ export async function getActivity(client: SupabaseClient) {
       created_at: row.created_at as string,
     };
   }) satisfies Activity[];
+  const adminActivity =
+    adminLogs.error
+      ? []
+      : (adminLogs.data ?? []).map((row) => ({
+          id: `admin-${row.id as string}`,
+          member_id: null,
+          message: `${row.user_name || 'Officer'} — ${row.action}${row.status === 'Failed' ? ' (Failed)' : ''}`,
+          created_at: row.created_at as string,
+        }));
+  return [...memberActivity, ...adminActivity]
+    .sort(
+      (left, right) =>
+        new Date(right.created_at).getTime() -
+        new Date(left.created_at).getTime(),
+    )
+    .slice(0, 30);
 }
 
 export function checkRevision(member: MemberRecord, revision: unknown) {

@@ -37,10 +37,13 @@ function role(value: unknown) {
 
 export function serviceClient(env: SupabaseBindings) {
   const url = env.SUPABASE_URL?.trim();
-  const key = env.SUPABASE_SECRET_KEY?.trim();
+  const key =
+    env.SUPABASE_SECRET_KEY?.trim() ||
+    env.SUPABASE_SERVICE_ROLE_KEY?.trim() ||
+    env.SUPABASE_SERVICE_KEY?.trim();
   if (!url || !key)
     throw new AppError(
-      'Server-side Supabase admin access is not configured.',
+      'Server-side Supabase admin access is not configured. Add SUPABASE_SERVICE_ROLE_KEY in your deployment environment.',
       503,
     );
   return createClient(url, key, {

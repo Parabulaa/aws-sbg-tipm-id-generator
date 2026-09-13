@@ -57,7 +57,9 @@ async function handle(request: Request) {
     if (path[0] === 'members') {
       if (request.method === 'DELETE' && !path[1]) {
         assertOfficerRole(auth.profile, 'admin');
-        return await deleteMembers(auth.client, auth.profile.id, request);
+        const response = await deleteMembers(auth.client, auth.profile.id, request);
+        await logAdminActivity(auth.client, auth.profile, 'Deleted selected members');
+        return response;
       }
       if (request.method === 'GET' && !path[1]) {
         const includeArchived =
@@ -84,20 +86,25 @@ async function handle(request: Request) {
           path[1],
           request,
         );
-      if (path[2] === 'archive' && request.method === 'POST')
-        return await archiveMember(
+      if (path[2] === 'archive' && request.method === 'POST') {
+        const response = await archiveMember(
           auth.client,
           auth.profile.id,
           path[1],
           request,
         );
+        await logAdminActivity(auth.client, auth.profile, 'Archived member');
+        return response;
+      }
       if (path[2] === 'restore' && request.method === 'POST') {
-        return await restoreMember(
+        const response = await restoreMember(
           auth.client,
           auth.profile.id,
           path[1],
           request,
         );
+        await logAdminActivity(auth.client, auth.profile, 'Restored member');
+        return response;
       }
       if (request.method === 'PUT' && path[1] && !path[2])
         return await updateMember(
