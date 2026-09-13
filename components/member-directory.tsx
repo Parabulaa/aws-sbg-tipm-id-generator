@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Archive, Check, Loader2, Search, ShieldCheck, UserRoundCheck, UsersRound } from 'lucide-react';
+import { Archive, Check, ChevronLeft, ChevronRight, FilterX, Loader2, Search, ShieldCheck, Trash2, Upload, UserRoundPlus, UserRoundCheck, UsersRound } from 'lucide-react';
 import { useData } from './data-provider';
 import { MemberForm } from './member-form';
 import { StatusBadge } from './status-badge';
@@ -65,13 +65,19 @@ export function MemberDirectory() {
   const totalPages = Math.max(1, Math.ceil(visible.length / rowsPerPage));
   const safePage = Math.min(page, totalPages);
   const pageRows = visible.slice((safePage - 1) * rowsPerPage, safePage * rowsPerPage);
+  const pageNumbers = useMemo(() => {
+    const candidates = new Set([1, safePage - 1, safePage, safePage + 1, totalPages]);
+    return [...candidates]
+      .filter((value) => value >= 1 && value <= totalPages)
+      .sort((a, b) => a - b);
+  }, [safePage, totalPages]);
   const allPageSelected = !!pageRows.length && pageRows.every(member => selected.includes(member.id));
   const clearFilters = () => { setQuery(''); setCourse(''); setYear(''); setRoleTeam(''); setStatus(''); setPage(1); };
   const metrics = [
-    { label: 'Total Members', value: members.length, icon: UsersRound },
-    { label: 'Officers', value: members.filter(member => member.membership_type === 'Officer').length, icon: ShieldCheck },
-    { label: 'Associates', value: members.filter(member => member.membership_type === 'Associate').length, icon: UserRoundCheck },
-    { label: 'Archived', value: archived.length, icon: Archive },
+    { label: 'Total Members', value: members.length, note: 'All registered members', icon: UsersRound },
+    { label: 'Officers', value: members.filter(member => member.membership_type === 'Officer').length, note: `${members.length ? Math.round((members.filter(member => member.membership_type === 'Officer').length / members.length) * 100) : 0}% of total`, icon: ShieldCheck },
+    { label: 'Associates', value: members.filter(member => member.membership_type === 'Associate').length, note: `${members.length ? Math.round((members.filter(member => member.membership_type === 'Associate').length / members.length) * 100) : 0}% of total`, icon: UserRoundCheck },
+    { label: 'Archived', value: archived.length, note: `${members.length ? Math.round((archived.length / members.length) * 100) : 0}% of total`, icon: Archive },
   ];
 
   async function addMember() {
@@ -115,33 +121,40 @@ export function MemberDirectory() {
     finally { setBusy(''); }
   }
 
-  return <Toaster><div className="mt-4 space-y-4">
-    <div className="grid gap-4 xl:grid-cols-[minmax(280px,.65fr)_minmax(620px,1.35fr)]">
-      <section className="grid grid-cols-2 gap-3" aria-label="Member statistics">
-        {metrics.map(({ label, value, icon: Icon }) => <article key={label} className="member-metric-card flex min-h-28 items-center gap-3 rounded-xl border bg-white p-4"><span className="grid size-10 shrink-0 place-items-center rounded-lg border border-cyan-300/20 bg-cyan-300/10 text-cyan-200"><Icon className="size-5" /></span><div><p className="text-xs text-cyan-100/75">{label}</p><p className="mt-1 text-2xl font-bold">{value}</p></div></article>)}
+  return <Toaster><div className="members-page mt-4 space-y-4">
+    <section className="members-metrics" aria-label="Member statistics">
+      {metrics.map(({ label, value, note, icon: Icon }) => (
+        <article key={label} className="member-metric-card">
+          <span><Icon className="size-5" /></span>
+          <div>
+            <p>{label}</p>
+            <strong>{value}</strong>
+            <small>{note}</small>
+          </div>
+        </article>
+      ))}
+    </section>
+    <section className="members-filter-panel">
+      <label className="field member-search members-search"><span className="sr-only">Search members</span><Search className="size-4" /><input type="search" value={query} placeholder="Search members..." onChange={(event) => { setQuery(event.target.value); setPage(1); }} /></label>
+      <div className="members-filter-grid"><Filter label="Course" value={course} setValue={(value) => { setCourse(value); setPage(1); }} options={courses} all="All courses" /><Filter label="Year Level" value={year} setValue={(value) => { setYear(value); setPage(1); }} options={years} all="All years" /><Filter label="Role / Team" value={roleTeam} setValue={(value) => { setRoleTeam(value); setPage(1); }} options={rolesAndTeams} all="All roles / teams" /><Filter label="Status" value={status} setValue={(value) => { setStatus(value); setPage(1); }} options={statuses} all="All statuses" /></div>
+      <div className="member-action-grid">
+        <button className="btn-primary member-action-button" onClick={() => setImporting(true)}><Upload className="size-4" /> Import XLSX</button>
+        <button className="btn member-action-button" onClick={() => { setModalError(''); setAddOpen(true); }}><UserRoundPlus className="size-4" /> Add Member</button>
+        {role === 'admin' && <button className="btn member-action-button" onClick={async () => { setArchivedOpen(true); await loadArchived(); }}><Archive className="size-4" /> Show Archived</button>}
+        <button className="btn member-action-button" onClick={clearFilters}><FilterX className="size-4" /> Clear Filters</button>
+        <GenerationControls selectedIds={selected} filteredIds={visible.map(member => member.id)} buttonClassName="member-action-button" onNotify={notify} />
+        <button className="btn-danger member-action-button" disabled={!selected.length || !!busy || role !== 'admin'} onClick={() => { setModalError(''); setDeleteOpen(true); }}><Trash2 className="size-4" /> Delete Selected</button>
+      </div>
       </section>
-      <section className="rounded-xl border bg-white p-4">
-        <label className="field member-search"><span className="sr-only">Search members</span><Search className="size-4" /><input type="search" value={query} placeholder="Search name, ID number, email, position…" onChange={(event) => { setQuery(event.target.value); setPage(1); }} /></label>
-        <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><Filter label="Course" value={course} setValue={(value) => { setCourse(value); setPage(1); }} options={courses} all="All courses" /><Filter label="Year Level" value={year} setValue={(value) => { setYear(value); setPage(1); }} options={years} all="All years" /><Filter label="Role / Team" value={roleTeam} setValue={(value) => { setRoleTeam(value); setPage(1); }} options={rolesAndTeams} all="All roles / teams" /><Filter label="Status" value={status} setValue={(value) => { setStatus(value); setPage(1); }} options={statuses} all="All statuses" /></div>
-        <div className="member-action-grid mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-          <button className="btn member-action-button" onClick={() => setImporting(true)}>Import XLSX</button>
-          <button className="btn member-action-button" onClick={() => { setModalError(''); setAddOpen(true); }}>Add Member</button>
-          {role === 'admin' && <button className="btn member-action-button" onClick={async () => { setArchivedOpen(true); await loadArchived(); }}>Show Archived</button>}
-          <button className="btn-danger member-action-button" disabled={!selected.length || !!busy || role !== 'admin'} onClick={() => { setModalError(''); setDeleteOpen(true); }}>Delete Selected</button>
-          <GenerationControls selectedIds={selected} filteredIds={visible.map(member => member.id)} buttonClassName="member-action-button" onNotify={notify} />
-          <button className="btn member-action-button" onClick={clearFilters}>Clear Filters</button>
-        </div>
-      </section>
-    </div>
     {error && <p className="notice-error" role="alert">{error}</p>}
 
-    <section className="overflow-hidden rounded-xl border bg-white">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3"><div><h2 className="font-semibold">Members ({visible.length})</h2><p className="text-xs text-slate-500">{selected.length} selected</p></div><div className="flex items-center gap-2 text-sm"><button className="btn size-9 min-h-9 px-0" aria-label="Previous page" disabled={safePage === 1} onClick={() => setPage(value => Math.max(1, value - 1))}>‹</button><span>{safePage} of {totalPages}</span><button className="btn size-9 min-h-9 px-0" aria-label="Next page" disabled={safePage === totalPages} onClick={() => setPage(value => Math.min(totalPages, value + 1))}>›</button></div></div>
-      <div className="overflow-auto"><table className="data-table member-table"><thead><tr><th><MemberCheckbox label="Select page members" checked={allPageSelected} onChange={(checked) => setSelected(checked ? [...new Set([...selected, ...pageRows.map(member => member.id)])] : selected.filter(id => !pageRows.some(member => member.id === id)))} /></th>{['Photo', 'Name', 'ID Number', 'Role / Team', 'Type', 'Status', 'Validity', 'Action'].map(label => <th key={label}>{label}</th>)}</tr></thead>
-        <tbody>{pageRows.map(member => { const isSelected = selected.includes(member.id); return <tr key={member.id} data-selected={isSelected || undefined}><td><MemberCheckbox label={`Select ${displayName(member)}`} checked={isSelected} onChange={(checked) => setSelected(checked ? [...new Set([...selected, member.id])] : selected.filter(id => id !== member.id))} /></td><td>{member.photo_path ? <PrivateImage path={member.photo_path} alt="" className="size-10 rounded-full object-cover" /> : <span className="text-xs text-slate-500">Missing</span>}</td><td className="min-w-44"><p className="font-medium">{displayName(member)}</p><p className="text-xs text-slate-500">{member.tip_email}</p></td><td className="whitespace-nowrap">{member.aws_sbg_id}</td><td className="min-w-40">{member.officer_position || member.membership_type}<br /><span className="text-xs text-slate-500">{member.team}</span></td><td>{member.membership_type}</td><td><StatusBadge status={member.status} /></td><td className="whitespace-nowrap">{member.valid_until ?? 'Not issued'}</td><td><div className="flex gap-2"><Link className="btn whitespace-nowrap" href={`/generate-id?member=${member.id}`}>Review / Edit ID</Link><button className="btn" aria-label={`Archive ${displayName(member)}`} disabled={!!busy} onClick={() => { setModalError(''); setArchiveTarget(member); }}>Archive</button></div></td></tr>; })}</tbody>
+    <section className="members-table-card">
+      <div className="members-table-header"><div><h2>Members ({visible.length})</h2><p>{selected.length} selected</p></div><div><button aria-label="Previous page" disabled={safePage === 1} onClick={() => setPage(value => Math.max(1, value - 1))}><ChevronLeft /></button><span>{safePage} of {totalPages}</span><button aria-label="Next page" disabled={safePage === totalPages} onClick={() => setPage(value => Math.min(totalPages, value + 1))}><ChevronRight /></button></div></div>
+      <div className="members-table-scroll"><table className="data-table member-table"><thead><tr><th><MemberCheckbox label="Select page members" checked={allPageSelected} onChange={(checked) => setSelected(checked ? [...new Set([...selected, ...pageRows.map(member => member.id)])] : selected.filter(id => !pageRows.some(member => member.id === id)))} /></th>{['Photo', 'Name', 'ID Number', 'Role / Team', 'Type', 'Status', 'Validity', 'Action'].map(label => <th key={label}>{label}</th>)}</tr></thead>
+        <tbody>{pageRows.map(member => { const isSelected = selected.includes(member.id); return <tr key={member.id} data-selected={isSelected || undefined}><td><MemberCheckbox label={`Select ${displayName(member)}`} checked={isSelected} onChange={(checked) => setSelected(checked ? [...new Set([...selected, member.id])] : selected.filter(id => id !== member.id))} /></td><td>{member.photo_path ? <PrivateImage path={member.photo_path} alt="" className="member-photo" /> : <span className="member-photo-fallback">{displayName(member).split(/\s+/).map(part => part[0]).join('').slice(0, 2).toUpperCase()}</span>}</td><td className="member-name-cell"><p>{displayName(member)}</p><small>{member.tip_email}</small></td><td className="member-id-cell">{member.aws_sbg_id}</td><td className="member-role-cell">{member.officer_position || member.team || member.program || member.membership_type}</td><td>{member.membership_type}</td><td><StatusBadge status={member.status} /></td><td className="member-validity-cell">{member.valid_until ?? 'Not issued'}</td><td><div className="member-row-actions"><Link className="btn" href={`/generate-id?member=${member.id}`}>Review / Edit ID</Link><button className="btn" aria-label={`Archive ${displayName(member)}`} disabled={!!busy} onClick={() => { setModalError(''); setArchiveTarget(member); }}>Archive</button></div></td></tr>; })}</tbody>
       </table></div>
       {!visible.length && <p className="p-8 text-center text-slate-500">{members.length ? 'No members match these filters.' : 'No members imported yet.'}</p>}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 px-4 py-3 text-xs text-slate-500"><span>Showing {visible.length ? (safePage - 1) * rowsPerPage + 1 : 0}–{Math.min(safePage * rowsPerPage, visible.length)} of {visible.length}</span><label className="flex items-center gap-2">Rows per page<select className="rounded-lg border bg-transparent px-2 py-1" value={rowsPerPage} onChange={(event) => { setRowsPerPage(Number(event.target.value)); setPage(1); }}>{[10, 25, 50, 100].map(value => <option key={value} value={value}>{value}</option>)}</select></label></div>
+      <div className="members-pagination"><span>Showing {visible.length ? (safePage - 1) * rowsPerPage + 1 : 0}–{Math.min(safePage * rowsPerPage, visible.length)} of {visible.length}</span><div><label>Rows per page<select value={rowsPerPage} onChange={(event) => { setRowsPerPage(Number(event.target.value)); setPage(1); }}>{[5, 10, 25, 50, 100].map(value => <option key={value} value={value}>{value}</option>)}</select></label><button aria-label="Previous page" disabled={safePage === 1} onClick={() => setPage(value => Math.max(1, value - 1))}><ChevronLeft /></button>{pageNumbers.map((value, index) => <span key={value} className="contents">{index > 0 && value - pageNumbers[index - 1] > 1 ? <i>...</i> : null}<button className={value === safePage ? 'is-current' : ''} onClick={() => setPage(value)}>{value}</button></span>)}<button aria-label="Next page" disabled={safePage === totalPages} onClick={() => setPage(value => Math.min(totalPages, value + 1))}><ChevronRight /></button></div></div>
     </section>
 
     <Dialog open={importing} onOpenChange={setImporting}><DialogContent className="member-dialog member-import-dialog sm:max-w-4xl"><DialogHeader><DialogTitle>Import XLSX</DialogTitle><DialogDescription>Upload and validate a membership spreadsheet before adding records.</DialogDescription></DialogHeader><ImportMembers embedded onImported={(count) => { setImporting(false); notify(`${count} member${count === 1 ? '' : 's'} imported`); }} /><DialogFooter><button className="btn" onClick={() => setImporting(false)}>Close</button></DialogFooter></DialogContent></Dialog>
