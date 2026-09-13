@@ -3,53 +3,120 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { ArrowLeft, ArrowRight, Eye, EyeOff, IdCard, Lock, Mail, ShieldCheck, UsersRound } from 'lucide-react';
 import { errorText } from '@/lib/client';
 import { browserSupabaseConfig, getSupabaseBrowserClient } from '@/lib/supabase/client';
+
+function markReverseTransition() {
+  sessionStorage.setItem('public-route-direction', 'reverse');
+}
 
 export default function LoginPage() {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const configured = browserSupabaseConfig().configured;
+
   useEffect(() => {
     if (!configured) return;
     void getSupabaseBrowserClient().auth.getSession().then(({ data }) => {
       if (data.session) router.replace('/dashboard');
     });
   }, [configured, router]);
+
+  async function submitLogin(event: { preventDefault: () => void; currentTarget: HTMLFormElement }) {
+    event.preventDefault();
+    setBusy(true);
+    setError('');
+    const form = new FormData(event.currentTarget);
+    try {
+      const email = form.get('email');
+      const password = form.get('password');
+      if (typeof email !== 'string' || typeof password !== 'string') {
+        throw new Error('Enter your officer email and password.');
+      }
+      const { error } = await getSupabaseBrowserClient().auth.signInWithPassword({ email, password });
+      if (error) throw new Error('Email or password is incorrect, or this account is not available.');
+      router.replace('/dashboard');
+    } catch (error) {
+      setError(errorText(error));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
-    <main className="internal-public-page flex min-h-screen flex-col px-6 sm:px-10">
-      <header className="mx-auto flex w-full max-w-7xl items-center border-b border-[#9AD3E0]/15 py-4 sm:py-5">
-        <Link href="/" className="leading-tight text-[#E0F2F5]">
-          <span className="block text-base font-semibold">AWS SBG TIP Manila</span>
-          <span className="mt-1 block text-sm text-[#9AD3E0]/70">ID Generator</span>
-        </Link>
-      </header>
-      <div className="flex flex-1 items-center justify-center py-12 sm:pb-24">
-        <section className="internal-login-panel internal-enter w-full max-w-[420px]">
-          <h1 className="text-3xl font-semibold tracking-[-0.025em] text-[#E0F2F5] sm:text-4xl">Officer Login</h1>
-          <p className="mt-3 text-base leading-7 text-[#E0F2F5]/65">Access is limited to authorized AWS SBG TIP Manila officers.</p>
-          <form className="mt-8 space-y-5" onSubmit={async (event) => {
-            event.preventDefault(); setBusy(true); setError('');
-            const form = new FormData(event.currentTarget);
-            try {
-              const email = form.get('email'); const password = form.get('password');
-              if (typeof email !== 'string' || typeof password !== 'string') throw new Error('Enter your officer email and password.');
-              const { error } = await getSupabaseBrowserClient().auth.signInWithPassword({ email, password });
-              if (error) throw new Error('Email or password is incorrect, or this account is not available.');
-              router.replace('/dashboard');
-            } catch (error) { setError(errorText(error)); } finally { setBusy(false); }
-          }}>
-            <label className="internal-login-field"><span>Officer Email</span><input name="email" type="email" autoComplete="username" required /></label>
-            <label className="internal-login-field"><span>Password</span><input name="password" type="password" autoComplete="current-password" required /></label>
-            <button className="internal-action w-full" disabled={busy || !configured}>
-              <span>{busy ? 'Signing in…' : 'Login'}</span>{!busy && <span className="internal-action-arrow" aria-hidden="true">→</span>}
-            </button>
-            {!configured && <p className="internal-login-error">Supabase is not configured.</p>}
-            {error && <p role="alert" className="internal-login-error">{error}</p>}
-          </form>
-          <Link href="/" className="mt-7 inline-block text-sm text-[#9AD3E0]/70 transition-colors duration-200 hover:text-[#9AD3E0]">← Back to home</Link>
+    <main className="public-shell public-route public-route-login">
+      <div className="public-container">
+        <header className="public-header">
+          <Link href="/" className="public-brand" aria-label="AWS SBG TIP Manila home" onClick={markReverseTransition}>
+            <span className="public-logo">AWS</span>
+            <span>
+              <strong>AWS SBG TIP Manila</strong>
+              <small>ID Generator</small>
+            </span>
+          </Link>
+        </header>
+
+        <section className="public-hero public-login-hero">
+          <div className="public-hero-copy">
+            <p className="public-eyebrow">IT&apos;S ALWAYS DAY ONE.</p>
+            <h1>Officer Login</h1>
+            <p className="public-description">
+              Sign in to access the AWS SBG TIP Manila ID Generator workspace.
+            </p>
+            <div className="public-login-points" aria-label="Officer tools">
+              <span><ShieldCheck aria-hidden="true" /><strong>Secure Access</strong><small>Authorized officers only</small></span>
+              <span><UsersRound aria-hidden="true" /><strong>Manage Members</strong><small>Import and organize</small></span>
+              <span><IdCard aria-hidden="true" /><strong>Generate IDs</strong><small>Create and assign</small></span>
+            </div>
+          </div>
+
+          <section className="internal-login-panel public-login-panel" aria-labelledby="login-heading">
+            <h2 id="login-heading">Officer Login</h2>
+            <p>Access is limited to authorized AWS SBG TIP Manila officers.</p>
+            <form onSubmit={submitLogin}>
+              <label className="internal-login-field public-input-field">
+                <span>Officer Email</span>
+                <span className="public-input-wrap">
+                  <Mail aria-hidden="true" />
+                  <input name="email" type="email" autoComplete="username" placeholder="name@tip.edu.ph" required />
+                </span>
+              </label>
+              <label className="internal-login-field public-input-field">
+                <span>Password</span>
+                <span className="public-input-wrap">
+                  <Lock aria-hidden="true" />
+                  <input name="password" type={showPassword ? 'text' : 'password'} autoComplete="current-password" placeholder="Enter your password" required />
+                  <button type="button" aria-label={showPassword ? 'Hide password' : 'Show password'} onClick={() => setShowPassword((value) => !value)}>
+                    {showPassword ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
+                  </button>
+                </span>
+              </label>
+              <button className="public-primary-action" disabled={busy || !configured}>
+                <span>{busy ? 'Signing in...' : 'Login'}</span>{!busy && <ArrowRight aria-hidden="true" />}
+              </button>
+              <Link href="/" className="public-back-link" onClick={markReverseTransition}>
+                <ArrowLeft aria-hidden="true" /> Back to home
+              </Link>
+              {!configured && <p className="internal-login-error">Supabase is not configured.</p>}
+              {error && <p role="alert" className="internal-login-error">{error}</p>}
+            </form>
+          </section>
         </section>
+
+        <footer className="public-footer">
+          <div>
+            <strong>AWS SBG TIP Manila</strong>
+            <span>It&apos;s always day one.</span>
+          </div>
+          <nav aria-label="Footer links">
+            <a href="mailto:privacy@tip.edu.ph">Privacy</a>
+            <a href="mailto:support@tip.edu.ph">Support</a>
+            <a href="mailto:contact@tip.edu.ph">Contact</a>
+          </nav>
+        </footer>
       </div>
     </main>
   );
