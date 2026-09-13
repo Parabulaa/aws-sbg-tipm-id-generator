@@ -118,6 +118,8 @@ export function GeneratedHistory() {
     );
   }
 
+  if (loading) return <GeneratedHistorySkeleton />;
+
   return (
     <div className={`generated-archive ${details ? 'has-details' : ''}`}>
       <section className="generated-main-column">
@@ -396,6 +398,29 @@ export function GeneratedHistory() {
           }
         />
       )}
+    </div>
+  );
+}
+
+function GeneratedHistorySkeleton() {
+  return (
+    <div className="generated-loading" aria-label="Loading generated IDs">
+      <div className="generated-metrics">
+        {Array.from({ length: 3 }, (_, index) => (
+          <div className="generated-skeleton-metric" key={index}>
+            <i />
+            <span><b /><small /></span>
+          </div>
+        ))}
+      </div>
+      <div className="generated-skeleton-toolbar">
+        {Array.from({ length: 4 }, (_, index) => <span key={index} />)}
+      </div>
+      <div className="generated-skeleton-table">
+        <header />
+        <div>{Array.from({ length: 5 }, (_, index) => <span key={index} />)}</div>
+        <footer />
+      </div>
     </div>
   );
 }
