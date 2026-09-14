@@ -40,7 +40,7 @@ export function Dashboard() {
   const [dialogError, setDialogError] = useState('');
   const officers = members.filter((member) => member.membership_type === 'Officer').length;
   const associates = members.filter((member) => member.membership_type === 'Associate').length;
-  const regular = members.filter((member) => member.membership_type === 'Member').length;
+  const qcMembers = members.filter((member) => member.campus === 'Quezon City').length;
   const drafts = members.filter((member) => !['Ready', 'Generated'].includes(member.status)).length;
   const ready = members.filter((member) => member.status === 'Ready').length;
   const completed = members.filter((member) => ['Ready', 'Generated'].includes(member.status)).length;
@@ -49,7 +49,7 @@ export function Dashboard() {
     { label: 'Total Members', value: members.length, note: 'All active records', icon: UsersRound, tone: 'blue' },
     { label: 'Officers', value: officers, note: percent(officers, members.length), icon: ShieldCheck, tone: 'cyan' },
     { label: 'Associates', value: associates, note: percent(associates, members.length), icon: UserRound, tone: 'green' },
-    { label: 'Regular Members', value: regular, note: percent(regular, members.length), icon: UserRound, tone: 'violet' },
+    { label: 'QC Members', value: qcMembers, note: percent(qcMembers, members.length), icon: UserRound, tone: 'violet' },
     { label: 'Draft IDs', value: drafts, note: 'Needs review', icon: FileClock, tone: 'yellow' },
     { label: 'Ready IDs', value: ready, note: 'Ready for generation', icon: Clock3, tone: 'yellow' },
     { label: 'Generated IDs', value: generations.length, note: 'Saved ID versions', icon: CheckCircle2, tone: 'cyan' },

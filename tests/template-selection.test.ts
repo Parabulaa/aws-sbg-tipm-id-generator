@@ -28,6 +28,12 @@ void test('approved static templates resolve locally without changing unknown up
     'id-templates/member/front/future-upload.png',
   );
 });
+
+void test('Quezon City members select only the QC member design', () => {
+  const manila = { ...fallback, campus: 'Manila' as const };
+  const qc = { ...fallback, key: 'qc', campus: 'Quezon City' as const, category: 'Member' as const, version: 'qc-v1' };
+  assert.equal(selectTemplate([manila, qc], { ...blankMember, campus: 'Quezon City' }, 'front'), qc);
+});
 void test('missing designs use only shared fallback and never another office or side', () => {
   const member = { ...blankMember, membership_type: 'Officer' as const, officer_position: 'AI/ML LEAD' };
   assert.equal(selectTemplate(designs.filter(t => t.team !== 'Technology / CTO Office'), member, 'front'), undefined);

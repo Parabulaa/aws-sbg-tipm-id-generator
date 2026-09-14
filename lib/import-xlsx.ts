@@ -1,7 +1,7 @@
 import ExcelJS from 'exceljs';
 import JSZip from 'jszip';
 import { normalizeMember, validateMember } from './domain';
-import type { Category, MemberInput, MemberRecord } from './domain';
+import type { Campus, Category, MemberInput, MemberRecord } from './domain';
 
 export interface ImportRow {
   row: number;
@@ -87,6 +87,7 @@ export async function parseXlsx(
   bytes: ArrayBuffer,
   existingMembers: Pick<MemberRecord, 'tip_email' | 'student_id_number'>[] = [],
   classification: Category = 'Member',
+  campus: Campus = 'Manila',
 ): Promise<ImportRow[]> {
   if (bytes.byteLength > 10 * 1024 * 1024)
     throw new Error('XLSX must be smaller than 10 MB.');
@@ -147,6 +148,7 @@ export async function parseXlsx(
     const row = sheet.getRow(number);
     if (!row.hasValues) continue;
     const raw: Record<string, string> = {
+      campus,
       membership_type: classification,
       officer_position: '',
       team: '',

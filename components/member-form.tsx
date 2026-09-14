@@ -1,16 +1,17 @@
 import type { MemberInput } from '@/lib/domain';
 import {
+  campuses,
   categories,
   officerPositions,
+  programs,
   teamForOfficerPosition,
+  yearLevels,
 } from '@/lib/domain';
 
 const fields: { key: keyof MemberInput; label: string; type?: string }[] = [
   { key: 'full_name', label: 'Full Name' },
   { key: 'tip_email', label: 'T.I.P. Email', type: 'email' },
   { key: 'student_id_number', label: 'Student ID Number' },
-  { key: 'program', label: 'Department / Program' },
-  { key: 'year_level', label: 'Year Level' },
 ];
 
 export function MemberForm({
@@ -24,6 +25,13 @@ export function MemberForm({
 }) {
   return (
     <fieldset disabled={disabled} className="grid min-w-0 gap-4 sm:grid-cols-2">
+      <label className="field">
+        Campus
+        <select aria-label="Campus" value={value.campus} onChange={(event) => {
+          const campus = event.target.value as MemberInput['campus'];
+          onChange({ ...value, campus, membership_type: campus === 'Quezon City' ? 'Member' : value.membership_type, officer_position: campus === 'Quezon City' ? '' : value.officer_position, team: campus === 'Quezon City' ? '' : value.team });
+        }}>{campuses.map((campus) => <option key={campus}>{campus}</option>)}</select>
+      </label>
       {fields.map(({ key, label, type }) => (
         <label key={key} className="field">
           {label}
@@ -37,11 +45,14 @@ export function MemberForm({
           />
         </label>
       ))}
+      <label className="field">Department / Program<select aria-label="Department / Program" value={value.program} onChange={(event) => onChange({ ...value, program: event.target.value })}><option value="">Select a program</option>{programs.map((program) => <option key={program}>{program}</option>)}</select></label>
+      <label className="field">Year Level<select aria-label="Year Level" value={value.year_level} onChange={(event) => onChange({ ...value, year_level: event.target.value })}><option value="">Select a year level</option>{yearLevels.map((year) => <option key={year}>{year}</option>)}</select></label>
       <label className="field">
         Membership Type
         <select
           aria-label="Membership Type"
           value={value.membership_type}
+          disabled={value.campus === 'Quezon City'}
           onChange={(event) => {
             const membership_type = event.target
               .value as MemberInput['membership_type'];

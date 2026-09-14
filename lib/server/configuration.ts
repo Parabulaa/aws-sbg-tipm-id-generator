@@ -11,9 +11,11 @@ function toTemplate(row: Record<string, unknown>): Template {
   const category = row.category as Template['category'];
   const side = row.side as Template['side'];
   const team = typeof row.team === 'string' ? row.team : '';
+  const campus = row.campus === 'Quezon City' ? 'Quezon City' : 'Manila';
   return {
-    key: `${category}-${team}-${side}`,
+    key: `${campus}-${category}-${team}-${side}`,
     team,
+    campus,
     category,
     side,
     image: localTemplateAsset(row.image_path as string),
@@ -47,6 +49,7 @@ export async function saveTemplate(
   if (teamInput !== null && typeof teamInput !== 'string')
     throw new AppError('Choose a valid officer design.');
   const team = teamInput ?? '';
+  const campus = 'Manila';
   if (team && (category !== 'Officer' || !officerDesigns.some(d => d.team === team)))
     throw new AppError('Choose a valid officer design.');
   if (
@@ -100,6 +103,7 @@ export async function saveTemplate(
     .eq('category', category)
     .eq('side', side)
     .eq('team', team)
+    .eq('campus', campus)
     .maybeSingle();
   const uploaded = await client.storage
     .from('id-templates')
@@ -114,6 +118,7 @@ export async function saveTemplate(
       {
         category,
         team,
+        campus,
         side,
         image_path: image,
         layout,
@@ -122,7 +127,7 @@ export async function saveTemplate(
         created_by: actorId,
         updated_by: actorId,
       },
-      { onConflict: 'category,side,team' },
+      { onConflict: 'category,side,team,campus' },
     )
     .select('*')
     .single();

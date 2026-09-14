@@ -13,6 +13,10 @@ const allocationSql = readFileSync(
   join(directory, '20260913000200_active_membership_slots.sql'),
   'utf8',
 );
+const qcSql = readFileSync(
+  join(directory, '20260915000100_qc_members.sql'),
+  'utf8',
+);
 
 void test('Supabase schema enables RLS and keeps application buckets private', () => {
   for (const table of [
@@ -85,6 +89,15 @@ void test('member slots reserve 0001-0019 and fill the lowest gaps', () => {
     Array.from({ length: 200 }, (_, index) => index + 20),
   );
   assert.ok(allocateLowest([], 200).every((value) => value >= 20));
+});
+
+void test('QC members use campus-scoped three-digit TIPQ IDs and templates', () => {
+  assert.match(qcSql, /AWSSBG-TIPQ-/);
+  assert.match(qcSql, /lpad\(next_sequence::text, 3, '0'\)/i);
+  assert.match(qcSql, /generate_series\(1, 999\)/i);
+  assert.match(qcSql, /campus, membership_year, membership_sequence/i);
+  assert.match(qcSql, /static\/qc-member\/front\.png/i);
+  assert.match(qcSql, /static\/qc-member\/back\.png/i);
 });
 
 void test('generation and archive permissions are enforced below the UI', () => {

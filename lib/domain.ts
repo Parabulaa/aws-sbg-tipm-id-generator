@@ -1,5 +1,20 @@
 export const categories = ['Member', 'Officer', 'Associate'] as const;
 export type Category = (typeof categories)[number];
+export const campuses = ['Manila', 'Quezon City'] as const;
+export type Campus = (typeof campuses)[number];
+export const programs = [
+  'Computer Science',
+  'Information Technology',
+  'Information Systems',
+  'Data Science and Analytics',
+  'Accounting Information Systems',
+  'Cybersecurity',
+  'Computer Engineering',
+  'Industrial Engineering',
+  'Electrical Engineering',
+  'Civil Engineering',
+] as const;
+export const yearLevels = ['1st Year', '2nd Year', '3rd Year', '4th Year'] as const;
 export const officerPositions = [
   'LORSO REPRESENTATIVE',
   'CHIEF EXECUTIVE OFFICER/LEAD',
@@ -63,6 +78,7 @@ export interface Crop {
 }
 
 export interface MemberInput {
+  campus: Campus;
   full_name: string;
   tip_email: string;
   student_id_number: string;
@@ -124,6 +140,7 @@ export interface Activity {
 }
 
 export const blankMember: MemberInput = {
+  campus: 'Manila',
   full_name: '',
   tip_email: '',
   student_id_number: '',
@@ -139,12 +156,13 @@ export const defaultCrop: Crop = { x: 0.5, y: 0.5, zoom: 1 };
 // PostgreSQL intentionally uses NULL for fields that do not apply to members.
 // Form inputs and text rendering use strings. Preserve all stored metadata.
 export function memberForReview(
-  row: Omit<MemberRecord, 'officer_position' | 'team'> & {
+  row: Omit<MemberRecord, 'campus' | 'officer_position' | 'team'> & {
+    campus?: Campus | null;
     officer_position: string | null;
     team: string | null;
   },
 ): MemberRecord {
-  return { ...row, officer_position: row.officer_position ?? '', team: row.team ?? '' };
+  return { ...row, campus: row.campus ?? 'Manila', officer_position: row.officer_position ?? '', team: row.team ?? '' };
 }
 
 export function isArchived(member: Pick<MemberRecord, 'archived_at'>) {
@@ -197,6 +215,9 @@ export function normalizeMember(raw: Record<string, unknown>): MemberInput {
       (value) => value.toLowerCase() === rawPosition.toLowerCase(),
     ) ?? rawPosition;
   return {
+    campus: (campuses.find(
+      (value) => value.toLowerCase() === text('campus').toLowerCase(),
+    ) ?? 'Manila') as Campus,
     full_name: text('full_name'),
     tip_email: text('tip_email').toLowerCase(),
     student_id_number: text('student_id_number'),
@@ -251,6 +272,9 @@ export function validateMember(member: Omit<MemberInput, 'officer_position' | 't
     errors.push('Invalid T.I.P. email');
   if (!categories.includes(member.membership_type))
     errors.push('Invalid membership type');
+  if (!campuses.includes(member.campus)) errors.push('Invalid campus');
+  if (member.campus === 'Quezon City' && member.membership_type !== 'Member')
+    errors.push('Quezon City imports currently support Members only');
   if (member.membership_type === 'Officer' && !member.officer_position)
     errors.push('Officer position is required');
   if (

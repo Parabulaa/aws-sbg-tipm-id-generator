@@ -1,4 +1,4 @@
-import type { Category } from './domain';
+import type { Campus, Category } from './domain';
 import { teamForOfficerPosition } from './domain';
 export const officerDesigns = [
   { label: 'Executive', team: 'Executive' },
@@ -43,6 +43,7 @@ export interface TextBox extends Rect {
   weight: 'normal' | 'bold';
   /** Defaults to Arial for older templates. Montserrat gives the approved rounded geometric ID style. */
   fontFamily?: 'arial' | 'montserrat';
+  prefix?: string;
 }
 export interface TemplateLayout {
   photo?: Rect & { borderRadius?: number; clipPolygon?: [number, number][] };
@@ -50,6 +51,7 @@ export interface TemplateLayout {
   accents: (Rect & { label?: string })[];
 }
 export interface Template {
+  campus?: Campus;
   team?: string;
   key: string;
   category: Category;
@@ -61,10 +63,11 @@ export interface Template {
 }
 export function selectTemplate(
   templates: Template[],
-  member: { membership_type: Category; officer_position: string; team: string },
+  member: { campus?: Campus; membership_type: Category; officer_position: string; team: string },
   side: Side,
 ) {
-  const candidates = templates.filter(t => t.category === member.membership_type && t.side === side && t.approved);
+  const campus = member.campus ?? 'Manila';
+  const candidates = templates.filter(t => t.category === member.membership_type && t.side === side && t.approved && (t.campus ?? 'Manila') === campus);
   const team = teamForOfficerPosition(member.officer_position) || member.team;
   return (member.membership_type === 'Officer' && candidates.find(t => t.team === team)) ||
     candidates.find(t => !t.team);
@@ -127,6 +130,7 @@ export function validateLayout(layout: TemplateLayout) {
       !['normal', 'bold'].includes(field.weight) ||
       (field.fontFamily !== undefined &&
         !['arial', 'montserrat'].includes(field.fontFamily)) ||
+      (field.prefix !== undefined && (typeof field.prefix !== 'string' || field.prefix.length > 30)) ||
       !Number.isFinite(field.fontSize) ||
       !Number.isFinite(field.minFontSize) ||
       field.minFontSize < 12 ||

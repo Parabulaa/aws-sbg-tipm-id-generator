@@ -51,6 +51,12 @@ void test('five-field member import preserves values and flags duplicates', asyn
   assert.match(duplicate[0].errors.join(' '), /already exists/);
 });
 
+void test('QC member import assigns the Quezon City campus', async () => {
+  const parsed = await parseXlsx(await workbook([headers, row]), [], 'Member', 'Quezon City');
+  assert.equal(parsed[0].member.campus, 'Quezon City');
+  assert.deepEqual(parsed[0].errors, []);
+});
+
 void test('mixed imports keep new members eligible when another row already exists', async () => {
   const newRow = ['New Person', 'new@example.org', '009999', 'BSIT', '3'];
   const parsed = await parseXlsx(await workbook([headers, row, newRow]), [

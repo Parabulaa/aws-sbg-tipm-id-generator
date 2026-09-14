@@ -2723,7 +2723,7 @@ html, body { background: #061319; }
 }
 .members-metrics {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: .75rem;
 }
 .member-metric-card {
@@ -2780,6 +2780,9 @@ html, body { background: #061319; }
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: .75rem;
+}
+.members-filter-grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 .members-filter-grid {
   margin-top: .75rem;

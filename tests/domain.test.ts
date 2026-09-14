@@ -33,6 +33,13 @@ void test('full names remain canonical and student IDs preserve leading zeroes',
   assert.equal(normalizeYearLevel('3rd year'), '3rd Year');
 });
 
+void test('campus normalization keeps Manila compatibility and accepts Quezon City', () => {
+  assert.equal(normalizeMember(input).campus, 'Manila');
+  assert.equal(normalizeMember({ ...input, campus: 'quezon city' }).campus, 'Quezon City');
+  assert.deepEqual(validateMember({ ...input, campus: 'Quezon City' }), []);
+  assert.ok(validateMember({ ...input, campus: 'Quezon City', membership_type: 'Officer' }).includes('Quezon City imports currently support Members only'));
+});
+
 void test('member validation covers required data and officer fields', () => {
   assert.deepEqual(validateMember(input), []);
   for (const changed of [

@@ -1,0 +1,65 @@
+{
+  "photo": {
+    "x": 329,
+    "y": 447,
+    "width": 538,
+    "height": 538,
+    "borderRadius": 48
+  },
+  "fields": [
+    {
+      "field": "name",
+      "x": 105,
+      "y": 1050,
+      "width": 990,
+      "height": 120,
+      "fontSize": 68,
+      "minFontSize": 38,
+      "color": "#663030",
+      "align": "center",
+      "weight": "bold",
+      "fontFamily": "montserrat"
+    },
+    {
+      "field": "role",
+      "x": 80,
+      "y": 1234,
+      "width": 1040,
+      "height": 92,
+      "fontSize": 62,
+      "minFontSize": 42,
+      "color": "#ffffff",
+      "align": "center",
+      "weight": "bold",
+      "fontFamily": "montserrat"
+    },
+    {
+      "field": "aws_sbg_id",
+      "prefix": "ID NO. ",
+      "x": 120,
+      "y": 1375,
+      "width": 960,
+      "height": 80,
+      "fontSize": 48,
+      "minFontSize": 32,
+      "color": "#663030",
+      "align": "center",
+      "weight": "bold",
+      "fontFamily": "montserrat"
+    },
+    {
+      "field": "email",
+      "x": 130,
+      "y": 1464,
+      "width": 940,
+      "height": 68,
+      "fontSize": 39,
+      "minFontSize": 26,
+      "color": "#8f431d",
+      "align": "center",
+      "weight": "bold",
+      "fontFamily": "montserrat"
+    }
+  ],
+  "accents": []
+}

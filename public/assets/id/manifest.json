@@ -1,4 +1,6 @@
 {
+  "static/qc-member/front.png": "/assets/id/qc-member/front.png",
+  "static/qc-member/back.png": "/assets/id/qc-member/back.png",
   "id-templates/officer/front/32e43864-2b30-45f2-ac0e-265e9dee7304.png": "/assets/id/officer/executive/front.png",
   "id-templates/officer/front/c06b6676-fa5d-4bd3-8212-78fccf269836.png": "/assets/id/officer/operations/front.png",
   "id-templates/member/front/e9c5d981-2b66-4df4-9a9a-76cbfad591bb.png": "/assets/id/member/front.png",

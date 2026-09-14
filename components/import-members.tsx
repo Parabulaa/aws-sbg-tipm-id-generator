@@ -2,14 +2,15 @@
 import { useState } from 'react';
 import { useData } from './data-provider';
 import { api, errorText } from '@/lib/client';
-import { categories } from '@/lib/domain';
-import type { Category } from '@/lib/domain';
+import { campuses, categories } from '@/lib/domain';
+import type { Campus, Category } from '@/lib/domain';
 import type { ImportRow } from '@/lib/import-xlsx';
 
 export function ImportMembers({ onImported, embedded = false }: { onImported?: (count: number) => void; embedded?: boolean }) {
   const { members, refresh } = useData();
   const [rows, setRows] = useState<ImportRow[]>([]);
   const [classification, setClassification] = useState<Category>('Member');
+  const [campus, setCampus] = useState<Campus>('Manila');
   const [busy, setBusy] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -21,11 +22,13 @@ export function ImportMembers({ onImported, embedded = false }: { onImported?: (
   return (
     <section className={embedded ? 'space-y-3' : 'space-y-3 rounded-xl border border-slate-200 bg-white p-4'}>
       <div className="import-members-heading flex flex-wrap items-baseline justify-between gap-2"><h2 className="font-semibold">Import XLSX</h2><p className="text-xs text-slate-500">Required: name, TIP email, student ID, program and year level</p></div>
-      <div className="import-members-fields grid gap-3 md:grid-cols-[14rem_1fr]">
+      <div className="import-members-fields grid gap-3 md:grid-cols-[12rem_14rem_1fr]">
+      <label className="field">Campus<select value={campus} onChange={(event) => { const next = event.target.value as Campus; setCampus(next); if (next === 'Quezon City') setClassification('Member'); setRows([]); setMessage('Choose the spreadsheet again for this campus.'); }}>{campuses.map((value) => <option key={value}>{value}</option>)}</select></label>
       <label className="field">
         Classification for this batch
         <select
           value={classification}
+          disabled={campus === 'Quezon City'}
           onChange={(event) => {
             setClassification(event.target.value as Category);
             setRows([]);
@@ -59,6 +62,7 @@ export function ImportMembers({ onImported, embedded = false }: { onImported?: (
                   await file.arrayBuffer(),
                   members,
                   classification,
+                  campus,
                 ),
               );
             } catch (error) {

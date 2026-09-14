@@ -22,6 +22,7 @@ export function MemberDirectory() {
   const { members, refresh, role } = useData();
   const [query, setQuery] = useState('');
   const [course, setCourse] = useState('');
+  const [campus, setCampus] = useState('');
   const [year, setYear] = useState('');
   const [roleTeam, setRoleTeam] = useState('');
   const [status, setStatus] = useState('');
@@ -58,7 +59,7 @@ export function MemberDirectory() {
   const courses = useMemo(() => [...new Set(members.map(member => member.program).filter(Boolean))].sort(), [members]);
   const years = useMemo(() => [...new Set(members.map(member => member.year_level).filter(Boolean))].sort(), [members]);
   const rolesAndTeams = useMemo(() => [...new Set(members.flatMap(member => [member.membership_type, member.team]).filter(Boolean))].sort(), [members]);
-  const visible = members.filter((member) => (!course || member.program === course) && (!year || member.year_level === year) && (!roleTeam || member.membership_type === roleTeam || member.team === roleTeam) && (!status || member.status === status) && [displayName(member), member.tip_email, member.student_id_number, member.aws_sbg_id, member.officer_position, member.team].join(' ').toLowerCase().includes(query.toLowerCase()));
+  const visible = members.filter((member) => (!campus || member.campus === campus) && (!course || member.program === course) && (!year || member.year_level === year) && (!roleTeam || member.membership_type === roleTeam || member.team === roleTeam) && (!status || member.status === status) && [displayName(member), member.tip_email, member.student_id_number, member.aws_sbg_id, member.campus, member.officer_position, member.team].join(' ').toLowerCase().includes(query.toLowerCase()));
   const filteredArchived = archived.filter((member) => [displayName(member), member.aws_sbg_id, member.membership_type, member.officer_position, member.team].join(' ').toLowerCase().includes(archivedQuery.toLowerCase()));
   const totalPages = Math.max(1, Math.ceil(visible.length / rowsPerPage));
   const safePage = Math.min(page, totalPages);
@@ -70,11 +71,12 @@ export function MemberDirectory() {
       .sort((a, b) => a - b);
   }, [safePage, totalPages]);
   const allPageSelected = !!pageRows.length && pageRows.every(member => selected.includes(member.id));
-  const clearFilters = () => { setQuery(''); setCourse(''); setYear(''); setRoleTeam(''); setStatus(''); setPage(1); };
+  const clearFilters = () => { setQuery(''); setCampus(''); setCourse(''); setYear(''); setRoleTeam(''); setStatus(''); setPage(1); };
   const metrics = [
     { label: 'Total Members', value: members.length, note: 'All registered members', icon: UsersRound },
     { label: 'Officers', value: members.filter(member => member.membership_type === 'Officer').length, note: `${members.length ? Math.round((members.filter(member => member.membership_type === 'Officer').length / members.length) * 100) : 0}% of total`, icon: ShieldCheck },
     { label: 'Associates', value: members.filter(member => member.membership_type === 'Associate').length, note: `${members.length ? Math.round((members.filter(member => member.membership_type === 'Associate').length / members.length) * 100) : 0}% of total`, icon: UserRoundCheck },
+    { label: 'QC Members', value: members.filter(member => member.campus === 'Quezon City').length, note: `${members.length ? Math.round((members.filter(member => member.campus === 'Quezon City').length / members.length) * 100) : 0}% of total`, icon: UsersRound },
     { label: 'Archived', value: archived.length, note: `${members.length ? Math.round((archived.length / members.length) * 100) : 0}% of total`, icon: Archive },
   ];
 
@@ -134,7 +136,7 @@ export function MemberDirectory() {
     </section>
     <section className="members-filter-panel">
       <label className="field member-search members-search"><span className="sr-only">Search members</span><Search className="size-4" /><input type="search" value={query} placeholder="Search members..." onChange={(event) => { setQuery(event.target.value); setPage(1); }} /></label>
-      <div className="members-filter-grid"><Filter label="Course" value={course} setValue={(value) => { setCourse(value); setPage(1); }} options={courses} all="All courses" /><Filter label="Year Level" value={year} setValue={(value) => { setYear(value); setPage(1); }} options={years} all="All years" /><Filter label="Role / Team" value={roleTeam} setValue={(value) => { setRoleTeam(value); setPage(1); }} options={rolesAndTeams} all="All roles / teams" /><Filter label="Status" value={status} setValue={(value) => { setStatus(value); setPage(1); }} options={statuses} all="All statuses" /></div>
+      <div className="members-filter-grid"><Filter label="Campus" value={campus} setValue={(value) => { setCampus(value); setPage(1); }} options={['Manila', 'Quezon City']} all="All campuses" /><Filter label="Course" value={course} setValue={(value) => { setCourse(value); setPage(1); }} options={courses} all="All courses" /><Filter label="Year Level" value={year} setValue={(value) => { setYear(value); setPage(1); }} options={years} all="All years" /><Filter label="Role / Team" value={roleTeam} setValue={(value) => { setRoleTeam(value); setPage(1); }} options={rolesAndTeams} all="All roles / teams" /><Filter label="Status" value={status} setValue={(value) => { setStatus(value); setPage(1); }} options={statuses} all="All statuses" /></div>
       <div className="member-action-grid">
         <button className="btn-primary member-action-button" onClick={() => setImporting(true)}><Upload className="size-4" /> Import XLSX</button>
         <button className="btn member-action-button" onClick={() => { setModalError(''); setAddOpen(true); }}><UserRoundPlus className="size-4" /> Add Member</button>
