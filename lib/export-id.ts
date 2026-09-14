@@ -1,7 +1,7 @@
 import { PDFDocument } from 'pdf-lib';
 import JSZip from 'jszip';
 import { renderID, pngBlob } from './render-id';
-import { safeFilename } from './domain';
+import { memberClassification, safeFilename } from './domain';
 import type { MemberRecord, ColorSettings, Generation } from './domain';
 import type { Template } from './templates';
 import { selectTemplate } from './templates';
@@ -21,7 +21,7 @@ export async function generateMember(
   );
   if (selected.some((template) => !template))
     throw new Error(
-      `Approved ${member.membership_type} ${side === 'front' ? 'front' : 'front and back'} templates are required.`,
+      `Approved ${memberClassification(member)} ${side === 'front' ? 'front' : 'front and back'} templates are required.`,
     );
   const images: Blob[] = [];
   for (const template of selected) {
@@ -114,7 +114,7 @@ export async function exportZip(
         ? 'Officers'
         : record.member.membership_type === 'Associate'
           ? 'Associates'
-          : 'Members';
+          : memberClassification(record.member).replace(' Member', '-Members');
     const folder = `AWS-SBG-IDs/${category}/${safeFilename(record.member)}_${record.id.slice(0, 8)}`;
     for (const [name, path] of [
       ['front.png', record.front_path],

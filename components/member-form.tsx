@@ -6,6 +6,7 @@ import {
   programs,
   teamForOfficerPosition,
   yearLevels,
+  memberClassification,
 } from '@/lib/domain';
 
 const fields: { key: keyof MemberInput; label: string; type?: string }[] = [
@@ -48,7 +49,7 @@ export function MemberForm({
       <label className="field">Department / Program<select aria-label="Department / Program" value={value.program} onChange={(event) => onChange({ ...value, program: event.target.value })}><option value="">Select a program</option>{programs.map((program) => <option key={program}>{program}</option>)}</select></label>
       <label className="field">Year Level<select aria-label="Year Level" value={value.year_level} onChange={(event) => onChange({ ...value, year_level: event.target.value })}><option value="">Select a year level</option>{yearLevels.map((year) => <option key={year}>{year}</option>)}</select></label>
       <label className="field">
-        Membership Type
+        Membership Classification
         <select
           aria-label="Membership Type"
           value={value.membership_type}
@@ -66,7 +67,7 @@ export function MemberForm({
           }}
         >
           {categories.map((category) => (
-            <option key={category}>{category}</option>
+            <option key={category} value={category}>{category === 'Member' ? memberClassification({ campus: value.campus, membership_type: category }) : category}</option>
           ))}
         </select>
       </label>

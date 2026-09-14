@@ -1,4 +1,4 @@
--- Keep already-migrated projects aligned with the final empty QC front artwork.
+-- Enlarge the QC member name and separate the ID number from the role band.
 update public.templates
 set layout = $json${
   "photo":{"x":329,"y":447,"width":538,"height":538,"borderRadius":48},

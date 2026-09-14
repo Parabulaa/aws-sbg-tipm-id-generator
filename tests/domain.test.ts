@@ -14,6 +14,7 @@ import {
   teamForOfficerPosition,
   isArchived,
   memberForReview,
+  memberClassification,
 } from '../lib/domain';
 import type { MemberRecord } from '../lib/domain';
 
@@ -38,6 +39,11 @@ void test('campus normalization keeps Manila compatibility and accepts Quezon Ci
   assert.equal(normalizeMember({ ...input, campus: 'quezon city' }).campus, 'Quezon City');
   assert.deepEqual(validateMember({ ...input, campus: 'Quezon City' }), []);
   assert.ok(validateMember({ ...input, campus: 'Quezon City', membership_type: 'Officer' }).includes('Quezon City imports currently support Members only'));
+});
+
+void test('generation classification is derived from the imported campus', () => {
+  assert.equal(memberClassification({ ...input, campus: 'Manila' }), 'Manila Member');
+  assert.equal(memberClassification({ ...input, campus: 'Quezon City' }), 'QC Member');
 });
 
 void test('member validation covers required data and officer fields', () => {

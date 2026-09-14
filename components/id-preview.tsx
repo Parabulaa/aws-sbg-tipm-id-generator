@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Eye, Loader2, Search } from 'lucide-react';
+import { memberClassification } from '@/lib/domain';
 import type { MemberRecord, ColorSettings } from '@/lib/domain';
 import type { Template, Side } from '@/lib/templates';
 import { releaseImage, renderID } from '@/lib/render-id';
@@ -115,7 +116,7 @@ export function IDPreview({
           </button>
         ) : (
           <p className="notice">
-            Approved {member.membership_type} {side} template is not configured.
+            Approved {memberClassification(member)} {side} template is not configured.
           </p>
         )}
         {template && <button type="button" className="generate-click-zoom" onClick={() => setZoomed(true)}><Search className="size-3.5" /> Click ID to zoom</button>}

@@ -31,4 +31,9 @@ void test('QC Member label is large and centered in its band', () => {
   assert.equal(role.align, 'center');
   assert.equal(role.x + role.width / 2, 600);
   assert.ok(role.fontSize >= 70);
+  const name = layout.fields.find((box) => box.field === 'name');
+  const id = layout.fields.find((box) => box.field === 'aws_sbg_id');
+  assert.ok(name && id);
+  assert.ok(name.fontSize >= 82);
+  assert.ok(id.y - (role.y + role.height) >= 60);
 });

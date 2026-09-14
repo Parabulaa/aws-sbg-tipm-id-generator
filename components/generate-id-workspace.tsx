@@ -15,7 +15,7 @@ import { PhotoEditor } from './photo-editor';
 import { IDPreview } from './id-preview';
 import { StatusBadge } from './status-badge';
 import {
-  accentColor, displayName, safeFilename, validateMember,
+  accentColor, displayName, memberClassification, safeFilename, validateMember,
 } from '@/lib/domain';
 import type { MemberRecord, Generation } from '@/lib/domain';
 import type { Side } from '@/lib/templates';
@@ -68,7 +68,7 @@ export function GenerateIdWorkspace() {
   const member = members.find((record) => record.id === (selected || params.get('member'))) || members[0];
 
   const filtered = useMemo(() => members.filter((record) =>
-    [displayName(record), record.tip_email, record.aws_sbg_id, record.student_id_number]
+    [displayName(record), memberClassification(record), record.tip_email, record.aws_sbg_id, record.student_id_number]
       .join(' ').toLowerCase().includes(query.toLowerCase())), [members, query]);
 
   if (loading) {
@@ -292,7 +292,7 @@ function ReviewEditor({
             icon={<Users className="size-4" />}
             title="Member Selection"
             description="Search for a member or select from the list."
-            trailing={<span className="generate-member-count">Member {index + 1} of {total}</span>}
+            trailing={<span className="generate-member-count">{memberClassification(member)} · {index + 1} of {total}</span>}
           />
           <div className="generate-selection-fields">
             <label className="field generate-search-field">
@@ -315,7 +315,7 @@ function ReviewEditor({
                   .filter((record, position, list) => list.findIndex((item) => item.id === record.id) === position)
                   .map((record) => (
                     <option key={record.id} value={record.id}>
-                      {displayName(record)} — {record.status}
+                      {displayName(record)} — {memberClassification(record)} — {record.status}
                     </option>
                   ))}
               </select>
@@ -438,6 +438,7 @@ function OutputSummary({ member, generatedAt }: { member: MemberRecord; generate
       <div><dt>Back file name</dt><dd><input aria-label="Back file name" readOnly title={`${safeFilename(member)}_back.png`} value={`${safeFilename(member)}_back.png`} /></dd></div>
       <div><dt>Date Generated</dt><dd>{generatedAt}</dd></div>
       <div><dt>Member ID</dt><dd><input aria-label="Member ID" readOnly title={member.aws_sbg_id} value={member.aws_sbg_id} /></dd></div>
+      <div><dt>Classification</dt><dd>{memberClassification(member)}</dd></div>
       <div><dt>Current status</dt><dd className="generate-current-status"><span />{member.status}</dd></div>
     </dl>
   </section>;

@@ -187,6 +187,14 @@ export function displayName(member: Pick<MemberInput, 'full_name'>) {
   return member.full_name.trim();
 }
 
+export function memberClassification(
+  member: Pick<MemberInput, 'campus' | 'membership_type'>,
+) {
+  if (member.membership_type === 'Member')
+    return `${member.campus === 'Quezon City' ? 'QC' : 'Manila'} Member`;
+  return `${member.campus === 'Quezon City' ? 'QC' : 'Manila'} ${member.membership_type}`;
+}
+
 export function normalizeYearLevel(value: string) {
   const cleaned = value.trim().replace(/\s+/g, ' ');
   const match = cleaned.match(/^(\d+)(?:st|nd|rd|th)?(?:\s*year)?$/i);
