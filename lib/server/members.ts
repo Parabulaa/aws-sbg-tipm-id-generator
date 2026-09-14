@@ -197,11 +197,14 @@ export async function confirmMember(
     ((await request.json()) as { revision: number }).revision,
   );
   const errors = validateMember(previous);
-  if (errors.length || !previous.photo_path)
+  const requiresPhoto = previous.membership_type !== 'Member';
+  if (errors.length || (requiresPhoto && !previous.photo_path))
     throw new AppError(
       [
         ...errors,
-        ...(!previous.photo_path ? ['Upload and review a photo first.'] : []),
+        ...(requiresPhoto && !previous.photo_path
+          ? ['Upload and review a photo first.']
+          : []),
       ].join('; '),
     );
   const issue = previous.date_issued ?? new Date().toISOString().slice(0, 10);

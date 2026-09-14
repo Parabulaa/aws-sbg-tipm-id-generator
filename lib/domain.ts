@@ -273,7 +273,7 @@ export function reviewStatus(
   photo: string | null,
 ): MemberStatus {
   if (validateMember(member).length) return 'Needs Attention';
-  return photo ? 'Draft' : 'Needs Photo';
+  return photo || member.membership_type === 'Member' ? 'Draft' : 'Needs Photo';
 }
 
 export function safeFilename(

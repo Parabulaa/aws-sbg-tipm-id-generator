@@ -58,8 +58,12 @@ void test('officer positions use the canonical controlled list', () => {
 });
 
 void test('edits invalidate readiness and uploading never confirms', () => {
-  assert.equal(reviewStatus(input, null), 'Needs Photo');
+  assert.equal(reviewStatus(input, null), 'Draft');
   assert.equal(reviewStatus(input, 'photo'), 'Draft');
+  assert.equal(
+    reviewStatus({ ...input, membership_type: 'Associate' }, null),
+    'Needs Photo',
+  );
   assert.equal(
     reviewStatus({ ...input, tip_email: '' }, 'photo'),
     'Needs Attention',

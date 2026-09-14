@@ -165,8 +165,11 @@ export async function renderID(
     }
   }
   const rect = template.layout.photo;
-  if (rect && (photoOverride || member.photo_path)) {
-    const image = await loadImage(photoOverride || fileUrl(member.photo_path!));
+  const photoSourceUrl = photoOverride
+    || (member.photo_path ? fileUrl(member.photo_path) : '')
+    || (member.membership_type === 'Member' ? '/assets/zaffie-peek-sticker.png' : '');
+  if (rect && photoSourceUrl) {
+    const image = await loadImage(photoSourceUrl);
     const crop = photoSource(
       image.naturalWidth,
       image.naturalHeight,

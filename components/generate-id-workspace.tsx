@@ -201,10 +201,10 @@ function ReviewEditor({
       focusFirstInvalid();
       throw new Error(errors[0]);
     }
-    if (!member.photo_path || photoPreview) {
+    if ((member.membership_type !== 'Member' && !member.photo_path) || photoPreview) {
       setWorkspaceTab('photo');
       document.querySelector<HTMLElement>('.generate-member-workspace')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      throw new Error(photoPreview ? 'Apply the uploaded photo first.' : 'Upload a member photo first.');
+      throw new Error(photoPreview ? 'Apply the uploaded photo first.' : 'Upload a photo first.');
     }
     const updated = await save();
     const confirmed = await api<MemberRecord>(`members/${member.id}/confirm`, {
