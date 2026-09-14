@@ -19,6 +19,7 @@ import { api, errorText } from '@/lib/client';
 import { PrivateImage } from './private-image';
 import { officerDesigns } from '@/lib/templates';
 import type { Side, Template } from '@/lib/templates';
+import type { Campus } from '@/lib/domain';
 import {
   Dialog,
   DialogContent,
@@ -37,6 +38,7 @@ const categories: Array<{ value: WorkspaceCategory; label: string }> = [
 
 export function TemplateSettings() {
   const { templates, refresh, role } = useData();
+  const [campus, setCampus] = useState<Campus>('Manila');
   const [category, setCategory] = useState<WorkspaceCategory>('Officer');
   const [team, setTeam] = useState<string>(officerDesigns[0].team);
   const [configureSide, setConfigureSide] = useState<Side>('front');
@@ -50,14 +52,19 @@ export function TemplateSettings() {
   const [busy, setBusy] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
   const design = officerDesigns.find((item) => item.team === team);
+  const visibleCategories = campus === 'Quezon City'
+    ? categories.filter((item) => item.value === 'Member')
+    : categories;
   const title =
-    category === 'Officer' ? (design?.label ?? 'Officer') : category;
+    campus === 'Quezon City'
+      ? 'QC Member'
+      : category === 'Officer' ? (design?.label ?? 'Officer') : category;
   const description =
     category === 'Officer'
       ? `Approved ID design for ${title.toLowerCase()} officers.`
       : category === 'Associate'
         ? 'Approved ID design for associate members.'
-        : 'Approved ID design for regular members.';
+        : `Approved ID design for ${campus === 'Quezon City' ? 'Quezon City' : 'regular'} members.`;
   const selected = useMemo(
     () =>
       Object.fromEntries(
@@ -66,12 +73,13 @@ export function TemplateSettings() {
           templates.find(
             (template) =>
               template.category === category &&
+              (template.campus ?? 'Manila') === campus &&
               template.side === side &&
               (category !== 'Officer' || template.team === team),
           ),
         ]),
       ) as Record<Side, Template | undefined>,
-    [category, team, templates],
+    [campus, category, team, templates],
   );
 
   function openConfigure(side: Side) {
@@ -93,6 +101,7 @@ export function TemplateSettings() {
     try {
       const form = new FormData();
       form.set('category', category);
+      form.set('campus', campus);
       form.set('side', configureSide);
       form.set('image', imageFile);
       if (category === 'Officer') form.set('team', team);
@@ -117,8 +126,13 @@ export function TemplateSettings() {
 
   return (
     <div className="templates-workspace">
+      <nav className="template-category-tabs" aria-label="Template campus">
+        {(['Manila', 'Quezon City'] as const).map((value) => (
+          <button key={value} type="button" className={campus === value ? 'is-active' : ''} aria-pressed={campus === value} onClick={() => { setCampus(value); if (value === 'Quezon City') setCategory('Member'); }}>{value === 'Quezon City' ? 'QC Templates' : 'Manila Templates'}</button>
+        ))}
+      </nav>
       <nav className="template-category-tabs" aria-label="Template category">
-        {categories.map((item) => (
+        {visibleCategories.map((item) => (
           <button
             key={item.value}
             type="button"
@@ -130,7 +144,7 @@ export function TemplateSettings() {
           </button>
         ))}
       </nav>
-      {category === 'Officer' && (
+      {campus === 'Manila' && category === 'Officer' && (
         <section className="template-team-panel">
           <div>
             <h2>Officer Teams</h2>
@@ -176,7 +190,7 @@ export function TemplateSettings() {
         <div className="template-card-grid">
           {(['front', 'back'] as const).map((side) => (
             <TemplateCard
-              key={`${category}-${team}-${side}`}
+              key={`${campus}-${category}-${team}-${side}`}
               side={side}
               label={title}
               template={selected[side]}
@@ -261,7 +275,7 @@ export function TemplateSettings() {
                     setCategory(event.target.value as WorkspaceCategory)
                   }
                 >
-                  {categories.map((item) => (
+                  {visibleCategories.map((item) => (
                     <option key={item.value} value={item.value}>
                       {item.value}
                     </option>
@@ -282,7 +296,7 @@ export function TemplateSettings() {
                 </select>
               </label>
             </div>
-            {category === 'Officer' && (
+            {campus === 'Manila' && category === 'Officer' && (
               <label className="field template-officer-select">
                 Officer Team
                 <select

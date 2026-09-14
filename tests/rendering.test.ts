@@ -141,6 +141,17 @@ void test('the selected template shows cached front and back previews', () => {
   assert.match(settings, /path=\{template\.image\}/);
 });
 
+void test('template management switches campuses while generation remains member-driven', () => {
+  const settings = readFileSync(
+    join(process.cwd(), 'components', 'template-settings.tsx'),
+    'utf8',
+  );
+  const templates = readFileSync(join(process.cwd(), 'lib', 'templates.ts'), 'utf8');
+  assert.match(settings, /QC Templates/);
+  assert.match(settings, /form\.set\('campus', campus\)/);
+  assert.match(templates, /member\.campus \?\? 'Manila'/);
+});
+
 void test('forced password and public sticker layouts use the intended UI', () => {
   const passwordPage = readFileSync(
     join(process.cwd(), 'app', 'change-password', 'page.tsx'),

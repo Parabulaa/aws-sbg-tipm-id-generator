@@ -1,55 +1,4 @@
--- Quezon City member records use their own numbering and approved templates.
-alter table public.members
-  add column if not exists campus text not null default 'Manila';
-
-alter table public.members drop constraint if exists members_campus_check;
-alter table public.members add constraint members_campus_check
-  check (campus in ('Manila', 'Quezon City'));
-
-drop index if exists public.members_membership_slot_current_unique;
-create unique index members_membership_slot_current_unique
-  on public.members (campus, membership_year, membership_sequence)
-  where archived_at is null
-    and membership_year is not null
-    and membership_sequence is not null;
-
-alter table public.templates
-  add column if not exists campus text not null default 'Manila';
-alter table public.templates drop constraint if exists templates_campus_check;
-alter table public.templates add constraint templates_campus_check
-  check (campus in ('Manila', 'Quezon City'));
-alter table public.templates drop constraint if exists templates_category_side_team_key;
-alter table public.templates drop constraint if exists templates_category_side_key;
-alter table public.templates add constraint templates_category_side_team_campus_key
-  unique (category, side, team, campus);
-
-insert into public.templates (
-  category, side, team, campus, image_path, layout, approved
-) values
-(
-  'Member', 'front', '', 'Quezon City', 'static/qc-member/front.png',
-  $json${
-    "photo":{"x":329,"y":447,"width":538,"height":538,"borderRadius":48},
-    "fields":[
-      {"field":"name","x":105,"y":1050,"width":990,"height":120,"fontSize":68,"minFontSize":38,"color":"#663030","align":"center","weight":"bold","fontFamily":"montserrat"},
-      {"field":"role","x":80,"y":1248,"width":1040,"height":90,"fontSize":70,"minFontSize":48,"color":"#ffffff","align":"center","weight":"bold","fontFamily":"montserrat"},
-      {"field":"aws_sbg_id","prefix":"ID NO. ","x":120,"y":1375,"width":960,"height":80,"fontSize":48,"minFontSize":32,"color":"#663030","align":"center","weight":"bold","fontFamily":"montserrat"},
-      {"field":"email","x":130,"y":1464,"width":940,"height":68,"fontSize":39,"minFontSize":26,"color":"#8f431d","align":"center","weight":"bold","fontFamily":"montserrat"}
-    ],
-    "accents":[]
-  }$json$::jsonb, true
-),
-(
-  'Member', 'back', '', 'Quezon City', 'static/qc-member/back.png',
-  '{"fields":[],"accents":[]}'::jsonb, true
-)
-on conflict (category, side, team, campus) do update set
-  image_path = excluded.image_path,
-  layout = excluded.layout,
-  version = gen_random_uuid(),
-  approved = true,
-  updated_at = now();
-
+-- QC Officer IDs 001-035 are reserved. QC Member allocation begins at 036.
 create or replace function public.create_members(
   member_rows jsonb,
   actor uuid,
@@ -119,6 +68,7 @@ begin
           and membership_year = year_value and membership_sequence = candidate
       ) order by candidate limit 1;
     end if;
+
     if next_sequence is null then
       raise exception 'all membership IDs for this campus and year are occupied'
         using errcode = '22023';

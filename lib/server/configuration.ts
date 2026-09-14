@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { categories } from '../domain';
+import { campuses, categories } from '../domain';
 import type { ColorSettings } from '../domain';
 import { validateLayout, officerDesigns } from '../templates';
 import type { Template } from '../templates';
@@ -49,7 +49,12 @@ export async function saveTemplate(
   if (teamInput !== null && typeof teamInput !== 'string')
     throw new AppError('Choose a valid officer design.');
   const team = teamInput ?? '';
-  const campus = 'Manila';
+  const campusInput = form.get('campus');
+  if (typeof campusInput !== 'string' || !campuses.includes(campusInput as (typeof campuses)[number]))
+    throw new AppError('Choose a valid template campus.');
+  const campus = campusInput as (typeof campuses)[number];
+  if (campus === 'Quezon City' && category !== 'Member')
+    throw new AppError('Quezon City currently supports the Member template only.');
   if (team && (category !== 'Officer' || !officerDesigns.some(d => d.team === team)))
     throw new AppError('Choose a valid officer design.');
   if (
@@ -95,7 +100,7 @@ export async function saveTemplate(
       'Confirm the template and field mapping have been approved.',
     );
   const version = crypto.randomUUID();
-  const objectPath = `${category.toLowerCase()}/${side}/${version}.png`;
+  const objectPath = `${campus === 'Quezon City' ? 'qc' : 'manila'}/${category.toLowerCase()}/${side}/${version}.png`;
   const image = `id-templates/${objectPath}`;
   const existing = await client
     .from('templates')
@@ -134,7 +139,7 @@ export async function saveTemplate(
   if (error) {
     await client.storage.from('id-templates').remove([objectPath]);
     if (['42703', 'PGRST204', '42P10'].includes(error.code))
-      throw new AppError('Template storage needs the officer-design database update. Ask your administrator to apply migration 20260911000100_officer_template_designs.sql.');
+      throw new AppError('Template storage needs the latest database migrations. Ask your administrator to run npx supabase db push.');
     throw new AppError('The approved template could not be saved.');
   }
   await logActivity(
