@@ -23,3 +23,12 @@ void test('invalid photo clip polygons are rejected', () => {
       clipPolygon: clipPolygon as [number, number][],
     }, fields: [], accents: [] }), /clipPolygon/);
 });
+
+void test('QC Member label is large and centered in its band', () => {
+  const layout = JSON.parse(readFileSync('template-mappings/qc-member-front.json', 'utf8')) as TemplateLayout;
+  const role = layout.fields.find((box) => box.field === 'role');
+  assert.ok(role);
+  assert.equal(role.align, 'center');
+  assert.equal(role.x + role.width / 2, 600);
+  assert.ok(role.fontSize >= 70);
+});
