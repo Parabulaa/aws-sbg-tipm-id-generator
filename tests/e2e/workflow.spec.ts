@@ -221,14 +221,7 @@ test('public home → login → five-field import → officer review → generat
   await page.locator('input[name="password"]').fill('isolated-test-password');
   await page.getByRole('button', { name: 'Login' }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
-  await page.getByRole('button', { name: 'Change Password' }).click();
-  await expect(page.getByRole('dialog', { name: 'Change Password' })).toBeVisible();
-  await page.getByLabel('Current Password').fill('isolated-test-password');
-  await page.getByLabel('New Password', { exact: true }).fill('new-password');
-  await page.getByLabel('Confirm New Password').fill('different-password');
-  await page.getByRole('button', { name: 'Change Password', exact: true }).click();
-  await expect(page.getByText(/do not match/i)).toBeVisible();
-  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Change Password' })).toHaveCount(0);
   await page.getByRole('link', { name: 'Members', exact: true }).click();
   await page.getByRole('button', { name: 'Import XLSX', exact: true }).click();
 

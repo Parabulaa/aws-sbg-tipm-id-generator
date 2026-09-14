@@ -16,6 +16,7 @@ import {
   Sparkles,
   Clock3,
   Users,
+  UserRound,
 } from 'lucide-react';
 import {
   Sheet,
@@ -152,11 +153,18 @@ export function Sidebar({ collapsed = false, onToggle }: { collapsed?: boolean; 
         <div className="mt-auto border-t border-slate-200 pt-4">
           <div className={compact ? 'text-center' : 'rounded-lg border border-slate-700 bg-slate-900 p-3'}>
             {!compact && <>
-            <p className="break-words text-sm font-semibold">{user}</p>
-            <p className="mt-0.5 text-xs capitalize text-slate-500">{role}</p>
-            <button className="btn mt-2 w-full" type="button" onClick={() => { setPasswordError(''); setPasswordOpen(true); }}>
-              <KeyRound className="size-4" /> Change Password
-            </button>
+            <div className="sidebar-user-identity">
+              <span className="sidebar-user-avatar" aria-hidden="true"><UserRound /></span>
+              <span>
+                <strong>{user}</strong>
+                <small>{role}</small>
+              </span>
+            </div>
+            {role !== 'admin' && (
+              <button className="btn mt-2 w-full" type="button" onClick={() => { setPasswordError(''); setPasswordOpen(true); }}>
+                <KeyRound className="size-4" /> Change Password
+              </button>
+            )}
             </>}
             <button
               className={`btn ${compact ? 'size-10 px-0' : 'mt-2 w-full'}`}
@@ -221,7 +229,7 @@ export function Sidebar({ collapsed = false, onToggle }: { collapsed?: boolean; 
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <Dialog open={passwordOpen} onOpenChange={(next) => { if (!passwordBusy) { setPasswordOpen(next); setPasswordError(''); } }}>
+      {role !== 'admin' && <Dialog open={passwordOpen} onOpenChange={(next) => { if (!passwordBusy) { setPasswordOpen(next); setPasswordError(''); } }}>
         <DialogContent className="member-dialog sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Change Password</DialogTitle>
@@ -238,7 +246,7 @@ export function Sidebar({ collapsed = false, onToggle }: { collapsed?: boolean; 
             </DialogFooter>
           </form>
         </DialogContent>
-      </Dialog>
+      </Dialog>}
     </>
   );
 }

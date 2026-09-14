@@ -140,3 +140,20 @@ void test('the selected template shows cached front and back previews', () => {
   assert.doesNotMatch(settings, /Preview on demand/);
   assert.match(settings, /path=\{template\.image\}/);
 });
+
+void test('forced password and public sticker layouts use the intended UI', () => {
+  const passwordPage = readFileSync(
+    join(process.cwd(), 'app', 'change-password', 'page.tsx'),
+    'utf8',
+  );
+  const sidebar = readFileSync(
+    join(process.cwd(), 'components', 'sidebar.tsx'),
+    'utf8',
+  );
+  const css = readFileSync(join(process.cwd(), 'app', 'globals.css'), 'utf8');
+  assert.match(passwordPage, /forced-password-dialog/);
+  assert.match(passwordPage, /showCloseButton=\{false\}/);
+  assert.match(sidebar, /role !== 'admin'/);
+  assert.match(sidebar, /sidebar-user-avatar/);
+  assert.match(css, /\.public-slots i:nth-child\(7\).*grid-column: 6 \/ span 2/);
+});
