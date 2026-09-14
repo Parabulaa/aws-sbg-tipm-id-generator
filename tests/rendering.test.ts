@@ -130,3 +130,13 @@ void test('metadata list pages do not eagerly render full member photos', () => 
   assert.doesNotMatch(directory, /<PrivateImage/);
   assert.match(directory, /member-photo-fallback/);
 });
+
+void test('the selected template shows cached front and back previews', () => {
+  const settings = readFileSync(
+    join(process.cwd(), 'components', 'template-settings.tsx'),
+    'utf8',
+  );
+  assert.match(settings, /className="template-thumbnail"/);
+  assert.doesNotMatch(settings, /Preview on demand/);
+  assert.match(settings, /path=\{template\.image\}/);
+});

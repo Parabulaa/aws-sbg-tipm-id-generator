@@ -449,11 +449,11 @@ function TemplateCard({
       </header>
       <div className="template-thumbnail-frame">
         {template ? (
-          <div className="template-empty template-metadata-preview">
-            <ImageIcon className="size-8" />
-            <strong>{label} {capitalize(side)}</strong>
-            <span>Preview on demand</span>
-          </div>
+          <PrivateImage
+            path={template.image}
+            alt={`${label} ${side} template`}
+            className="template-thumbnail"
+          />
         ) : (
           <div className="template-empty">
             <ImageIcon className="size-8" />
