@@ -4,6 +4,8 @@ import { photoSource } from '../lib/render-id';
 import { validateLayout } from '../lib/templates';
 import { accentColor, blankMember } from '../lib/domain';
 import type { MemberRecord } from '../lib/domain';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 void test('photo corners accept bounded radii and preserve older rectangular layouts', () => {
   const photo = { x: 338, y: 470, width: 528, height: 628 };
   validateLayout({ photo, fields: [], accents: [] });
@@ -111,4 +113,20 @@ void test('officer team mode and manual override do not alter fixed Member/Assoc
     accentColor({ ...member, membership_type: 'Associate' }, settings),
     '#8b5cf6',
   );
+});
+
+void test('private image loading is cached and never paints a white frame placeholder', () => {
+  const client = readFileSync(join(process.cwd(), 'lib', 'client.ts'), 'utf8');
+  const image = readFileSync(join(process.cwd(), 'components', 'private-image.tsx'), 'utf8');
+  assert.match(client, /privateBlobCache/);
+  assert.match(client, /privateAssetCache/);
+  assert.match(client, /loadPrivateAsset/);
+  assert.match(image, /private-image-loading/);
+  assert.doesNotMatch(image, /bg-slate-100/);
+});
+
+void test('metadata list pages do not eagerly render full member photos', () => {
+  const directory = readFileSync(join(process.cwd(), 'components', 'member-directory.tsx'), 'utf8');
+  assert.doesNotMatch(directory, /<PrivateImage/);
+  assert.match(directory, /member-photo-fallback/);
 });

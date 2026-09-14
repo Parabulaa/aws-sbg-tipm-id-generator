@@ -7,6 +7,7 @@ import {
   getColors,
   checkRevision,
   json,
+  logActivity,
 } from './database';
 import { getTemplates } from './configuration';
 import { selectTemplate } from '../templates';
@@ -185,4 +186,33 @@ export async function generate(
     await client.storage.from('generated-ids').remove(objectPaths);
     throw error;
   }
+}
+
+export async function logGenerationDownload(
+  client: SupabaseClient,
+  actorId: string,
+  generationId: string,
+  request: Request,
+) {
+  if (!/^[0-9a-f-]{36}$/i.test(generationId))
+    throw new AppError('Invalid generation record.');
+  const body = (await request.json()) as { file?: unknown };
+  const file = typeof body.file === 'string' ? body.file : '';
+  if (!['front.png', 'back.png', 'ID.pdf'].includes(file))
+    throw new AppError('Invalid generated file type.');
+  const { data, error } = await client
+    .from('generated_ids')
+    .select('member_id,aws_sbg_id')
+    .eq('id', generationId)
+    .maybeSingle();
+  if (error || !data) throw new AppError('Generation record not found.', 404);
+  await logActivity(
+    client,
+    actorId,
+    'generated_file_downloaded',
+    `Downloaded ${file} for ${data.aws_sbg_id}.`,
+    data.member_id,
+    { generation_id: generationId, file },
+  );
+  return json({ ok: true });
 }

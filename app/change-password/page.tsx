@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { Lock, Loader2 } from 'lucide-react';
 import { api, errorText } from '@/lib/client';
+import { validateNewPassword } from '@/lib/password';
 
 export default function ChangePasswordPage() {
   const [busy, setBusy] = useState(false);
@@ -13,8 +14,9 @@ export default function ChangePasswordPage() {
     const rawConfirm = form.get('confirm');
     const password = typeof rawPassword === 'string' ? rawPassword : '';
     const confirm = typeof rawConfirm === 'string' ? rawConfirm : '';
-    if (password !== confirm) {
-      setError('Passwords do not match.');
+    const validationError = validateNewPassword(password, confirm);
+    if (validationError) {
+      setError(validationError);
       return;
     }
     setBusy(true);

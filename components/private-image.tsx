@@ -2,7 +2,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import type { CSSProperties } from 'react';
-import { errorText, fetchPrivateBlob } from '@/lib/client';
+import { errorText, loadPrivateAsset } from '@/lib/client';
 
 interface PrivateImageProps {
   path: string;
@@ -28,29 +28,21 @@ function LoadedPrivateImage({
   const [error, setError] = useState('');
   useEffect(() => {
     let cancelled = false;
-    let objectUrl = '';
-    void fetchPrivateBlob(path)
-      .then((blob) => {
-        if (!cancelled) {
-          objectUrl = URL.createObjectURL(blob);
-          setSrc(objectUrl);
-        }
+    void loadPrivateAsset(path)
+      .then((objectUrl) => {
+        if (!cancelled) setSrc(objectUrl);
       })
       .catch((reason) => {
         if (!cancelled) setError(errorText(reason));
       });
     return () => {
       cancelled = true;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
   }, [path]);
   if (error) return <p className="notice-error text-xs">{error}</p>;
   if (!src)
     return (
-      <div
-        className="h-12 w-12 rounded-lg bg-slate-100"
-        aria-label="Loading private image"
-      />
+      <div className="private-image-loading" aria-label="Loading private image" />
     );
   return (
     <img

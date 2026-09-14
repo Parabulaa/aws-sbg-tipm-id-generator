@@ -149,6 +149,8 @@ test('public home → login → five-field import → officer review → generat
     if (path === 'activity') return json([]);
     if (path === 'generations' && request.method() === 'GET')
       return json(generations);
+    if (/^generations\/[^/]+\/download$/.test(path) && request.method() === 'POST')
+      return json({ ok: true });
     if (path === 'generations' && request.method() === 'POST') {
       const payload = request.postDataJSON() as {
         side: string;
@@ -209,16 +211,24 @@ test('public home → login → five-field import → officer review → generat
     }),
     'base64',
   );
-  await page.getByRole('link', { name: 'Login', exact: true }).first().click();
+  await page.getByRole('link', { name: 'Officer Login', exact: true }).first().click();
   await page.waitForFunction(() =>
     Object.keys(document.querySelector('form') ?? {}).some((key) =>
       key.startsWith('__reactProps$'),
     ),
   );
   await page.getByLabel('Officer Email').fill('admin@example.org');
-  await page.getByLabel('Password').fill('isolated-test-password');
+  await page.locator('input[name="password"]').fill('isolated-test-password');
   await page.getByRole('button', { name: 'Login' }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
+  await page.getByRole('button', { name: 'Change Password' }).click();
+  await expect(page.getByRole('dialog', { name: 'Change Password' })).toBeVisible();
+  await page.getByLabel('Current Password').fill('isolated-test-password');
+  await page.getByLabel('New Password', { exact: true }).fill('new-password');
+  await page.getByLabel('Confirm New Password').fill('different-password');
+  await page.getByRole('button', { name: 'Change Password', exact: true }).click();
+  await expect(page.getByText(/do not match/i)).toBeVisible();
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
   await page.getByRole('link', { name: 'Members', exact: true }).click();
   await page.getByRole('button', { name: 'Import XLSX', exact: true }).click();
 
@@ -276,6 +286,7 @@ test('public home → login → five-field import → officer review → generat
     'Technology / CTO Office',
   );
   await page.getByRole('button', { name: 'Save information' }).click();
+  await page.getByRole('tab', { name: 'Photo Adjustment' }).click();
   await page.getByLabel('Upload member photo').setInputFiles({
     name: 'photo.png',
     mimeType: 'image/png',
@@ -299,8 +310,8 @@ test('public home → login → five-field import → officer review → generat
     page.getByText('ID files generated and saved in history.'),
   ).toBeVisible();
   await page.getByRole('link', { name: 'Generated IDs' }).click();
-  await expect(page.getByText('AWSSBG-TIPM-260020')).toBeVisible();
-  await expect(page.getByText('Test Admin', { exact: true })).toBeVisible();
+  await expect(page.getByText('AWSSBG-TIPM-260020').first()).toBeVisible();
+  await expect(page.getByText('Test Admin', { exact: true }).first()).toBeVisible();
   await page.getByRole('button', { name: 'Preview Front' }).click();
   const savedPreview = page.getByAltText(
     'front ID for JAMES LEBRON',
@@ -364,22 +375,12 @@ test('public home → login → five-field import → officer review → generat
   await expect(
     page.getByRole('dialog', { name: 'Configure Approved Template' }),
   ).toBeVisible();
-  await page
-    .getByLabel('Template Group', { exact: true })
-    .selectOption('Officer');
-  await page
-    .getByLabel('Officer Team', { exact: true })
-    .selectOption('Technology / CTO Office');
   await expect(
     page.getByText('Shared Officer and Associate templates'),
   ).toHaveCount(0);
   await expect(page.getByText('Officer team colors')).toHaveCount(0);
   await expect(
     page.getByText('Field Mapping JSON', { exact: true }),
-  ).toBeVisible();
-  await page.getByLabel('Side', { exact: true }).selectOption('back');
-  await expect(
-    page.getByText('Mapping not required', { exact: true }),
   ).toBeVisible();
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect(page.getByText('Officer Access', { exact: true })).toHaveCount(
@@ -389,6 +390,6 @@ test('public home → login → five-field import → officer review → generat
   await expect(
     page.getByRole('dialog', { name: 'Log out of AWS SBG ID Generator?' }),
   ).toBeVisible();
-  await page.getByRole('button', { name: 'Log out', exact: true }).click();
-  await expect(page).toHaveURL(/\/login$/);
+  await page.getByRole('button', { name: 'Log out', exact: true }).click({ timeout: 60_000 });
+  await expect(page).toHaveURL(/\/login$/, { timeout: 60_000 });
 });

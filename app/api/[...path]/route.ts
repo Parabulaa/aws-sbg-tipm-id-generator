@@ -22,13 +22,12 @@ import {
   saveTemplate,
   saveColors,
 } from '@/lib/server/configuration';
-import { generate, getGenerations } from '@/lib/server/generation';
+import { generate, getGenerations, logGenerationDownload } from '@/lib/server/generation';
 import {
   changeOwnPassword,
   createOfficerAccount,
   listAdminActivity,
   listOfficers,
-  logAdminActivity,
   updateOfficerAccount,
 } from '@/lib/server/admin';
 async function handle(request: Request) {
@@ -57,9 +56,7 @@ async function handle(request: Request) {
     if (path[0] === 'members') {
       if (request.method === 'DELETE' && !path[1]) {
         assertOfficerRole(auth.profile, 'admin');
-        const response = await deleteMembers(auth.client, auth.profile.id, request);
-        await logAdminActivity(auth.client, auth.profile, 'Deleted selected members');
-        return response;
+        return await deleteMembers(auth.client, auth.profile.id, request);
       }
       if (request.method === 'GET' && !path[1]) {
         const includeArchived =
@@ -68,14 +65,12 @@ async function handle(request: Request) {
       }
       if (request.method === 'POST' && (!path[1] || path[1] === 'import')) {
         const data = (await request.json()) as { members: unknown };
-        const response = await importMembers(
+        return await importMembers(
           auth.client,
           auth.profile.id,
           data.members,
           !path[1],
         );
-        await logAdminActivity(auth.client, auth.profile, 'Imported members');
-        return response;
       }
       if (path[2] === 'photo' && ['POST', 'DELETE'].includes(request.method))
         return await photo(auth.client, auth.profile.id, path[1], request);
@@ -87,24 +82,20 @@ async function handle(request: Request) {
           request,
         );
       if (path[2] === 'archive' && request.method === 'POST') {
-        const response = await archiveMember(
+        return await archiveMember(
           auth.client,
           auth.profile.id,
           path[1],
           request,
         );
-        await logAdminActivity(auth.client, auth.profile, 'Archived member');
-        return response;
       }
       if (path[2] === 'restore' && request.method === 'POST') {
-        const response = await restoreMember(
+        return await restoreMember(
           auth.client,
           auth.profile.id,
           path[1],
           request,
         );
-        await logAdminActivity(auth.client, auth.profile, 'Restored member');
-        return response;
       }
       if (request.method === 'PUT' && path[1] && !path[2])
         return await updateMember(
@@ -143,10 +134,10 @@ async function handle(request: Request) {
     if (path[0] === 'activity' && request.method === 'GET')
       return json(await getActivity(auth.client));
     if (path[0] === 'generations') {
+      if (request.method === 'POST' && path[1] && path[2] === 'download')
+        return await logGenerationDownload(auth.client, auth.profile.id, path[1], request);
       if (request.method === 'POST') {
-        const response = await generate(auth.client, auth.profile.id, actor, request);
-        await logAdminActivity(auth.client, auth.profile, 'Generated ID');
-        return response;
+        return await generate(auth.client, auth.profile.id, actor, request);
       }
       if (request.method === 'GET')
         return json(await getGenerations(auth.client));

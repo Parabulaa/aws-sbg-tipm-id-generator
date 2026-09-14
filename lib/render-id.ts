@@ -2,9 +2,9 @@ import { displayName, accentColor, contrastText } from './domain';
 import type { MemberRecord, ColorSettings, Crop } from './domain';
 import { WIDTH, HEIGHT } from './templates';
 import type { Template, TextBox } from './templates';
-import { fetchPrivateBlob, fileUrl } from './client';
+import { loadPrivateAsset, fileUrl } from './client';
 
-type CachedImage = { promise: Promise<HTMLImageElement>; objectUrl?: string };
+type CachedImage = { promise: Promise<HTMLImageElement> };
 const imageCache = new Map<string, CachedImage>();
 
 export async function loadImage(src: string) {
@@ -23,14 +23,12 @@ export async function loadImage(src: string) {
     const image = new Image();
     if (src.startsWith('/api/files/')) {
       const key = decodeURIComponent(src.slice('/api/files/'.length));
-      entry.objectUrl = URL.createObjectURL(await fetchPrivateBlob(key));
-      image.src = entry.objectUrl;
+      image.src = await loadPrivateAsset(key, 'id-renderer');
     } else image.src = src;
     await image.decode();
     return image;
   })().catch(() => {
     imageCache.delete(src);
-    if (entry.objectUrl) URL.revokeObjectURL(entry.objectUrl);
     throw new Error('Image could not be loaded. Check the photo and approved template files.');
   });
   imageCache.set(src, entry);
@@ -38,8 +36,6 @@ export async function loadImage(src: string) {
 }
 
 export function releaseImage(src: string) {
-  const cached = imageCache.get(src);
-  if (cached?.objectUrl) URL.revokeObjectURL(cached.objectUrl);
   imageCache.delete(src);
 }
 export function photoSource(

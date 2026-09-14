@@ -320,10 +320,11 @@ export function TemplateSettings() {
                   {imageFile ? (
                     <LocalPreview file={imageFile} />
                   ) : selected[configureSide] ? (
-                    <PrivateImage
-                      path={selected[configureSide]!.image}
-                      alt={`${title} ${configureSide} template`}
-                    />
+                    <div className="template-empty">
+                      <ImageIcon className="size-8" />
+                      <span>Current template configured</span>
+                      <small>Use Preview to load the full image.</small>
+                    </div>
                   ) : (
                     <ImageIcon className="size-8" />
                   )}
@@ -448,11 +449,11 @@ function TemplateCard({
       </header>
       <div className="template-thumbnail-frame">
         {template ? (
-          <PrivateImage
-            path={template.image}
-            alt={`${label} ${side} template`}
-            className="template-thumbnail"
-          />
+          <div className="template-empty template-metadata-preview">
+            <ImageIcon className="size-8" />
+            <strong>{label} {capitalize(side)}</strong>
+            <span>Preview on demand</span>
+          </div>
         ) : (
           <div className="template-empty">
             <ImageIcon className="size-8" />

@@ -19,7 +19,7 @@ import {
 import { useData } from './data-provider';
 import { displayName, safeFilename } from '@/lib/domain';
 import type { Generation } from '@/lib/domain';
-import { errorText } from '@/lib/client';
+import { api, errorText } from '@/lib/client';
 import { PrivateImage } from './private-image';
 
 type StatusFilter = '' | 'Active' | 'Expired';
@@ -104,6 +104,10 @@ export function GeneratedHistory() {
     if (!path) throw new Error(`${file} is not available for this ID.`);
     const { downloadFile } = await import('@/lib/export-id');
     await downloadFile(path, `${safeFilename(record.member)}_${file}`);
+    await api(`generations/${record.id}/download`, {
+      method: 'POST',
+      body: JSON.stringify({ file }),
+    });
   }
   async function downloadZip() {
     const targets = selected.length

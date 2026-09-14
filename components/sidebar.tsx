@@ -1,12 +1,13 @@
 'use client';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
 import {
   FileBadge2,
   FolderCog,
   LayoutDashboard,
   Loader2,
+  KeyRound,
   Menu,
   LogOut,
   PanelLeftClose,
@@ -31,8 +32,10 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useData } from './data-provider';
-import { errorText } from '@/lib/client';
+import { api, clearPrivateAssetCache, errorText } from '@/lib/client';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { AdminNotice, type AdminNoticeState } from './admin-notice';
+import { validateNewPassword } from '@/lib/password';
 const navigation = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Generate ID', href: '/generate-id', icon: Sparkles },
@@ -46,18 +49,57 @@ const adminNavigation = [
 ];
 export function Sidebar({ collapsed = false, onToggle }: { collapsed?: boolean; onToggle?: () => void }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { user, role } = useData();
   const [open, setOpen] = useState(false);
   const [error, setError] = useState('');
   const [signingOut, setSigningOut] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
+  const [passwordOpen, setPasswordOpen] = useState(false);
+  const [passwordBusy, setPasswordBusy] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+  const [notice, setNotice] = useState<AdminNoticeState>(null);
+
+  async function changePassword(event: { preventDefault(): void; currentTarget: HTMLFormElement }) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const field = (name: string) => {
+      const value = form.get(name);
+      return typeof value === 'string' ? value : '';
+    };
+    const currentPassword = field('current_password');
+    const password = field('password');
+    const confirmation = field('confirmation');
+    const validationError = validateNewPassword(password, confirmation);
+    if (validationError) {
+      setPasswordError(validationError);
+      return;
+    }
+    setPasswordBusy(true);
+    setPasswordError('');
+    try {
+      await api('account/password', {
+        method: 'PUT',
+        body: JSON.stringify({ current_password: currentPassword, password, voluntary: true }),
+      });
+      event.currentTarget.reset();
+      setPasswordOpen(false);
+      setNotice({ type: 'success', message: 'Your password was changed successfully.' });
+    } catch (caught) {
+      setPasswordError(errorText(caught));
+    } finally {
+      setPasswordBusy(false);
+    }
+  }
   async function signOut() {
     setSigningOut(true);
     setError('');
     try {
       const { error } = await getSupabaseBrowserClient().auth.signOut();
       if (error) throw error;
-      window.location.assign('/login');
+      clearPrivateAssetCache();
+      setLogoutOpen(false);
+      router.replace('/login');
     } catch (caught) {
       setError(errorText(caught));
       setSigningOut(false);
@@ -112,6 +154,9 @@ export function Sidebar({ collapsed = false, onToggle }: { collapsed?: boolean; 
             {!compact && <>
             <p className="break-words text-sm font-semibold">{user}</p>
             <p className="mt-0.5 text-xs capitalize text-slate-500">{role}</p>
+            <button className="btn mt-2 w-full" type="button" onClick={() => { setPasswordError(''); setPasswordOpen(true); }}>
+              <KeyRound className="size-4" /> Change Password
+            </button>
             </>}
             <button
               className={`btn ${compact ? 'size-10 px-0' : 'mt-2 w-full'}`}
@@ -133,6 +178,7 @@ export function Sidebar({ collapsed = false, onToggle }: { collapsed?: boolean; 
   }
   return (
     <>
+      <AdminNotice notice={notice} onDismiss={() => setNotice(null)} />
       <header className="sticky top-0 z-30 flex items-center justify-between gap-2 border-b border-slate-200 bg-white p-4 lg:hidden">
         <Brand />
         <button
@@ -173,6 +219,24 @@ export function Sidebar({ collapsed = false, onToggle }: { collapsed?: boolean; 
               {signingOut ? <><Loader2 className="size-4 animate-spin" /> Logging out...</> : <><LogOut className="size-4" /> Log out</>}
             </button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={passwordOpen} onOpenChange={(next) => { if (!passwordBusy) { setPasswordOpen(next); setPasswordError(''); } }}>
+        <DialogContent className="member-dialog sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Change Password</DialogTitle>
+            <DialogDescription>Confirm your current password, then choose a new password.</DialogDescription>
+          </DialogHeader>
+          <form className="change-password-form" onSubmit={changePassword}>
+            <label>Current Password<input name="current_password" type="password" autoComplete="current-password" required /></label>
+            <label>New Password<input name="password" type="password" autoComplete="new-password" minLength={8} required /></label>
+            <label>Confirm New Password<input name="confirmation" type="password" autoComplete="new-password" minLength={8} required /></label>
+            {passwordError && <p className="notice-error" role="alert">{passwordError}</p>}
+            <DialogFooter>
+              <button className="btn" type="button" disabled={passwordBusy} onClick={() => setPasswordOpen(false)}>Cancel</button>
+              <button className="btn-primary" disabled={passwordBusy}>{passwordBusy && <Loader2 className="size-4 animate-spin" />}{passwordBusy ? 'Changing...' : 'Change Password'}</button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </>

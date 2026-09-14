@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { sameOrigin } from '../lib/server/auth';
 import { assertOfficerRole, bearerToken } from '../lib/server/supabase';
 import type { OfficerProfile } from '../lib/server/supabase';
+import { validateNewPassword } from '../lib/password';
 
 const profile: OfficerProfile = {
   id: '00000000-0000-4000-8000-000000000001',
@@ -46,4 +47,10 @@ void test('active officer and administrator authorization is explicit', () => {
     () => assertOfficerRole({ ...profile, is_active: false }),
     /not active/,
   );
+});
+
+void test('voluntary and forced password forms share strict validation', () => {
+  assert.match(validateNewPassword('short', 'short'), /at least 8/);
+  assert.match(validateNewPassword('long-enough', 'different'), /do not match/);
+  assert.equal(validateNewPassword('long-enough', 'long-enough'), '');
 });

@@ -104,7 +104,7 @@ export function PhotoEditor({
             style={{
               aspectRatio: photoRegion ? `${photoRegion.width} / ${photoRegion.height}` : '176 / 208',
               borderRadius: photoRegion
-                ? `${((photoRegion.borderRadius ?? 0) / photoRegion.width) * 100}% / ${((photoRegion.borderRadius ?? 0) / photoRegion.height) * 100}%`
+                ? `${((photoRegion.borderRadius ?? 12) / photoRegion.width) * 100}% / ${((photoRegion.borderRadius ?? 12) / photoRegion.height) * 100}%`
                 : '12px',
               clipPath: photoRegion?.clipPolygon
                 ? `polygon(${photoRegion.clipPolygon.map(([x, y]) => `${x * 100}% ${y * 100}%`).join(',')})`

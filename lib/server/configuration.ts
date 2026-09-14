@@ -94,6 +94,13 @@ export async function saveTemplate(
   const version = crypto.randomUUID();
   const objectPath = `${category.toLowerCase()}/${side}/${version}.png`;
   const image = `id-templates/${objectPath}`;
+  const existing = await client
+    .from('templates')
+    .select('id,layout,approved')
+    .eq('category', category)
+    .eq('side', side)
+    .eq('team', team)
+    .maybeSingle();
   const uploaded = await client.storage
     .from('id-templates')
     .upload(objectPath, bytes, { contentType: 'image/png', upsert: false });
@@ -128,8 +135,17 @@ export async function saveTemplate(
   await logActivity(
     client,
     actorId,
-    'template_changed',
-    `Updated the ${category} ${side} template.`,
+    existing.data ? 'template_replaced' : 'template_uploaded',
+    `${existing.data ? 'Replaced' : 'Uploaded'} the ${team ? `${team} ` : ''}${category} ${side} template.`,
+    null,
+    {
+      category,
+      side,
+      team,
+      mapping_changed: side === 'front',
+      approval_changed: existing.data ? existing.data.approved !== true : true,
+      template_version: version,
+    },
   );
   return json(toTemplate(data));
 }

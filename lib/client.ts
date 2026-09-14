@@ -52,10 +52,21 @@ export function fileUrl(key: string) {
 }
 
 const privateBlobCache = new Map<string, Promise<Blob>>();
+const privateAssetCache = new Map<string, Promise<string>>();
 
-export function fetchPrivateBlob(key: string) {
+function storageDiagnostic(key: string, source: string, cache: 'HIT' | 'MISS') {
+  if (!import.meta.env.DEV) return;
+  const [bucket, ...path] = key.split('/');
+  console.debug('[Storage]', { bucket, path: path.join('/'), source, cache });
+}
+
+export function fetchPrivateBlob(key: string, source = 'private-asset') {
   const cached = privateBlobCache.get(key);
-  if (cached) return cached;
+  if (cached) {
+    storageDiagnostic(key, source, 'HIT');
+    return cached;
+  }
+  storageDiagnostic(key, source, 'MISS');
   const pending = fetchPrivateFile(key)
     .then((response) => response.blob())
     .catch((error) => {
@@ -66,8 +77,34 @@ export function fetchPrivateBlob(key: string) {
   return pending;
 }
 
+export function loadPrivateAsset(key: string, source = 'private-image') {
+  const cached = privateAssetCache.get(key);
+  if (cached) {
+    storageDiagnostic(key, source, 'HIT');
+    return cached;
+  }
+  const pending = fetchPrivateBlob(key, source)
+    .then((blob) => URL.createObjectURL(blob))
+    .catch((error) => {
+      privateAssetCache.delete(key);
+      throw error;
+    });
+  privateAssetCache.set(key, pending);
+  return pending;
+}
+
 export function invalidatePrivateBlob(key: string) {
   privateBlobCache.delete(key);
+  const asset = privateAssetCache.get(key);
+  privateAssetCache.delete(key);
+  void asset?.then((url) => URL.revokeObjectURL(url)).catch(() => {});
+}
+
+export function clearPrivateAssetCache() {
+  for (const asset of privateAssetCache.values())
+    void asset.then((url) => URL.revokeObjectURL(url)).catch(() => {});
+  privateAssetCache.clear();
+  privateBlobCache.clear();
 }
 
 // Storage stays private. Image elements and downloads need the same bearer

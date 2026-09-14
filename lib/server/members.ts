@@ -72,6 +72,15 @@ export async function importMembers(
       );
     throw new AppError(error.message || 'Members could not be imported.');
   }
+  if (!manual && newMembers.length > 1)
+    await logActivity(
+      client,
+      actorId,
+      'members_bulk_imported',
+      `Bulk import completed: ${newMembers.length} members added and ${skippedDuplicates} duplicate(s) skipped.`,
+      null,
+      { imported: newMembers.length, skipped_duplicates: skippedDuplicates },
+    );
   return json(
     { imported: (data as MemberRecord[]).length, skippedDuplicates, members: data },
     201,

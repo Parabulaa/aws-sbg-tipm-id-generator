@@ -12,6 +12,11 @@ type Log = {
   action: string;
   status: string;
   target_name?: string | null;
+  actor_email?: string;
+  category?: string;
+  target_type?: string | null;
+  description?: string;
+  metadata?: Record<string, unknown>;
   created_at: string;
 };
 export function AdminActivityLogs() {
@@ -19,6 +24,9 @@ export function AdminActivityLogs() {
   const [logs, setLogs] = useState<Log[]>([]);
   const [query, setQuery] = useState('');
   const [action, setAction] = useState('');
+  const [actor, setActor] = useState('');
+  const [category, setCategory] = useState('');
+  const [actorRole, setActorRole] = useState('');
   const [range, setRange] = useState('');
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<AdminNoticeState>(null);
@@ -44,8 +52,11 @@ export function AdminActivityLogs() {
     const needle = query.trim().toLowerCase();
     const today = new Date().toDateString();
     return logs.filter((log) => {
-      const matchesSearch = !needle || `${log.user_name} ${log.action}`.toLowerCase().includes(needle);
+      const matchesSearch = !needle || `${log.user_name} ${log.actor_email ?? ''} ${log.action} ${log.target_name ?? ''} ${log.description ?? ''}`.toLowerCase().includes(needle);
       const matchesAction = !action || log.action === action;
+      const matchesActor = !actor || log.user_name === actor;
+      const matchesCategory = !category || log.category === category;
+      const matchesRole = !actorRole || log.user_role === actorRole;
       const created = new Date(log.created_at);
       const age = now - created.getTime();
       const matchesRange =
@@ -53,17 +64,19 @@ export function AdminActivityLogs() {
         (range === 'today' && created.toDateString() === today) ||
         (range === '7' && age <= 7 * 24 * 60 * 60 * 1000) ||
         (range === '30' && age <= 30 * 24 * 60 * 60 * 1000);
-      return matchesSearch && matchesAction && matchesRange;
+      return matchesSearch && matchesAction && matchesActor && matchesCategory && matchesRole && matchesRange;
     });
-  }, [action, logs, now, query, range]);
+  }, [action, actor, actorRole, category, logs, now, query, range]);
   const actions = Array.from(new Set(logs.map((log) => log.action))).sort();
+  const actors = Array.from(new Set(logs.map((log) => log.user_name))).sort();
+  const categories = Array.from(new Set(logs.map((log) => log.category).filter(Boolean))).sort((left, right) => String(left).localeCompare(String(right))) as string[];
   const today = logs.filter((log) => new Date(log.created_at).toDateString() === new Date().toDateString()).length;
   const adminActions = logs.filter((log) => log.user_role === 'admin').length;
   const officerActions = logs.filter((log) => log.user_role === 'officer').length;
 
   function exportCsv() {
-    const header = ['Date / Time', 'User', 'Role', 'Action', 'Status', 'Target'];
-    const rows = filtered.map((log) => [new Date(log.created_at).toLocaleString(), log.user_name, log.user_role, log.action, log.status, log.target_name ?? '']);
+    const header = ['Date / Time', 'Actor', 'Email', 'Role', 'Action', 'Category', 'Target', 'Description', 'Status'];
+    const rows = filtered.map((log) => [new Date(log.created_at).toLocaleString(), log.user_name, log.actor_email ?? '', log.user_role, log.action, log.category ?? '', log.target_name ?? '', log.description ?? '', log.status]);
     const csv = [header, ...rows].map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(',')).join('\n');
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
     const anchor = document.createElement('a');
@@ -105,9 +118,22 @@ export function AdminActivityLogs() {
               <Search className="size-4" />
               <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search user or action..." />
             </label>
+            <select value={actor} onChange={(event) => setActor(event.target.value)}>
+              <option value="">All Actors</option>
+              {actors.map((value) => <option key={value}>{value}</option>)}
+            </select>
+            <select value={category} onChange={(event) => setCategory(event.target.value)}>
+              <option value="">All Categories</option>
+              {categories.map((value) => <option key={value}>{value.replaceAll('_', ' ')}</option>)}
+            </select>
             <select value={action} onChange={(event) => setAction(event.target.value)}>
               <option value="">All Actions</option>
               {actions.map((value) => <option key={value}>{value}</option>)}
+            </select>
+            <select value={actorRole} onChange={(event) => setActorRole(event.target.value)}>
+              <option value="">All Roles</option>
+              <option value="admin">Admin</option>
+              <option value="officer">Officer</option>
             </select>
             <select value={range} onChange={(event) => setRange(event.target.value)}>
               <option value="">All Time</option>
@@ -119,14 +145,17 @@ export function AdminActivityLogs() {
         </header>
         <div className="admin-table-scroll">
           <table className="admin-table">
-            <thead><tr><th>Date / Time</th><th>User</th><th>Action</th><th>Status</th></tr></thead>
+            <thead><tr><th>Time</th><th>Actor</th><th>Role</th><th>Action</th><th>Target</th><th>Category</th><th>Status</th></tr></thead>
             <tbody>
               {filtered.map((log) => (
                 <tr key={log.id}>
                   <td>{new Date(log.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}</td>
                   <td>{log.user_name}</td>
-                  <td>{log.action}</td>
-                  <td><span className="admin-status active"><i />{log.status}</span></td>
+                  <td className="capitalize">{log.user_role}</td>
+                  <td title={log.description}>{log.action.replaceAll('_', ' ')}</td>
+                  <td>{log.target_name || '—'}</td>
+                  <td className="capitalize">{(log.category || 'members').replaceAll('_', ' ')}</td>
+                  <td><span className={`admin-status ${log.status.toLowerCase() === 'success' ? 'active' : 'disabled'}`}><i />{log.status}</span></td>
                 </tr>
               ))}
             </tbody>

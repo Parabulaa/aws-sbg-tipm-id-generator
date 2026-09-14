@@ -102,3 +102,12 @@ void test('batch deletion is restricted to administrators and clears dependent r
   assert.match(sql, /delete from public\.generated_ids/i);
   assert.match(sql, /delete from public\.members/i);
 });
+
+void test('structured audit logs are indexed and keep RLS enabled', () => {
+  assert.match(sql, /alter table public\.activity_logs enable row level security/i);
+  for (const column of ['actor_user_id', 'actor_email', 'category', 'target_type', 'description', 'metadata'])
+    assert.match(sql, new RegExp(`add column if not exists ${column}`, 'i'));
+  assert.match(sql, /activity_logs_category_created_at_idx/i);
+  assert.match(sql, /activity_logs_action_created_at_idx/i);
+  assert.match(sql, /Credentials, tokens, passwords, and secret keys are prohibited/i);
+});
