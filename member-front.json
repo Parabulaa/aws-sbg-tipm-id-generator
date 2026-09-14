@@ -1,0 +1,67 @@
+{
+  "photo": {
+    "x": 360,
+    "y": 260,
+    "width": 480,
+    "height": 600
+  },
+  "fields": [
+    {
+      "field": "name",
+      "x": 100,
+      "y": 930,
+      "width": 1000,
+      "height": 80,
+      "fontSize": 52,
+      "minFontSize": 28,
+      "color": "#111827",
+      "align": "center",
+      "weight": "bold"
+    },
+    {
+      "field": "role",
+      "x": 100,
+      "y": 1030,
+      "width": 1000,
+      "height": 60,
+      "fontSize": 34,
+      "minFontSize": 20,
+      "color": "#374151",
+      "align": "center",
+      "weight": "normal"
+    },
+    {
+      "field": "aws_sbg_id",
+      "x": 100,
+      "y": 1160,
+      "width": 1000,
+      "height": 60,
+      "fontSize": 32,
+      "minFontSize": 20,
+      "color": "#111827",
+      "align": "center",
+      "weight": "bold"
+    },
+    {
+      "field": "email",
+      "x": 100,
+      "y": 1260,
+      "width": 1000,
+      "height": 60,
+      "fontSize": 28,
+      "minFontSize": 16,
+      "color": "#374151",
+      "align": "center",
+      "weight": "normal"
+    }
+  ],
+  "accents": [
+    {
+      "x": 0,
+      "y": 0,
+      "width": 1200,
+      "height": 30,
+      "label": "header"
+    }
+  ]
+}
