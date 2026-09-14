@@ -153,7 +153,7 @@ void test('forced password and public sticker layouts use the intended UI', () =
   const css = readFileSync(join(process.cwd(), 'app', 'globals.css'), 'utf8');
   assert.match(passwordPage, /forced-password-dialog/);
   assert.match(passwordPage, /showCloseButton=\{false\}/);
-  assert.match(sidebar, /role !== 'admin'/);
+  assert.doesNotMatch(sidebar, /passwordOpen|Change Password/);
   assert.match(sidebar, /sidebar-user-avatar/);
   assert.match(css, /\.public-slots i:nth-child\(7\).*grid-column: 6 \/ span 2/);
 });

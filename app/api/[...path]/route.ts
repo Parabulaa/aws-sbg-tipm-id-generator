@@ -30,6 +30,16 @@ import {
   listOfficers,
   updateOfficerAccount,
 } from '@/lib/server/admin';
+
+async function retryRead<T>(operation: () => Promise<T>) {
+  try {
+    return await operation();
+  } catch {
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    return operation();
+  }
+}
+
 async function handle(request: Request) {
   try {
     sameOrigin(request);
@@ -41,14 +51,41 @@ async function handle(request: Request) {
       .split('/');
     const auth = await requireOfficer(request, env);
     const actor = auth.actor;
+    const session = {
+      user: actor,
+      email: auth.profile.email,
+      role: auth.profile.role,
+      id: auth.profile.id,
+      must_change_password: auth.profile.must_change_password,
+    };
     if (path[0] === 'session')
+      return json(session);
+    if (path[0] === 'bootstrap' && request.method === 'GET') {
+      if (auth.profile.must_change_password) return json({ session });
+      const reads = await Promise.allSettled([
+        retryRead(() => getMembers(auth.client)),
+        retryRead(() => getColors(auth.client)),
+        retryRead(() => getGenerations(auth.client)),
+        retryRead(() => getActivity(auth.client)),
+        retryRead(() => getTemplates(auth.client)),
+      ]);
+      const value = <T,>(index: number) =>
+        reads[index].status === 'fulfilled'
+          ? (reads[index] as PromiseFulfilledResult<T>).value
+          : undefined;
+      const errors = reads
+        .filter((result): result is PromiseRejectedResult => result.status === 'rejected')
+        .map((result) => result.reason instanceof Error ? result.reason.message : 'Data could not be loaded.');
       return json({
-        user: actor,
-        email: auth.profile.email,
-        role: auth.profile.role,
-        id: auth.profile.id,
-        must_change_password: auth.profile.must_change_password,
+        session,
+        members: value(0),
+        colors: value(1),
+        generations: value(2),
+        activity: value(3),
+        templates: value(4),
+        errors,
       });
+    }
     if (path[0] === 'account' && path[1] === 'password' && request.method === 'PUT')
       return json(await changeOwnPassword(auth.client, env, auth.profile, request));
     if (auth.profile.must_change_password)

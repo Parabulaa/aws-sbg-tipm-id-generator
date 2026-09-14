@@ -23,6 +23,21 @@ export interface SupabaseBindings {
 
 const RESERVED_ADMIN_EMAILS = new Set(['mjramba@tip.edu.ph']);
 
+function transientSupabaseError(error: { message?: string; status?: number } | null) {
+  if (!error) return false;
+  return error.status === 429 || (error.status ?? 0) >= 500 ||
+    /fetch|network|timeout|gateway|temporar/i.test(error.message ?? '');
+}
+
+async function retryTransient<T extends { error: { message?: string; status?: number } | null }>(
+  operation: () => PromiseLike<T>,
+) {
+  const first = await operation();
+  if (!transientSupabaseError(first.error)) return first;
+  await new Promise((resolve) => setTimeout(resolve, 300));
+  return operation();
+}
+
 export function normalizeOfficerProfile(profile: OfficerProfile): OfficerProfile {
   const email = profile.email.trim().toLowerCase();
   if (RESERVED_ADMIN_EMAILS.has(email))
@@ -104,12 +119,13 @@ export async function requireOfficer(
     global: { headers: { Authorization: `Bearer ${token}` } },
     auth: { persistSession: false, autoRefreshToken: false },
   });
-  const { data: authData, error: authError } = await client.auth.getUser(token);
+  const { data: authData, error: authError } = await retryTransient(() =>
+    client.auth.getUser(token),
+  );
   if (authError || !authData.user)
     throw new AppError('Your session has expired. Sign in again.', 401);
-  const { data: profile, error: profileError } = await loadOfficerProfile(
-    client,
-    authData.user.id,
+  const { data: profile, error: profileError } = await retryTransient(() =>
+    loadOfficerProfile(client, authData.user.id),
   );
   if (profileError)
     throw new AppError('Officer access could not be verified.', 403);

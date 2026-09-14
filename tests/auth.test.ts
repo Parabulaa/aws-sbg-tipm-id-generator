@@ -1,5 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { sameOrigin } from '../lib/server/auth';
 import { assertOfficerRole, bearerToken } from '../lib/server/supabase';
 import type { OfficerProfile } from '../lib/server/supabase';
@@ -53,4 +55,24 @@ void test('voluntary and forced password forms share strict validation', () => {
   assert.match(validateNewPassword('short', 'short'), /at least 8/);
   assert.match(validateNewPassword('long-enough', 'different'), /do not match/);
   assert.equal(validateNewPassword('long-enough', 'long-enough'), '');
+});
+
+void test('dashboard startup authenticates through one bootstrap request', () => {
+  const provider = readFileSync(
+    join(process.cwd(), 'components', 'data-provider.tsx'),
+    'utf8',
+  );
+  assert.match(provider, /'bootstrap'/);
+  assert.doesNotMatch(provider, /Promise\.allSettled\(\[/);
+  assert.match(provider, /bootstrap\.members.*previous\.members/);
+});
+
+void test('forced password completion requires a fresh login', () => {
+  const page = readFileSync(
+    join(process.cwd(), 'app', 'change-password', 'page.tsx'),
+    'utf8',
+  );
+  assert.match(page, /signOut\(\{ scope: 'local' \}\)/);
+  assert.match(page, /location\.replace\('\/login'\)/);
+  assert.doesNotMatch(page, /location\.assign\('\/dashboard'\)/);
 });

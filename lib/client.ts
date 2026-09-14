@@ -9,7 +9,7 @@ export async function api<T>(
   if (!(options.body instanceof FormData))
     headers.set('Content-Type', 'application/json');
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15_000);
+  const timeout = setTimeout(() => controller.abort(), 30_000);
   let response: Response;
   try {
     response = await fetch(`/api/${path}`, {

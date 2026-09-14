@@ -1,8 +1,9 @@
 'use client';
 import { useState } from 'react';
 import { Lock, Loader2 } from 'lucide-react';
-import { api, errorText } from '@/lib/client';
+import { api, clearPrivateAssetCache, errorText } from '@/lib/client';
 import { validateNewPassword } from '@/lib/password';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import {
   Dialog,
   DialogContent,
@@ -34,7 +35,9 @@ export default function ChangePasswordPage() {
         method: 'PUT',
         body: JSON.stringify({ password }),
       });
-      window.location.assign('/dashboard');
+      await getSupabaseBrowserClient().auth.signOut({ scope: 'local' });
+      clearPrivateAssetCache();
+      window.location.replace('/login');
     } catch (caught) {
       setError(errorText(caught));
     } finally {

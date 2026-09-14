@@ -60,13 +60,22 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState('');
   const refresh = useCallback(async () => {
     try {
-      const session = await api<{
-        user: string;
-        role: 'admin' | 'officer';
-        email: string;
-        id: string;
-        must_change_password: boolean;
-      }>('session');
+      const bootstrap = await api<{
+        session: {
+          user: string;
+          role: 'admin' | 'officer';
+          email: string;
+          id: string;
+          must_change_password: boolean;
+        };
+        members?: MemberRecord[];
+        colors?: ColorSettings;
+        generations?: Generation[];
+        activity?: Activity[];
+        templates?: Template[];
+        errors?: string[];
+      }>('bootstrap');
+      const session = bootstrap.session;
       if (session.must_change_password && pathname !== '/change-password') {
         router.replace('/change-password');
         setData({
@@ -80,31 +89,20 @@ export function DataProvider({ children }: { children: ReactNode }) {
         });
         return;
       }
-      const results = await Promise.allSettled([
-        api<MemberRecord[]>('members'),
-        api<ColorSettings>('colors'),
-        api<Generation[]>('generations'),
-        api<Activity[]>('activity'),
-        api<Template[]>('templates'),
-      ]);
-      const [membersResult, colorsResult, generationsResult, activityResult, templatesResult] = results;
-      const firstError = results.find(
-        (result): result is PromiseRejectedResult => result.status === 'rejected',
-      )?.reason;
-      setData({
-        members: membersResult.status === 'fulfilled' ? membersResult.value.map(memberForReview) : [],
-        colors: colorsResult.status === 'fulfilled' ? colorsResult.value : emptyData.colors,
-        generations: generationsResult.status === 'fulfilled' ? generationsResult.value : [],
-        activity: activityResult.status === 'fulfilled' ? activityResult.value : [],
-        templates: templatesResult.status === 'fulfilled' ? templatesResult.value : [],
+      setData((previous) => ({
+        members: bootstrap.members ? bootstrap.members.map(memberForReview) : previous.members,
+        colors: bootstrap.colors ?? previous.colors,
+        generations: bootstrap.generations ?? previous.generations,
+        activity: bootstrap.activity ?? previous.activity,
+        templates: bootstrap.templates ?? previous.templates,
         user: session.user,
         role: session.role,
         email: session.email,
         id: session.id,
         mustChangePassword: session.must_change_password,
         loading: false,
-      });
-      setError(firstError ? errorText(firstError) : '');
+      }));
+      setError(bootstrap.errors?.[0] ?? '');
     } catch (error) {
       setError(errorText(error));
       if (error instanceof ApiError && error.status === 401) {

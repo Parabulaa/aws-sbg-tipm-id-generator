@@ -84,6 +84,26 @@ test('public home → login → five-field import → officer review → generat
     const json = (value: unknown, status = 200) =>
       route.fulfill({ status, json: value });
     if (path === 'session') return json({ user: 'Test Admin', role: 'admin' });
+    if (path === 'bootstrap')
+      return json({
+        session: {
+          user: 'Test Admin',
+          role: 'admin',
+          email: 'admin@example.org',
+          id: '00000000-0000-4000-8000-000000000001',
+          must_change_password: false,
+        },
+        members: members.map((member) => ({
+          ...member,
+          officer_position: member.officer_position || null,
+          team: member.team || null,
+        })),
+        colors: { mode: 'default', teams: [], revision: 1 },
+        generations,
+        activity: [],
+        templates,
+        errors: [],
+      });
     if (path === 'members' && request.method() === 'GET')
       return json(
         members.map((member) => ({
