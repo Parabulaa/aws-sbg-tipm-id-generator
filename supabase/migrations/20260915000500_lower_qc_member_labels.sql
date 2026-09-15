@@ -1,0 +1,18 @@
+-- Lower the QC member name and role slightly and make the member name more prominent.
+update public.templates
+set layout = $layout$
+{
+  "photo": {"x":329,"y":447,"width":538,"height":538,"borderRadius":48},
+  "fields": [
+    {"field":"name","x":105,"y":1062,"width":990,"height":132,"fontSize":92,"minFontSize":44,"color":"#663030","align":"center","weight":"bold","fontFamily":"montserrat"},
+    {"field":"role","x":80,"y":1262,"width":1040,"height":90,"fontSize":70,"minFontSize":48,"color":"#ffffff","align":"center","weight":"bold","fontFamily":"montserrat"},
+    {"field":"aws_sbg_id","prefix":"ID NO. ","x":120,"y":1412,"width":960,"height":80,"fontSize":48,"minFontSize":32,"color":"#663030","align":"center","weight":"bold","fontFamily":"montserrat"},
+    {"field":"email","x":130,"y":1502,"width":940,"height":68,"fontSize":39,"minFontSize":26,"color":"#8f431d","align":"center","weight":"bold","fontFamily":"montserrat"}
+  ],
+  "accents": []
+}
+$layout$::jsonb,
+updated_at = now()
+where category = 'Member'
+  and campus = 'Quezon City'
+  and side = 'front';
